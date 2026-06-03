@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360">
+  <path fill="currentColor" fill-rule="evenodd"
+    d="M74 302V58h158c58 0 102 40 102 94s-44 94-102 94h-74v56H74Z
+       M182 106H230A24 24 0 0 1 254 130V172A24 24 0 0 1 230 196H182A24 24 0 0 1 158 172V130A24 24 0 0 1 182 106Z"/>
+  <path fill="currentColor"
+    d="M316 302V58h80l68 96 68-96h80v244h-82V178l-66 92-66-92v124h-82Z"/>
+  <rect x="74" y="312" width="548" height="34" rx="6" fill="currentColor"/>
+</svg>

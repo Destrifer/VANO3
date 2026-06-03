@@ -1,0 +1,94 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { Icon } from "astro-icon/components";
+import { getCategories } from "../lib/categories";
+import { getProducts } from "../lib/products";
+
+// getStaticPaths сообщает Astro, какие страницы сгенерировать (SSG).
+// Возвращаем по записи на каждую категорию и каждый продукт.
+export async function getStaticPaths() {
+  const [categories, products] = await Promise.all([
+    getCategories(),
+    getProducts(),
+  ]);
+
+  // быстрый доступ «id категории → данные» для карточки продукта
+  const categoryById = new Map(categories.map((c) => [c.id, c]));
+
+  const categoryPaths = categories.map((category) => ({
+    params: { slug: category.slug },
+    props: {
+      type: "category" as const,
+      name: category.name,
+      icon: category.icon,
+      // продукты этой категории — для списка на странице группы
+      items: products
+        .filter((p) => p.category === category.id)
+        .map((p) => ({ name: p.name, slug: p.slug, icon: p.icon ?? category.icon })),
+    },
+  }));
+
+  const productPaths = products.map((product) => {
+    const parent = categoryById.get(product.category);
+    return {
+      params: { slug: product.slug },
+      props: {
+        type: "product" as const,
+        name: product.name,
+        icon: product.icon ?? parent?.icon ?? null, // фолбэк на иконку категории
+        parentName: parent?.name ?? null,
+        parentSlug: parent?.slug ?? null,
+      },
+    };
+  });
+
+  return [...categoryPaths, ...productPaths];
+}
+
+// props приходят из getStaticPaths для конкретной страницы
+const props = Astro.props;
+const pageTitle = `${props.name} — Printmos`;
+const pageDescription = `${props.name} — печать на заказ в Москве. Страница в разработке.`;
+---
+
+<BaseLayout title={pageTitle} description={pageDescription}>
+  <p class="stub-kicker">
+    {props.type === "category" ? "Категория" : "Продукт"}
+  </p>
+  <h1 class="stub-title">
+    {props.icon && <Icon name={props.icon} class="stub-icon" />}
+    {props.name}
+  </h1>
+
+  {
+    props.type === "category" && (
+      <>
+        <p>Страница категории — в разработке. Что входит в категорию:</p>
+        <ul class="stub-list">
+          {props.items.map((item) => (
+            <li>
+              <a href={`/${item.slug}`}>
+                {item.icon && <Icon name={item.icon} class="menu-icon" />}
+                {item.name}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </>
+    )
+  }
+
+  {
+    props.type === "product" && (
+      <>
+        <p>Карточка продукта — в разработке (здесь будет калькулятор).</p>
+        {props.parentSlug && (
+          <p>
+            Категория:{" "}
+            <a href={`/${props.parentSlug}`}>{props.parentName}</a>
+          </p>
+        )}
+      </>
+    )
+  }
+</BaseLayout>

@@ -1,0 +1,310 @@
+@import "tailwindcss";
+@plugin "daisyui";
+
+@plugin "daisyui/theme" {
+  name: "lofi";
+  default: true;
+  prefersdark: false;
+  color-scheme: "light";
+  --color-base-100: oklch(100% 0 0);
+  --color-base-200: oklch(97% 0 0);
+  --color-base-300: oklch(94% 0 0);
+  --color-base-content: oklch(0% 0 0);
+  --color-primary: oklch(15.906% 0 0);
+  --color-primary-content: oklch(100% 0 0);
+  --color-secondary: oklch(21.455% 0.001 17.278);
+  --color-secondary-content: oklch(100% 0 0);
+  --color-accent: oklch(26.861% 0 0);
+  --color-accent-content: oklch(100% 0 0);
+  --color-neutral: oklch(0% 0 0);
+  --color-neutral-content: oklch(100% 0 0);
+  --color-info: oklch(79.54% 0.103 205.9);
+  --color-info-content: oklch(15.908% 0.02 205.9);
+  --color-success: oklch(90.13% 0.153 164.14);
+  --color-success-content: oklch(18.026% 0.03 164.14);
+  --color-warning: oklch(88.37% 0.135 79.94);
+  --color-warning-content: oklch(17.674% 0.027 79.94);
+  --color-error: oklch(78.66% 0.15 28.47);
+  --color-error-content: oklch(15.732% 0.03 28.47);
+  --radius-selector: 2rem;
+  --radius-field: 0.25rem;
+  --radius-box: 0.5rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
+}
+
+@theme {
+  /* Один источник шрифта для Tailwind-утилит и нашей рукописной верстки.
+     Системный стек: 0 загрузки, родной вид на каждой ОС. */
+  --font-sans:
+    system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+    "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+}
+
+:root {
+  --page-padding: clamp(16px, 4vw, 72px);
+  --grid-gap: clamp(16px, 2vw, 32px);
+  --text-readable: 68ch;
+}
+
+/* Fluid root font-size (часть A).
+   Браузер сам интерполирует значение по ширине вьюпорта:
+   ниже 375px держит 1rem, выше ~3840px упирается в 1.375rem,
+   между ними плавно растёт. Всё, что задано в rem (Tailwind,
+   daisyUI, наши размеры), масштабируется следом автоматически.
+   rem в min/max сохраняет уважение к зуму и настройкам браузера. */
+html {
+  font-size: clamp(1rem, 0.96rem + 0.17vw, 1.375rem);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--color-base-100);
+  color: var(--color-base-content);
+  font-family: var(--font-sans);
+  line-height: 1.5;
+  /* колонка во всю высоту экрана: header / main / footer */
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* main забирает всё свободное место → футер уезжает вниз */
+body > main {
+  flex: 1;
+}
+
+.page-shell {
+  width: 100%;
+  padding-inline: var(--page-padding);
+}
+
+.page-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: var(--grid-gap);
+}
+
+.readable {
+  max-width: var(--text-readable);
+}
+
+.full-span {
+  grid-column: 1 / -1;
+}
+
+/* --- Шапка сайта --- */
+.site-header {
+  display: flex;
+  align-items: center;
+  gap: clamp(16px, 2vw, 40px);
+  padding-block: 1rem;
+  border-bottom: var(--border) solid var(--color-base-content);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  color: inherit;
+}
+
+.brand-logo {
+  width: auto;
+  height: 1.7em; /* широкий герб 640×360 — задаём высоту, ширина по соотношению */
+}
+
+.site-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(12px, 1.5vw, 28px);
+  margin-inline-end: auto; /* отжимает контакт к правому краю */
+}
+
+.site-nav a {
+  text-decoration: none;
+  color: inherit;
+}
+
+/* --- Группа меню с выпадашкой (CSS-only, без JS) --- */
+.nav-group {
+  position: relative; /* якорь для абсолютной выпадашки */
+}
+
+.nav-group__link:hover {
+  text-decoration: underline;
+}
+
+.nav-group__panel {
+  position: absolute; /* не толкает layout → нет CLS */
+  top: 100%;
+  left: 0;
+  z-index: 20;
+  display: none; /* скрыта по умолчанию */
+  flex-direction: column;
+  min-width: 14rem;
+  padding: 0.5rem 0;
+  background: var(--color-base-100);
+  border: var(--border) solid var(--color-base-content);
+}
+
+/* раскрытие: наведение мышью ИЛИ фокус с клавиатуры (доступность) */
+.nav-group:hover .nav-group__panel,
+.nav-group:focus-within .nav-group__panel {
+  display: flex;
+}
+
+.nav-group__panel a {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 1rem;
+  white-space: nowrap;
+}
+
+/* иконки в меню: размер от текста, выравнивание по центру строки */
+.menu-icon {
+  width: 1.15em;
+  height: 1.15em;
+  flex: none;
+}
+
+.nav-group__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.nav-group__panel a:hover {
+  background: var(--color-base-200);
+}
+
+.nav-group__all {
+  margin-top: 0.25rem;
+  border-top: var(--border) solid var(--color-base-300);
+  font-weight: 700;
+}
+
+/* --- Заглушки страниц --- */
+.stub-kicker {
+  margin-bottom: 0;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: color-mix(in oklch, var(--color-base-content) 55%, transparent);
+}
+
+.stub-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.stub-icon {
+  width: 1em;
+  height: 1em;
+  flex: none;
+}
+
+.stub-list {
+  columns: 2;
+  gap: 2rem;
+}
+
+.stub-list a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.site-contact {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.3;
+}
+
+/* --- Адаптив: десктоп-меню vs мобильный гамбургер --- */
+.nav-hamburger {
+  margin-inline-start: auto; /* на мобиле прижимаем кнопку к правому краю */
+}
+
+/* Морф иконки ☰ → ✕, привязанный к открытию dropdown (focus-within) */
+.ham-icon {
+  position: relative;
+  display: inline-flex;
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.ham-icon svg {
+  position: absolute; /* две иконки в одной точке, друг над другом */
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transition:
+    transform 0.2s ease,
+    opacity 0.2s ease;
+}
+
+/* по умолчанию: видно «гамбургер», крестик спрятан и повёрнут */
+.ham-close {
+  opacity: 0;
+  transform: rotate(-90deg) scale(0.6);
+}
+
+/* меню открыто (кнопка/контент в фокусе): гамбургер уходит, крестик приходит */
+.nav-hamburger:focus-within .ham-open {
+  opacity: 0;
+  transform: rotate(90deg) scale(0.6);
+}
+
+.nav-hamburger:focus-within .ham-close {
+  opacity: 1;
+  transform: rotate(0) scale(1);
+}
+
+/* уважаем системную настройку «меньше движения» */
+@media (prefers-reduced-motion: reduce) {
+  .ham-icon svg {
+    transition: none;
+  }
+}
+
+/* Десктоп (широкие экраны): полное меню + контакт, гамбургер скрыт */
+@media (min-width: 1200px) {
+  .nav-hamburger {
+    display: none;
+  }
+}
+
+/* Мобайл/планшет (узкие): меню и контакт прячем — их заменяет гамбургер */
+@media (max-width: 1199px) {
+  .site-nav,
+  .site-contact {
+    display: none;
+  }
+}
+
+.site-phone {
+  font-weight: 700;
+  text-decoration: none;
+  color: inherit;
+}
+
+.site-hours {
+  font-size: 0.85rem;
+  /* base-content с пониженной непрозрачностью — приём daisyUI для «тихого» текста */
+  color: color-mix(in oklch, var(--color-base-content) 60%, transparent);
+}

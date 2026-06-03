@@ -1,0 +1,150 @@
+---
+import "../assets/app.css";
+import { Icon } from "astro-icon/components";
+import { getMenu } from "../lib/categories";
+
+const menu = await getMenu();
+const { title, description } = Astro.props;
+
+---
+
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" href="/favicon.ico" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="generator" content={Astro.generator} />
+    <meta name="description" content={description} />
+    <title>{title}</title>
+  </head>
+
+  <body>
+    <header class="site-header page-shell">
+      <a class="brand" href="/" aria-label="Printmos">
+        <Icon name="logo-pm-mono" class="brand-logo" />
+      </a>
+
+      <nav class="site-nav" aria-label="Основная навигация">
+        {
+          menu.map((category) => (
+            <div class="nav-group">
+              <a class="nav-group__link" href={`/${category.slug}`}>
+                {category.icon && <Icon name={category.icon} class="menu-icon" />}
+                {category.name}
+              </a>
+
+              {category.products.length > 0 && (
+                <div class="nav-group__panel">
+                  {category.products.map((product) => (
+                    <a href={`/${product.slug}`}>
+                      {product.icon && <Icon name={product.icon} class="menu-icon" />}
+                      {product.name}
+                    </a>
+                  ))}
+                  <a class="nav-group__all" href={`/${category.slug}`}>
+                    Все {category.name} →
+                  </a>
+                </div>
+              )}
+            </div>
+          ))
+        }
+      </nav>
+
+      <div class="site-contact">
+        <a class="site-phone" href="tel:+74950000000">+7 495 000-00-00</a>
+        <span class="site-hours">Пн–Пт 9:00–18:00</span>
+      </div>
+
+      <div class="dropdown dropdown-end nav-hamburger">
+        <div tabindex="0" role="button" class="btn btn-ghost" aria-label="Меню">
+          <span class="ham-icon">
+            <svg
+              class="ham-open"
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
+            <svg
+              class="ham-close"
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <line x1="5" y1="5" x2="19" y2="19" />
+              <line x1="19" y1="5" x2="5" y2="19" />
+            </svg>
+          </span>
+        </div>
+
+        <ul
+          tabindex="0"
+          class="menu dropdown-content z-30 mt-3 w-72 bg-base-100 border border-base-content"
+        >
+          {
+            menu.map((category) => (
+              <li>
+                <details>
+                  <summary>
+                    {category.icon && <Icon name={category.icon} class="menu-icon" />}
+                    {category.name}
+                  </summary>
+                  <ul>
+                    {category.products.map((product) => (
+                      <li>
+                        <a href={`/${product.slug}`}>
+                          {product.icon && <Icon name={product.icon} class="menu-icon" />}
+                          {product.name}
+                        </a>
+                      </li>
+                    ))}
+                    <li>
+                      <a href={`/${category.slug}`}>Все {category.name} →</a>
+                    </li>
+                  </ul>
+                </details>
+              </li>
+            ))
+          }
+          <li>
+            <a href="tel:+74950000000">+7 495 000-00-00</a>
+          </li>
+        </ul>
+      </div>
+    </header>
+
+    <main class="page-shell">
+      <slot />
+    </main>
+
+    <footer class="footer sm:footer-horizontal page-shell border-t border-base-content py-10 mt-16">
+      <nav>
+        <h6 class="footer-title">Услуги</h6>
+        <a class="link link-hover" href="/uslugi/vizitki">Визитки</a>
+        <a class="link link-hover" href="/uslugi/listovki">Листовки</a>
+        <a class="link link-hover" href="/uslugi/bukleti">Буклеты</a>
+      </nav>
+      <nav>
+        <h6 class="footer-title">Компания</h6>
+        <a class="link link-hover" href="/o-nas">О нас</a>
+        <a class="link link-hover" href="/kak-zakazat">Как заказать</a>
+        <a class="link link-hover" href="/portfolio">Готовые работы</a>
+      </nav>
+      <nav>
+        <h6 class="footer-title">Контакты</h6>
+        <a class="link link-hover" href="tel:+74950000000">+7 495 000-00-00</a>
+        <a class="link link-hover" href="mailto:hello@printmos.ru">hello@printmos.ru</a>
+        <span>Москва</span>
+      </nav>
+    </footer>
+  </body>
+</html>
