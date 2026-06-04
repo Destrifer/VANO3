@@ -1,10 +1,26 @@
 ---
 import "../assets/app.css";
 import { Icon } from "astro-icon/components";
+import { Picture } from "astro:assets";
+import officeMap from "../assets/office-map.png";
 import { getMenu } from "../lib/categories";
+import { getSettings } from "../lib/settings";
 
 const menu = await getMenu();
+const settings = await getSettings();
+const year = new Date().getFullYear();
 const { title, description } = Astro.props;
+
+// tel: ссылка из отображаемого телефона (оставляем цифры и +)
+const telHref = settings.phone
+  ? `tel:${settings.phone.replace(/[^\d+]/g, "")}`
+  : null;
+
+// URL виджета Яндекс-карты из координат (для ленивого фасада)
+const mapSrc =
+  settings.map_lat != null && settings.map_lng != null
+    ? `https://yandex.ru/map-widget/v1/?ll=${settings.map_lng}%2C${settings.map_lat}&z=${settings.map_zoom ?? 16}&pt=${settings.map_lng},${settings.map_lat}`
+    : null;
 
 ---
 
@@ -53,8 +69,8 @@ const { title, description } = Astro.props;
       </nav>
 
       <div class="site-contact">
-        <a class="site-phone" href="tel:+74950000000">+7 495 000-00-00</a>
-        <span class="site-hours">Пн–Пт 9:00–18:00</span>
+        {telHref && <a class="site-phone" href={telHref}>{settings.phone}</a>}
+        {settings.hours && <span class="site-hours">{settings.hours}</span>}
       </div>
 
       <div class="dropdown dropdown-end nav-hamburger">
@@ -115,9 +131,11 @@ const { title, description } = Astro.props;
               </li>
             ))
           }
-          <li>
-            <a href="tel:+74950000000">+7 495 000-00-00</a>
-          </li>
+          {telHref && (
+            <li>
+              <a href={telHref}>{settings.phone}</a>
+            </li>
+          )}
         </ul>
       </div>
     </header>
@@ -126,25 +144,193 @@ const { title, description } = Astro.props;
       <slot />
     </main>
 
-    <footer class="footer sm:footer-horizontal page-shell border-t border-base-content py-10 mt-16">
-      <nav>
-        <h6 class="footer-title">Услуги</h6>
-        <a class="link link-hover" href="/uslugi/vizitki">Визитки</a>
-        <a class="link link-hover" href="/uslugi/listovki">Листовки</a>
-        <a class="link link-hover" href="/uslugi/bukleti">Буклеты</a>
-      </nav>
-      <nav>
+    <footer class="site-footer page-shell">
+      <!-- 1. Карта: ленивый фасад → клик подгружает ч/б интерактив Яндекса -->
+      <div
+        class="footer-block map-block"
+        data-map-src={mapSrc}
+        role="button"
+        tabindex="0"
+        aria-label="Открыть интерактивную карту проезда"
+      >
+        <Picture
+          class="map-img"
+          src={officeMap}
+          formats={["avif", "webp"]}
+          quality={25}
+          alt="Карта проезда к офису Printmos"
+          width={450}
+          height={450}
+          loading="lazy"
+        />
+        <Icon name="tabler:map-pin-filled" class="map-marker" />
+        <span class="map-bubble">{settings.address ?? "Москва"}</span>
+      </div>
+
+      <!-- 2. Компания -->
+      <nav class="footer-block footer-company">
         <h6 class="footer-title">Компания</h6>
-        <a class="link link-hover" href="/o-nas">О нас</a>
-        <a class="link link-hover" href="/kak-zakazat">Как заказать</a>
-        <a class="link link-hover" href="/portfolio">Готовые работы</a>
+        <a href="/o-nas">О нас</a>
+        <a href="/portfolio">Портфолио</a>
+        <a href="/guides">Гайды по макетам</a>
+        <a href="/garantii">Гарантии и отзывы</a>
+        <a href="/kak-zakazat">Как заказать</a>
       </nav>
-      <nav>
-        <h6 class="footer-title">Контакты</h6>
-        <a class="link link-hover" href="tel:+74950000000">+7 495 000-00-00</a>
-        <a class="link link-hover" href="mailto:hello@printmos.ru">hello@printmos.ru</a>
-        <span>Москва</span>
-      </nav>
+
+      <!-- 3. Оплата и доставка -->
+      <div class="footer-block footer-pay">
+        <h6 class="footer-title">Оплата и доставка</h6>
+        <ul class="pay-list">
+          <li><Icon name="tabler:credit-card" />Карты Visa / MIR</li>
+          <li><Icon name="tabler:qrcode" />СБП по QR-коду</li>
+          <li><Icon name="tabler:cash" />Наличные</li>
+          <li><Icon name="tabler:file-invoice" />Счёт для юрлиц</li>
+          <li><Icon name="tabler:building-store" />Самовывоз</li>
+          <li><Icon name="tabler:truck-delivery" />Доставка по Москве и РФ</li>
+        </ul>
+      </div>
+
+      <!-- 4. Контакты -->
+      <div class="footer-block contact-card">
+        <span class="contact-card__label">Контакты</span>
+        {telHref && <a class="contact-card__phone" href={telHref}>{settings.phone}</a>}
+        {
+          settings.email && (
+            <a class="contact-card__line" href={`mailto:${settings.email}`}>
+              {settings.email}
+            </a>
+          )
+        }
+        {settings.address && <p class="contact-card__line">{settings.address}</p>}
+        {
+          settings.hours && (
+            <p class="contact-card__line contact-card__muted">{settings.hours}</p>
+          )
+        }
+        <div class="messengers">
+          {
+            settings.telegram_url && (
+              <a class="messenger" href={settings.telegram_url} target="_blank" rel="noopener" aria-label="Telegram">
+                <Icon name="tabler:brand-telegram" />
+              </a>
+            )
+          }
+          {
+            settings.whatsapp_url && (
+              <a class="messenger" href={settings.whatsapp_url} target="_blank" rel="noopener" aria-label="WhatsApp">
+                <Icon name="tabler:brand-whatsapp" />
+              </a>
+            )
+          }
+        </div>
+      </div>
     </footer>
+
+    <div class="footer-bottom page-shell">
+      <span>© {year} Printmos — цифровая типография в Москве</span>
+    </div>
+
+    <!-- Мобильная липкая панель действий (только на узких экранах) -->
+    <div class="mobile-bar">
+      <div class="mobile-bar__row">
+        {
+          telHref && (
+            <a class="mobile-bar__btn" href={telHref}>
+              <Icon name="tabler:phone" />
+              Позвонить
+            </a>
+          )
+        }
+        <a class="mobile-bar__btn" href="/">
+          <Icon name="tabler:calculator" />
+          Расчет
+        </a>
+        <button type="button" class="mobile-bar__btn" data-sheet-open>
+          <Icon name="tabler:message" />
+          Чат
+        </button>
+      </div>
+    </div>
+
+    <!-- Шторка выбора канала связи -->
+    <dialog class="channel-sheet" id="channelSheet">
+      <form method="dialog" class="channel-sheet__inner">
+        <p class="channel-sheet__title">Связаться</p>
+        {
+          settings.whatsapp_url && (
+            <a
+              class="channel-sheet__link"
+              id="chWhatsapp"
+              data-base={settings.whatsapp_url}
+              href={settings.whatsapp_url}
+              target="_blank"
+              rel="noopener"
+            >
+              <Icon name="tabler:brand-whatsapp" />
+              WhatsApp
+            </a>
+          )
+        }
+        {
+          settings.telegram_url && (
+            <a class="channel-sheet__link" href={settings.telegram_url} target="_blank" rel="noopener">
+              <Icon name="tabler:brand-telegram" />
+              Telegram
+            </a>
+          )
+        }
+        {
+          telHref && (
+            <a class="channel-sheet__link" href={telHref}>
+              <Icon name="tabler:phone" />
+              Позвонить
+            </a>
+          )
+        }
+        <p class="channel-sheet__note">Обычно отвечаем за 10–15 минут в рабочее время.</p>
+        <button class="channel-sheet__close" value="cancel">Закрыть</button>
+      </form>
+    </dialog>
+
+    <script>
+      // Ленивый фасад карты. Грузим iframe ДО нажатия — по наведению (hover),
+      // чтобы перетаскивание сразу шло по живой карте, а не по статичной картинке.
+      document.querySelectorAll<HTMLElement>(".map-block").forEach((el) => {
+        const src = el.dataset.mapSrc;
+        if (!src) return;
+        let loaded = false;
+        const open = () => {
+          if (loaded) return;
+          loaded = true;
+          const iframe = document.createElement("iframe");
+          iframe.src = src;
+          iframe.title = "Карта проезда";
+          iframe.allowFullscreen = true;
+          el.classList.add("map-block--active");
+          el.removeAttribute("role");
+          el.removeAttribute("tabindex");
+          el.replaceChildren(iframe);
+        };
+        el.addEventListener("pointerenter", open); // десктоп: hover до клика
+        el.addEventListener("pointerdown", open); // тач: первое касание
+        el.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            open();
+          }
+        });
+      });
+
+      // Шторка каналов: одна заготовка сообщения для WhatsApp.
+      const sheet = document.getElementById("channelSheet") as HTMLDialogElement | null;
+      const wa = document.getElementById("chWhatsapp") as HTMLAnchorElement | null;
+      const chatMessage = "Здравствуйте! Хочу задать вопрос по печати.";
+      if (wa?.dataset.base) {
+        wa.href = `${wa.dataset.base}?text=${encodeURIComponent(chatMessage)}`;
+      }
+      document.querySelectorAll<HTMLElement>("[data-sheet-open]").forEach((btn) => {
+        btn.addEventListener("click", () => sheet?.showModal());
+      });
+    </script>
   </body>
 </html>

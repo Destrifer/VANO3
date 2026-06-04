@@ -1,10 +1,37 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
+import { Icon } from "astro-icon/components";
+import { getHomeProducts } from "../lib/products";
+
+const products = await getHomeProducts();
 
 const pageTitle = "Printmos — цифровая типография в Москве";
 const pageDescription =
-  "Printmos — цифровая типография в Москве: визитки, листовки, буклеты, каталоги, наклейки и срочная печать для бизнеса.";
+  "Printmos — цифровая типография в Москве: визитки, листовки, буклеты, каталоги, наклейки, баннеры и срочная печать для бизнеса.";
+
+// Временные одинаковые значения, пока нет ценового движка (doc 03).
+const priceFrom = "от 500 ₽";
+const lead = "1–3 дня";
 ---
+
 <BaseLayout title={pageTitle} description={pageDescription}>
-  Free
+  <h1 class="home-title">Что нужно напечатать?</h1>
+
+  <ul class="product-grid">
+    {
+      products.map((product) => (
+        <li>
+          <a class="product-tile" href={`/${product.slug}`}>
+            {product.icon && (
+              <Icon name={product.icon} class="product-tile__icon" />
+            )}
+            <span class="product-tile__name">{product.name}</span>
+            <span class="product-tile__meta">
+              {priceFrom} · {lead}
+            </span>
+          </a>
+        </li>
+      ))
+    }
+  </ul>
 </BaseLayout>
