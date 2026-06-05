@@ -5,6 +5,7 @@ import { Picture } from "astro:assets";
 import officeMap from "../assets/office-map.png";
 import { getMenu } from "../lib/categories";
 import { getSettings } from "../lib/settings";
+import CartButton from "../components/CartButton.vue";
 
 const menu = await getMenu();
 const settings = await getSettings();
@@ -72,6 +73,8 @@ const mapSrc =
         {telHref && <a class="site-phone" href={telHref}>{settings.phone}</a>}
         {settings.hours && <span class="site-hours">{settings.hours}</span>}
       </div>
+
+      <CartButton client:only="vue" />
 
       <div class="dropdown dropdown-end nav-hamburger">
         <div tabindex="0" role="button" class="btn btn-ghost" aria-label="Меню">

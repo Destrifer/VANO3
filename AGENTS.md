@@ -133,6 +133,15 @@ Expected features:
 - UI library components may be used for complex controls, but the public website should remain visually quiet and monochrome unless a specific use case needs color.
 - Avoid heavy gradients, decorative backgrounds, glossy effects, and colorful marketing-style layouts.
 
+## Styling Policy (daisyUI-first)
+
+- Visual styling, effects, and interactive states (hover/active/focus) come from the daisyUI theme and components — not ad-hoc CSS — so the UI stays in one consistent style and avoids hand-rolled state bugs.
+- The active theme is `lofi` (monochrome). Custom CSS MUST consume theme tokens (`--color-base-100/200/300`, `--color-base-content`, `--color-primary` …, `--radius-field`, `--radius-box`, `--border`) — never hardcoded colors, radii, or borders.
+- Prefer daisyUI component classes for standard controls: `btn`, `select`, `input`, `textarea`, `checkbox`, `radio`, `range`, `toggle`, `dropdown`, `menu`, `modal`/`<dialog>`, `tabs`, `join`, `badge`, `card`, `footer`, `navbar`.
+- Custom layout is allowed only where no daisyUI component fits (e.g., a selectable tile with extra subtext, a map facade). Such custom elements must be built on theme tokens and mirror daisyUI's state conventions.
+- If a custom element uses an inverted/active state, always define its `:hover` (and focus) explicitly so contrast/readability is preserved (e.g., an active dark tile must keep its dark background on hover).
+- daisyUI components stay monochrome under `lofi`; do not introduce decorative color.
+
 ## Pricing Calculator Direction
 
 - Calculators should share one pricing architecture instead of each calculator becoming a separate hardcoded exception tree.
@@ -362,6 +371,18 @@ Goal: turn the current technical prototype into a coherent first public site ske
 - Added `src/lib/directus.ts` and `src/lib/navigation.ts` for Directus API access.
 - Homepage design direction and visual references are documented in `src/pages/design/homepage-design.md`.
 - Earlier mobile homepage notes are kept in `src/pages/design/mobile-homepage.md`.
+- Implemented the pricing engine as a pure stage pipeline in `src/lib/pricing/engine.ts` (print → paper → finishing → cutting → min-order → rounding); product/pricing data mapped from Directus in `data.ts`; field dependencies kept as declarative data in `rules.ts`. Current scope is digital-only; offset auto-choice and the `fixed` strategy are designed (doc 03) but not yet built.
+- Added cutting to the engine: plotter cutting as upper-bound brackets (`pricing_settings.plotter_cutting`), manual (big-sheet) cutting as a percentage of the order (`pricing_settings.manual_cutting_rate`, default 0.15). Cutting is computed automatically, not user-selectable.
+- Refactored the calculator into a thin orchestrator (`Calculator.vue`) + `useCalculator()` composable + presentational field components in `src/components/calculator/`, sharing state via `provide`/`inject` (typed `calcKey`). Shared `SwatchPalette` component for paper/foil color popovers. UI is daisyUI-only (theme `lofi`) with no hand-written scoped CSS.
+- Removed urgency (срочно) from the calculator UI; срочность is decided by a manager at order approval. The `urgencyMultiplier` stays in the engine for later reuse.
+- Installed the daisyUI skill locally (`.claude/skills/daisyui`, `skills-lock.json`) to keep daisyUI usage consistent.
+- Consolidated project docs to the repo root (`01..05`, `README`); removed the duplicate `doc/` folder so there is a single canonical location.
+- Built the product page configurator `ProductConfigurator.vue` (island that provides `calc` to all zones): equal-width `grid-template-areas` columns (3 → 2 → 1: controls | preview+plate | gallery), mobile order preview → controls → plate → gallery, gallery as a container-query thumbnail grid. `OrderPlate.vue` = price + «В корзину» (cart pending). Gallery and SEO text are static placeholders for now (later from Directus).
+- Implemented an interactive preview as a shared engine, not per-product hardcode: `src/lib/preview/primitives.ts` (canvas helpers: shape contour, paper texture, lamination gloss, foil metal, ink color) + `src/lib/preview/mockups.ts` (per-product content registry; one `card` mockup = business-card «рыба»). `Preview.vue` is the generic stage; product picks its mockup via `previewKind` (default `card`). Universal params (shape/size/material/lamination/foil/corners) come from `calc`; different defaults are NOT different mockups. SVG/Path2D for geometry, Canvas for material.
+- `ProductPricing.previewKind` added (maps from a future Directus `products.preview_kind`; currently not requested → defaults to `card`).
+- Visual design constructor (in-browser editor) — DEFERRED to a future track, not current scope. If built: use **vue-konva (MIT)** as a **template-based editor on a dedicated page** (not a popup), with **server-side export to print-ready PDF** (bleed/CMYK/embedded fonts) sharing the preflight node. The editor engine + template system are buildable in-house; the **template library, fonts and stock images are curated, properly-licensed content** stored in Directus (`templates`: preview + Konva JSON + editable-field map + product link). **Polotno rejected**: React stack mismatch (project is Vue/Astro), cloud-dependent templates/photos likely geo-blocked from RF and unpayable, commercial license. Decision recorded so it is not re-litigated.
+- Implemented cart→order flow (Этап 2): client cart (nanostores + localStorage) → `/api/upload` (signature validation + Tier 1 preflight) → `/api/order` (server recompute via `priceFromSpec`, nested create of `order` + `order_items` with the least-privilege server token). Order = заявка (payment deferred). Directus collections `orders`/`order_items` live in group `sales`; admin shows readable display templates, `spec` hidden.
+- Implemented preflight Tier 1 (`src/lib/preflight.ts`, pdf-lib + sharp): PDF — pages vs sides, size + bleed (MediaBox); raster — dpi vs ordered size, CMYK/RGB; traffic light green/yellow/red stored on `order_items.preflight_status` + `preflight_report`. Accepted formats: PDF/AI/EPS/PSD/CDR/SVG/FIG/JPG/PNG/TIFF — only PDF/raster are auto-checked; sources are accepted and marked «проверит специалист».
 
 ## Tech Debt And Open Questions
 
@@ -378,6 +399,24 @@ Goal: turn the current technical prototype into a coherent first public site ske
 - Choose domain name and DNS provider.
 - Decide whether PostgreSQL should run in Docker on the VPS or as managed PostgreSQL.
 - Define backup strategy for PostgreSQL and Directus uploads before production launch.
+- Client-side pricing currently exposes rates/formulas in the browser bundle. Before production, move price computation to a server endpoint / Astro action (П2: one engine, but not shipped to the client).
+- Move declarative field-dependency rules (`src/lib/pricing/rules.ts`) into Directus once the model is stable, keeping the applier functions in code.
+- Visual constructor track (if started): build the curated template library, OSI-licensed fonts, and licensed stock images — an ongoing content task, not code.
+- Upload hardening: add rate-limiting to `/api/upload` (anti-abuse) and a cleanup job (Directus Flow/cron) for orphan files (uploaded but never attached to an order).
+- Preflight Tier 2 (needs Ghostscript/poppler/mutool in the Docker image): CMYK/Pantone inside PDF, fonts outlined, real image dpi inside PDF, visual overlay (cut/bleed/safe zones), auto-fix (add bleed, RGB→CMYK).
+- CDR/FIG are accepted by file extension only (no reliable magic bytes) — revisit if abuse appears.
+- Checkout currently does NOT block on red preflight (human-in-the-loop: red is shown, manager reviews). Decide later whether red should hard-block.
+- Capture Directus schema snapshots for `orders`/`order_items` into the repo (doc 04 schema workflow), so the orders schema is version-controlled.
+
+### Cart & order architecture (decided)
+
+- **Guest checkout** (no auth) — «пришёл-купил-ушёл». Cart lives client-side in nanostores + localStorage (Этап 1, done).
+- **Cart item stores a SPEC by IDs** (productSlug, form/size/sides/quantity, paperId, finishing `[{id,count}]`, foil `{id,colorId}`) + a price snapshot **for display only**. The server NEVER trusts client prices.
+- **Server runtime: hybrid** — keep pages static (`prerender`), add Astro API routes (`export const prerender = false`) via the Node adapter (standalone). Business logic stays in our code, not Directus Flows.
+- **Trust boundary = Astro API routes.** `/api/upload` (artwork → Directus files, validate type/size) and `/api/order` (create order). The order endpoint **re-resolves prices from Directus by ID** and runs `computePrice` server-side (authoritative); same engine as the client/home tiles (П2). Uses a least-privilege Directus **server token from `.env`** (never shipped to client).
+- **Order model:** one `order` with N `order_items` at checkout. `orders` (number, status, contacts, subtotal/discount/total) + `order_items` (product name/slug snapshot, `spec` JSON, qty, unit_price, line_total, `artwork`→files). Public has NO access to orders; only the server token writes.
+- **Artwork uploaded on the product page** → returns `fileId`, stored in the cart item. Orphan files (uploaded, never ordered) cleaned by a later Directus Flow/cron.
+- **Deferred:** online payment (order = заявка, status «новый», manager/payment later), discounts/promo/bonuses (Этап 3/4), notifications (§9), real preflight (separate track; for now just validate file type/size).
 
 ## Working Rules For Future Sessions
 
