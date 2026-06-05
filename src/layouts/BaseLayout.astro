@@ -74,7 +74,7 @@ const mapSrc =
         {settings.hours && <span class="site-hours">{settings.hours}</span>}
       </div>
 
-      <CartButton client:load />
+      <CartButton client:only="vue" />
 
       <div class="dropdown dropdown-end nav-hamburger">
         <div tabindex="0" role="button" class="btn btn-ghost" aria-label="Меню">
