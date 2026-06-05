@@ -55,8 +55,13 @@ function removeArtwork() {
         <button type="button" class="btn btn-ghost btn-xs" @click="removeArtwork">убрать</button>
       </div>
 
+      <!-- исходник без авто-проверки -->
+      <div v-if="!calc.artworkPreflight" class="text-sm opacity-70">
+        ⚪ Формат принят — макет проверит специалист.
+      </div>
+
       <!-- результат preflight -->
-      <div v-if="calc.artworkPreflight" class="rounded-box border border-base-300 p-2 text-sm">
+      <div v-else class="rounded-box border border-base-300 p-2 text-sm">
         <div class="font-medium">
           {{ dot[calc.artworkPreflight.status] }}
           {{ calc.artworkPreflight.status === "green" ? "Макет в норме"
@@ -77,7 +82,7 @@ function removeArtwork() {
       <input
         type="file"
         class="file-input max-w-xs"
-        accept=".pdf,.jpg,.jpeg,.png,.tif,.tiff"
+        accept=".pdf,.ai,.eps,.psd,.cdr,.svg,.fig,.jpg,.jpeg,.png,.tif,.tiff"
         :disabled="status === 'uploading'"
         @change="onChange"
       />

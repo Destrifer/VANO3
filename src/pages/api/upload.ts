@@ -17,13 +17,29 @@ function json(body: unknown, status = 200) {
   });
 }
 
-// Определяем формат по «магическим байтам» (не доверяя MIME из браузера).
-function sniff(b: Uint8Array): "pdf" | "png" | "jpeg" | "tiff" | null {
+type Checkable = "pdf" | "png" | "jpeg" | "tiff";
+type Detected = { kind: Checkable; checkable: true } | { kind: string; checkable: false };
+
+// Принимаемые исходники без авто-проверки (вектор/проприетарные).
+const SOURCE_EXT = new Set(["ai", "eps", "psd", "cdr", "svg", "fig"]);
+
+// Определяем формат: сначала по «магическим байтам» (не доверяя MIME),
+// затем — запасной вариант по расширению для форматов без надёжной сигнатуры.
+function detect(b: Uint8Array, name: string): Detected | null {
   const m = (sig: number[], off = 0) => sig.every((x, i) => b[off + i] === x);
-  if (m([0x25, 0x50, 0x44, 0x46])) return "pdf"; // %PDF
-  if (m([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) return "png";
-  if (m([0xff, 0xd8, 0xff])) return "jpeg";
-  if (m([0x49, 0x49, 0x2a, 0x00]) || m([0x4d, 0x4d, 0x00, 0x2a])) return "tiff";
+  if (m([0x25, 0x50, 0x44, 0x46])) return { kind: "pdf", checkable: true }; // %PDF (вкл. совр. AI)
+  if (m([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) return { kind: "png", checkable: true };
+  if (m([0xff, 0xd8, 0xff])) return { kind: "jpeg", checkable: true };
+  if (m([0x49, 0x49, 0x2a, 0x00]) || m([0x4d, 0x4d, 0x00, 0x2a])) return { kind: "tiff", checkable: true };
+  if (m([0x38, 0x42, 0x50, 0x53])) return { kind: "psd", checkable: false }; // 8BPS
+  if (m([0x25, 0x21, 0x50, 0x53]) || m([0xc5, 0xd0, 0xd3, 0xc6])) return { kind: "eps", checkable: false };
+
+  const ext = (name.split(".").pop() || "").toLowerCase();
+  const head = new TextDecoder().decode(b.subarray(0, 256)).toLowerCase();
+  if (head.includes("<svg") || (head.includes("<?xml") && ext === "svg")) {
+    return { kind: "svg", checkable: false };
+  }
+  if (SOURCE_EXT.has(ext)) return { kind: ext, checkable: false }; // cdr, fig, ai/eps старые и т.п.
   return null;
 }
 
@@ -43,17 +59,23 @@ export const POST: APIRoute = async ({ request }) => {
   if (file.size > MAX_SIZE) return json({ error: "Файл больше 50 МБ" }, 400);
 
   const bytes = new Uint8Array(await file.arrayBuffer());
-  // Проверяем РЕАЛЬНЫЕ байты, а не заявленный браузером тип.
-  const kind = sniff(bytes.subarray(0, 16));
-  if (!kind) return json({ error: "Поддерживаются PDF, JPG, PNG, TIFF" }, 400);
+  // Определяем формат (байты + расширение), а не доверяем браузерному MIME.
+  const det = detect(bytes, file.name);
+  if (!det) {
+    return json({ error: "Поддерживаются PDF, AI, EPS, PSD, CDR, SVG, FIG, JPG, PNG, TIFF" }, 400);
+  }
 
-  // Preflight Tier 1 против параметров заказа (из формы).
-  const spec = {
-    width: Number(form.get("width")) || 0,
-    height: Number(form.get("height")) || 0,
-    sides: String(form.get("sides") ?? ""),
-  };
-  const preflight = await runPreflight(bytes, kind, spec);
+  // Preflight Tier 1 — только для проверяемых форматов (PDF/растр).
+  // Исходники (AI/EPS/PSD/CDR/SVG/FIG) принимаем, авто-проверки нет.
+  let preflight = null;
+  if (det.checkable) {
+    const spec = {
+      width: Number(form.get("width")) || 0,
+      height: Number(form.get("height")) || 0,
+      sides: String(form.get("sides") ?? ""),
+    };
+    preflight = await runPreflight(bytes, det.kind, spec);
+  }
 
   // Пробрасываем файл в Directus серверным токеном.
   const fd = new FormData();
