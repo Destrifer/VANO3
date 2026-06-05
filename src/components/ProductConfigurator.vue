@@ -18,6 +18,8 @@ import Calculator from "./Calculator.vue";
 const props = defineProps<{
   product: ProductPricing;
   pricing: PricingData;
+  name: string;
+  slug: string;
   gallery?: string[];
 }>();
 provide(calcKey, useCalculator(props));
@@ -32,7 +34,7 @@ const shots = computed(() =>
   <div class="cfg">
     <Calculator class="cfg__controls" />
     <Preview class="cfg__preview" />
-    <OrderPlate class="cfg__plate" />
+    <OrderPlate class="cfg__plate" :name="name" :slug="slug" />
 
     <section class="cfg__gallery">
       <h2 class="mb-3 text-lg font-bold">Примеры работ</h2>

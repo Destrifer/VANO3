@@ -380,6 +380,7 @@ Goal: turn the current technical prototype into a coherent first public site ske
 - Built the product page configurator `ProductConfigurator.vue` (island that provides `calc` to all zones): equal-width `grid-template-areas` columns (3 → 2 → 1: controls | preview+plate | gallery), mobile order preview → controls → plate → gallery, gallery as a container-query thumbnail grid. `OrderPlate.vue` = price + «В корзину» (cart pending). Gallery and SEO text are static placeholders for now (later from Directus).
 - Implemented an interactive preview as a shared engine, not per-product hardcode: `src/lib/preview/primitives.ts` (canvas helpers: shape contour, paper texture, lamination gloss, foil metal, ink color) + `src/lib/preview/mockups.ts` (per-product content registry; one `card` mockup = business-card «рыба»). `Preview.vue` is the generic stage; product picks its mockup via `previewKind` (default `card`). Universal params (shape/size/material/lamination/foil/corners) come from `calc`; different defaults are NOT different mockups. SVG/Path2D for geometry, Canvas for material.
 - `ProductPricing.previewKind` added (maps from a future Directus `products.preview_kind`; currently not requested → defaults to `card`).
+- Visual design constructor (in-browser editor) — DEFERRED to a future track, not current scope. If built: use **vue-konva (MIT)** as a **template-based editor on a dedicated page** (not a popup), with **server-side export to print-ready PDF** (bleed/CMYK/embedded fonts) sharing the preflight node. The editor engine + template system are buildable in-house; the **template library, fonts and stock images are curated, properly-licensed content** stored in Directus (`templates`: preview + Konva JSON + editable-field map + product link). **Polotno rejected**: React stack mismatch (project is Vue/Astro), cloud-dependent templates/photos likely geo-blocked from RF and unpayable, commercial license. Decision recorded so it is not re-litigated.
 
 ## Tech Debt And Open Questions
 
@@ -398,6 +399,7 @@ Goal: turn the current technical prototype into a coherent first public site ske
 - Define backup strategy for PostgreSQL and Directus uploads before production launch.
 - Client-side pricing currently exposes rates/formulas in the browser bundle. Before production, move price computation to a server endpoint / Astro action (П2: one engine, but not shipped to the client).
 - Move declarative field-dependency rules (`src/lib/pricing/rules.ts`) into Directus once the model is stable, keeping the applier functions in code.
+- Visual constructor track (if started): build the curated template library, OSI-licensed fonts, and licensed stock images — an ongoing content task, not code.
 
 ## Working Rules For Future Sessions
 

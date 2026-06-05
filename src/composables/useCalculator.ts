@@ -159,6 +159,9 @@ export function useCalculator(props: {
     return cfg ? computePrice(cfg, pricing) : null;
   });
 
+  // Текущая спецификация заказа (для добавления в корзину).
+  const currentConfig = () => buildConfig(totalQty.value);
+
   const money = (n: number) =>
     n.toLocaleString("ru-RU", { maximumFractionDigits: 0 });
 
@@ -177,7 +180,7 @@ export function useCalculator(props: {
     laminationIndex, foilOn, foilColorIndex, laminationLocked,
     fin, needsCount, countLabel,
     // расчёт
-    perUnit, result, money,
+    perUnit, result, money, currentConfig,
   });
 }
 

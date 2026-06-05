@@ -98,6 +98,8 @@ if (props.type === "product") {
             client:load
             product={productPricing}
             pricing={pricing}
+            name={props.name}
+            slug={Astro.params.slug}
           />
         ) : (
           <p>Карточка продукта — калькулятор появится позже.</p>
