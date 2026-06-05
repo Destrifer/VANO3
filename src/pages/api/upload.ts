@@ -8,13 +8,22 @@ const DIRECTUS_URL = import.meta.env.DIRECTUS_URL ?? "http://localhost:8055";
 const DIRECTUS_TOKEN = import.meta.env.DIRECTUS_TOKEN;
 
 const MAX_SIZE = 50 * 1024 * 1024; // 50 МБ
-const ALLOWED = ["application/pdf", "image/jpeg", "image/png", "image/tiff"];
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
     headers: { "content-type": "application/json" },
   });
+}
+
+// Определяем формат по «магическим байтам» (не доверяя MIME из браузера).
+function sniff(b: Uint8Array): "pdf" | "png" | "jpeg" | "tiff" | null {
+  const m = (sig: number[], off = 0) => sig.every((x, i) => b[off + i] === x);
+  if (m([0x25, 0x50, 0x44, 0x46])) return "pdf"; // %PDF
+  if (m([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) return "png";
+  if (m([0xff, 0xd8, 0xff])) return "jpeg";
+  if (m([0x49, 0x49, 0x2a, 0x00]) || m([0x4d, 0x4d, 0x00, 0x2a])) return "tiff";
+  return null;
 }
 
 export const POST: APIRoute = async ({ request }) => {
@@ -29,8 +38,12 @@ export const POST: APIRoute = async ({ request }) => {
 
   const file = form.get("file");
   if (!(file instanceof File)) return json({ error: "Файл не передан" }, 400);
+  if (file.size === 0) return json({ error: "Пустой файл" }, 400);
   if (file.size > MAX_SIZE) return json({ error: "Файл больше 50 МБ" }, 400);
-  if (file.type && !ALLOWED.includes(file.type)) {
+
+  // Проверяем РЕАЛЬНЫЕ байты, а не заявленный браузером тип.
+  const head = new Uint8Array(await file.slice(0, 16).arrayBuffer());
+  if (!sniff(head)) {
     return json({ error: "Поддерживаются PDF, JPG, PNG, TIFF" }, 400);
   }
 
