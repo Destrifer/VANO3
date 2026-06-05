@@ -102,94 +102,93 @@ async function submit() {
     <a href="/" class="btn btn-outline mt-4">На главную</a>
   </div>
 
-  <div v-else-if="items.length" class="my-6 grid gap-8 lg:grid-cols-[1fr_360px] lg:items-start">
-    <!-- Левая колонка: позиции + доставка + оплата + контакты -->
-    <div class="flex flex-col gap-6">
-      <div class="flex flex-col gap-3">
-        <div v-for="it in items" :key="it.id" class="card card-border border-base-300">
-          <div class="card-body flex-row items-start justify-between gap-4">
-            <div class="flex flex-col gap-1">
-              <a :href="`/${it.slug}`" class="link link-hover font-semibold">{{ it.name }}</a>
-              <span class="text-sm text-base-content/70">{{ it.summary }}</span>
-              <span class="text-sm">{{ it.qty }} шт · {{ it.unitPrice.toFixed(2) }} ₽/шт</span>
-              <span v-if="it.artworkId" class="text-xs text-base-content/60">
-                📎 макет приложен
-                <span v-if="it.preflight">· {{ it.preflight.status === "green" ? "🟢" : it.preflight.status === "yellow" ? "🟡" : "🔴" }}</span>
-              </span>
-            </div>
-            <div class="flex flex-col items-end gap-2">
-              <span class="text-lg font-bold">{{ money(it.total) }} ₽</span>
-              <button class="btn btn-ghost btn-sm" @click="removeFromCart(it.id)">Удалить</button>
-            </div>
+  <div v-else-if="items.length" class="my-6 grid gap-8 lg:grid-cols-[1fr_460px] lg:items-start">
+    <!-- Левая колонка: только товары -->
+    <div class="flex flex-col gap-3">
+      <div v-for="it in items" :key="it.id" class="card card-border border-base-300">
+        <div class="card-body flex-row items-start justify-between gap-4">
+          <div class="flex flex-col gap-1">
+            <a :href="`/${it.slug}`" class="link link-hover font-semibold">{{ it.name }}</a>
+            <span class="text-sm text-base-content/70">{{ it.summary }}</span>
+            <span class="text-sm">{{ it.qty }} шт · {{ it.unitPrice.toFixed(2) }} ₽/шт</span>
+            <span v-if="it.artworkId" class="text-xs text-base-content/60">
+              📎 макет приложен
+              <span v-if="it.preflight">· {{ it.preflight.status === "green" ? "🟢" : it.preflight.status === "yellow" ? "🟡" : "🔴" }}</span>
+            </span>
           </div>
-        </div>
-        <button class="btn btn-ghost btn-sm self-start" @click="clearCart">Очистить корзину</button>
-      </div>
-
-      <!-- Доставка -->
-      <div class="flex flex-col gap-2">
-        <span class="text-sm font-semibold">Доставка</span>
-        <label v-for="m in DELIVERY_METHODS" :key="m.id" class="flex items-center gap-2">
-          <input type="radio" class="radio radio-sm" :value="m.id" v-model="delivery.method" />
-          <span>{{ m.label }}</span>
-          <span class="text-sm text-base-content/60">
-            {{ m.costType === "free" ? "бесплатно" : m.costType === "fixed" ? `${money(m.cost)} ₽` : "уточнит менеджер" }}
-            <template v-if="m.note">· {{ m.note }}</template>
-          </span>
-        </label>
-
-        <!-- адрес для курьера / РФ -->
-        <div v-if="selectedDelivery?.needsAddress" class="mt-1 flex flex-col gap-2">
-          <AddressField v-model="delivery.address" @select="onAddressSelect" />
-          <div class="flex flex-wrap gap-2">
-            <input v-model="delivery.apartment" class="input input-sm w-28" placeholder="Кв./офис" />
-            <input v-model="delivery.entrance" class="input input-sm w-28" placeholder="Подъезд" />
-            <input v-model="delivery.floor" class="input input-sm w-24" placeholder="Этаж" />
-            <input v-model="delivery.intercom" class="input input-sm w-32" placeholder="Домофон" />
+          <div class="flex flex-col items-end gap-2">
+            <span class="text-lg font-bold">{{ money(it.total) }} ₽</span>
+            <button class="btn btn-ghost btn-sm" @click="removeFromCart(it.id)">Удалить</button>
           </div>
         </div>
       </div>
-
-      <!-- Оплата -->
-      <div class="flex flex-col gap-2">
-        <span class="text-sm font-semibold">Оплата</span>
-        <label v-for="m in PAYMENT_METHODS" :key="m.id" class="flex items-center gap-2"
-               :class="{ 'opacity-50': !m.available }">
-          <input type="radio" class="radio radio-sm" :value="m.id" v-model="payment.method" :disabled="!m.available" />
-          <span>{{ m.label }}</span>
-          <span v-if="m.note" class="text-sm text-base-content/60">· {{ m.note }}</span>
-        </label>
-      </div>
-
-      <!-- Контакты -->
-      <div class="flex flex-col gap-2">
-        <span class="text-sm font-semibold">Контакты</span>
-        <input v-model="contact.name" class="input w-full max-w-sm" placeholder="Имя*" />
-        <input v-model="contact.phone" class="input w-full max-w-sm" placeholder="Телефон*" inputmode="tel" />
-        <input v-model="contact.email" class="input w-full max-w-sm" placeholder="Email (по желанию)" inputmode="email" />
-        <textarea v-model="contact.comment" class="textarea w-full max-w-sm" placeholder="Комментарий к заказу" rows="2"></textarea>
-      </div>
+      <button class="btn btn-ghost btn-sm self-start" @click="clearCart">Очистить корзину</button>
     </div>
 
-    <!-- Правая колонка: итог + оформить -->
-    <aside class="card card-border border-base-content lg:sticky lg:top-4">
-      <div class="card-body gap-2">
-        <div class="flex justify-between text-sm">
-          <span class="text-base-content/70">Товары</span><span>{{ money(goodsTotal) }} ₽</span>
+    <!-- Правая колонка: оформление (доставка + оплата + контакты + итог) -->
+    <aside class="card card-border border-base-content">
+      <div class="card-body gap-5">
+        <!-- Доставка -->
+        <div class="flex flex-col gap-2">
+          <span class="text-sm font-semibold">Доставка</span>
+          <label v-for="m in DELIVERY_METHODS" :key="m.id" class="flex items-center gap-2">
+            <input type="radio" class="radio radio-sm" :value="m.id" v-model="delivery.method" />
+            <span>{{ m.label }}</span>
+            <span class="text-sm text-base-content/60">
+              {{ m.costType === "free" ? "бесплатно" : m.costType === "fixed" ? `${money(m.cost)} ₽` : "уточнит менеджер" }}
+              <template v-if="m.note">· {{ m.note }}</template>
+            </span>
+          </label>
+          <div v-if="selectedDelivery?.needsAddress" class="mt-1 flex flex-col gap-2">
+            <AddressField v-model="delivery.address" @select="onAddressSelect" />
+            <div class="flex flex-wrap gap-2">
+              <input v-model="delivery.apartment" class="input input-sm w-28" placeholder="Кв./офис" />
+              <input v-model="delivery.entrance" class="input input-sm w-28" placeholder="Подъезд" />
+              <input v-model="delivery.floor" class="input input-sm w-24" placeholder="Этаж" />
+              <input v-model="delivery.intercom" class="input input-sm w-32" placeholder="Домофон" />
+            </div>
+          </div>
         </div>
-        <div class="flex justify-between text-sm">
-          <span class="text-base-content/70">Доставка</span>
-          <span>{{ delCost === null ? "уточнит менеджер" : delCost === 0 ? "бесплатно" : money(delCost) + " ₽" }}</span>
+
+        <!-- Оплата -->
+        <div class="flex flex-col gap-2">
+          <span class="text-sm font-semibold">Оплата</span>
+          <label v-for="m in PAYMENT_METHODS" :key="m.id" class="flex items-center gap-2"
+                 :class="{ 'opacity-50': !m.available }">
+            <input type="radio" class="radio radio-sm" :value="m.id" v-model="payment.method" :disabled="!m.available" />
+            <span>{{ m.label }}</span>
+            <span v-if="m.note" class="text-sm text-base-content/60">· {{ m.note }}</span>
+          </label>
         </div>
-        <div class="flex items-baseline justify-between border-t border-base-300 pt-2">
-          <span class="text-base-content/70">Итого</span>
-          <span class="text-2xl font-bold">{{ money(grandTotal) }} ₽</span>
+
+        <!-- Контакты -->
+        <div class="flex flex-col gap-2">
+          <span class="text-sm font-semibold">Контакты</span>
+          <input v-model="contact.name" class="input w-full" placeholder="Имя*" />
+          <input v-model="contact.phone" class="input w-full" placeholder="Телефон*" inputmode="tel" />
+          <input v-model="contact.email" class="input w-full" placeholder="Email (по желанию)" inputmode="email" />
+          <textarea v-model="contact.comment" class="textarea w-full" placeholder="Комментарий к заказу" rows="2"></textarea>
         </div>
-        <button class="btn btn-primary btn-block" :disabled="submitting" @click="submit">
-          {{ submitting ? "Оформляем…" : "Оформить заказ" }}
-        </button>
-        <p v-if="error" class="text-sm text-error">{{ error }}</p>
-        <p class="text-xs text-base-content/60">Оплата не требуется сейчас — менеджер свяжется для подтверждения.</p>
+
+        <!-- Итог -->
+        <div class="flex flex-col gap-2 border-t border-base-300 pt-3">
+          <div class="flex justify-between text-sm">
+            <span class="text-base-content/70">Товары</span><span>{{ money(goodsTotal) }} ₽</span>
+          </div>
+          <div class="flex justify-between text-sm">
+            <span class="text-base-content/70">Доставка</span>
+            <span>{{ delCost === null ? "уточнит менеджер" : delCost === 0 ? "бесплатно" : money(delCost) + " ₽" }}</span>
+          </div>
+          <div class="flex items-baseline justify-between">
+            <span class="text-base-content/70">Итого</span>
+            <span class="text-2xl font-bold">{{ money(grandTotal) }} ₽</span>
+          </div>
+          <button class="btn btn-primary btn-block" :disabled="submitting" @click="submit">
+            {{ submitting ? "Оформляем…" : "Оформить заказ" }}
+          </button>
+          <p v-if="error" class="text-sm text-error">{{ error }}</p>
+          <p class="text-xs text-base-content/60">Оплата не требуется сейчас — менеджер свяжется для подтверждения.</p>
+        </div>
       </div>
     </aside>
   </div>
