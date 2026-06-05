@@ -4,7 +4,7 @@ import { Icon } from "astro-icon/components";
 import { getCategories } from "../lib/categories";
 import { getProducts } from "../lib/products";
 import { getProductPricing, getPricingData } from "../lib/pricing/data";
-import Calculator from "../components/Calculator.vue";
+import ProductConfigurator from "../components/ProductConfigurator.vue";
 
 // getStaticPaths сообщает Astro, какие страницы сгенерировать (SSG).
 // Возвращаем по записи на каждую категорию и каждый продукт.
@@ -94,16 +94,31 @@ if (props.type === "product") {
     props.type === "product" && (
       <>
         {pricing && productPricing ? (
-          <Calculator client:load product={productPricing} pricing={pricing} />
+          <ProductConfigurator
+            client:load
+            product={productPricing}
+            pricing={pricing}
+          />
         ) : (
           <p>Карточка продукта — калькулятор появится позже.</p>
         )}
-        {props.parentSlug && (
-          <p>
-            Категория:{" "}
-            <a href={`/${props.parentSlug}`}>{props.parentName}</a>
+
+        {/* SEO-текст — статика (позже из Directus) */}
+        <section class="my-10 max-w-prose">
+          <h2 class="mb-3 text-xl font-bold">{props.name} в Москве</h2>
+          <p class="mb-3 text-base-content/80">
+            {props.name} — печать на заказ в Москве. Расчёт стоимости — мгновенно
+            в конфигураторе выше. Срок от 1 рабочего дня.
           </p>
-        )}
+          {props.parentSlug && (
+            <p class="text-base-content/60">
+              Категория:{" "}
+              <a class="link link-hover" href={`/${props.parentSlug}`}>
+                {props.parentName}
+              </a>
+            </p>
+          )}
+        </section>
       </>
     )
   }

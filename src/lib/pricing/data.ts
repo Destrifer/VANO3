@@ -34,6 +34,7 @@ export type FinishingOption = Finishing & {
 
 export type ProductPricing = {
   production: "sheet" | "plotter";
+  previewKind: string | null; // какой макет превью рисовать (null → "card")
   allowRound: boolean;
   allowComplex: boolean;
   allowCustom: boolean;
@@ -89,6 +90,7 @@ export async function getProductPricing(
 ): Promise<ProductPricing | null> {
   const fields = [
     "production",
+    // "preview_kind", // включить, когда поле появится в Directus (пока → "card")
     "allow_round",
     "allow_complex",
     "allow_custom",
@@ -127,6 +129,7 @@ export async function getProductPricing(
 
   return {
     production: p.production ?? "sheet",
+    previewKind: p.preview_kind ?? null,
     allowRound: !!p.allow_round,
     allowComplex: !!p.allow_complex,
     allowCustom: !!p.allow_custom,

@@ -377,6 +377,9 @@ Goal: turn the current technical prototype into a coherent first public site ske
 - Removed urgency (срочно) from the calculator UI; срочность is decided by a manager at order approval. The `urgencyMultiplier` stays in the engine for later reuse.
 - Installed the daisyUI skill locally (`.claude/skills/daisyui`, `skills-lock.json`) to keep daisyUI usage consistent.
 - Consolidated project docs to the repo root (`01..05`, `README`); removed the duplicate `doc/` folder so there is a single canonical location.
+- Built the product page configurator `ProductConfigurator.vue` (island that provides `calc` to all zones): equal-width `grid-template-areas` columns (3 → 2 → 1: controls | preview+plate | gallery), mobile order preview → controls → plate → gallery, gallery as a container-query thumbnail grid. `OrderPlate.vue` = price + «В корзину» (cart pending). Gallery and SEO text are static placeholders for now (later from Directus).
+- Implemented an interactive preview as a shared engine, not per-product hardcode: `src/lib/preview/primitives.ts` (canvas helpers: shape contour, paper texture, lamination gloss, foil metal, ink color) + `src/lib/preview/mockups.ts` (per-product content registry; one `card` mockup = business-card «рыба»). `Preview.vue` is the generic stage; product picks its mockup via `previewKind` (default `card`). Universal params (shape/size/material/lamination/foil/corners) come from `calc`; different defaults are NOT different mockups. SVG/Path2D for geometry, Canvas for material.
+- `ProductPricing.previewKind` added (maps from a future Directus `products.preview_kind`; currently not requested → defaults to `card`).
 
 ## Tech Debt And Open Questions
 
