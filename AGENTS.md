@@ -371,6 +371,12 @@ Goal: turn the current technical prototype into a coherent first public site ske
 - Added `src/lib/directus.ts` and `src/lib/navigation.ts` for Directus API access.
 - Homepage design direction and visual references are documented in `src/pages/design/homepage-design.md`.
 - Earlier mobile homepage notes are kept in `src/pages/design/mobile-homepage.md`.
+- Implemented the pricing engine as a pure stage pipeline in `src/lib/pricing/engine.ts` (print → paper → finishing → cutting → min-order → rounding); product/pricing data mapped from Directus in `data.ts`; field dependencies kept as declarative data in `rules.ts`. Current scope is digital-only; offset auto-choice and the `fixed` strategy are designed (doc 03) but not yet built.
+- Added cutting to the engine: plotter cutting as upper-bound brackets (`pricing_settings.plotter_cutting`), manual (big-sheet) cutting as a percentage of the order (`pricing_settings.manual_cutting_rate`, default 0.15). Cutting is computed automatically, not user-selectable.
+- Refactored the calculator into a thin orchestrator (`Calculator.vue`) + `useCalculator()` composable + presentational field components in `src/components/calculator/`, sharing state via `provide`/`inject` (typed `calcKey`). Shared `SwatchPalette` component for paper/foil color popovers. UI is daisyUI-only (theme `lofi`) with no hand-written scoped CSS.
+- Removed urgency (срочно) from the calculator UI; срочность is decided by a manager at order approval. The `urgencyMultiplier` stays in the engine for later reuse.
+- Installed the daisyUI skill locally (`.claude/skills/daisyui`, `skills-lock.json`) to keep daisyUI usage consistent.
+- Consolidated project docs to the repo root (`01..05`, `README`); removed the duplicate `doc/` folder so there is a single canonical location.
 
 ## Tech Debt And Open Questions
 
@@ -387,6 +393,8 @@ Goal: turn the current technical prototype into a coherent first public site ske
 - Choose domain name and DNS provider.
 - Decide whether PostgreSQL should run in Docker on the VPS or as managed PostgreSQL.
 - Define backup strategy for PostgreSQL and Directus uploads before production launch.
+- Client-side pricing currently exposes rates/formulas in the browser bundle. Before production, move price computation to a server endpoint / Astro action (П2: one engine, but not shipped to the client).
+- Move declarative field-dependency rules (`src/lib/pricing/rules.ts`) into Directus once the model is stable, keeping the applier functions in code.
 
 ## Working Rules For Future Sessions
 
