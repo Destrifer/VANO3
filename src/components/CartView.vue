@@ -17,6 +17,7 @@ const money = (n: number) => n.toLocaleString("ru-RU", { maximumFractionDigits: 
           <a :href="`/${it.slug}`" class="link link-hover font-semibold">{{ it.name }}</a>
           <span class="text-sm text-base-content/70">{{ it.summary }}</span>
           <span class="text-sm">{{ it.qty }} шт · {{ it.unitPrice.toFixed(2) }} ₽/шт</span>
+          <span v-if="it.artworkId" class="text-xs text-base-content/60">📎 макет приложен</span>
         </div>
         <div class="flex flex-col items-end gap-2">
           <span class="text-lg font-bold">{{ money(it.total) }} ₽</span>

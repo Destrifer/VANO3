@@ -6,6 +6,7 @@ import QuantityField from "./calculator/QuantityField.vue";
 import SidesField from "./calculator/SidesField.vue";
 import MaterialField from "./calculator/MaterialField.vue";
 import FinishingField from "./calculator/FinishingField.vue";
+import ArtworkUpload from "./calculator/ArtworkUpload.vue";
 </script>
 
 <template>
@@ -15,5 +16,6 @@ import FinishingField from "./calculator/FinishingField.vue";
     <SidesField />
     <MaterialField />
     <FinishingField />
+    <ArtworkUpload />
   </div>
 </template>

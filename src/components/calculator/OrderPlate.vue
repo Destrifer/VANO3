@@ -35,7 +35,7 @@ function add() {
     qty: calc.totalQty,
     unitPrice: calc.result.total / calc.totalQty,
     total: calc.result.total,
-    artworkId: null,
+    artworkId: calc.artworkId,
   });
   added.value = true;
   setTimeout(() => (added.value = false), 2000);

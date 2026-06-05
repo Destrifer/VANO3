@@ -62,6 +62,10 @@ export function useCalculator(props: {
 
   // — Материал и цвет —
   const paperIndex = ref(0);
+
+  // Загруженный макет (id файла в Directus) — заполняет ArtworkUpload.
+  const artworkId = ref<string | null>(null);
+  const artworkName = ref<string | null>(null);
   const paperGroups = computed(() => {
     const groups: { group: string; options: { index: number; name: string }[] }[] = [];
     product.papers.forEach((p, index) => {
@@ -201,6 +205,8 @@ export function useCalculator(props: {
     sides, presets, quantity, views, totalQty, selectQty, incViews, decViews,
     // материал
     paperIndex, paperGroups, currentPaper, colors, selectedColorIndex,
+    // макет
+    artworkId, artworkName,
     // постпечать
     laminationOptions, foilOption, otherOptions,
     laminationIndex, foilOn, foilColorIndex, laminationLocked,
