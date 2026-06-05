@@ -3,6 +3,8 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 import { Icon } from "astro-icon/components";
 import { getCategories } from "../lib/categories";
 import { getProducts } from "../lib/products";
+import { getProductPricing, getPricingData } from "../lib/pricing/data";
+import Calculator from "../components/Calculator.vue";
 
 // getStaticPaths сообщает Astro, какие страницы сгенерировать (SSG).
 // Возвращаем по записи на каждую категорию и каждый продукт.
@@ -49,6 +51,16 @@ export async function getStaticPaths() {
 const props = Astro.props;
 const pageTitle = `${props.name} — Printmos`;
 const pageDescription = `${props.name} — печать на заказ в Москве. Страница в разработке.`;
+
+// Для продукта тянем ценовой конфиг; калькулятор показываем, если есть материалы.
+let productPricing = null;
+let pricing = null;
+if (props.type === "product") {
+  productPricing = await getProductPricing(Astro.params.slug!);
+  if (productPricing && productPricing.papers.length > 0) {
+    pricing = await getPricingData();
+  }
+}
 ---
 
 <BaseLayout title={pageTitle} description={pageDescription}>
@@ -81,7 +93,11 @@ const pageDescription = `${props.name} — печать на заказ в Мо�
   {
     props.type === "product" && (
       <>
-        <p>Карточка продукта — в разработке (здесь будет калькулятор).</p>
+        {pricing && productPricing ? (
+          <Calculator client:load product={productPricing} pricing={pricing} />
+        ) : (
+          <p>Карточка продукта — калькулятор появится позже.</p>
+        )}
         {props.parentSlug && (
           <p>
             Категория:{" "}

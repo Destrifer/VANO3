@@ -133,6 +133,15 @@ Expected features:
 - UI library components may be used for complex controls, but the public website should remain visually quiet and monochrome unless a specific use case needs color.
 - Avoid heavy gradients, decorative backgrounds, glossy effects, and colorful marketing-style layouts.
 
+## Styling Policy (daisyUI-first)
+
+- Visual styling, effects, and interactive states (hover/active/focus) come from the daisyUI theme and components — not ad-hoc CSS — so the UI stays in one consistent style and avoids hand-rolled state bugs.
+- The active theme is `lofi` (monochrome). Custom CSS MUST consume theme tokens (`--color-base-100/200/300`, `--color-base-content`, `--color-primary` …, `--radius-field`, `--radius-box`, `--border`) — never hardcoded colors, radii, or borders.
+- Prefer daisyUI component classes for standard controls: `btn`, `select`, `input`, `textarea`, `checkbox`, `radio`, `range`, `toggle`, `dropdown`, `menu`, `modal`/`<dialog>`, `tabs`, `join`, `badge`, `card`, `footer`, `navbar`.
+- Custom layout is allowed only where no daisyUI component fits (e.g., a selectable tile with extra subtext, a map facade). Such custom elements must be built on theme tokens and mirror daisyUI's state conventions.
+- If a custom element uses an inverted/active state, always define its `:hover` (and focus) explicitly so contrast/readability is preserved (e.g., an active dark tile must keep its dark background on hover).
+- daisyUI components stay monochrome under `lofi`; do not introduce decorative color.
+
 ## Pricing Calculator Direction
 
 - Calculators should share one pricing architecture instead of each calculator becoming a separate hardcoded exception tree.
