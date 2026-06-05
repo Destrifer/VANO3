@@ -401,6 +401,16 @@ Goal: turn the current technical prototype into a coherent first public site ske
 - Move declarative field-dependency rules (`src/lib/pricing/rules.ts`) into Directus once the model is stable, keeping the applier functions in code.
 - Visual constructor track (if started): build the curated template library, OSI-licensed fonts, and licensed stock images — an ongoing content task, not code.
 
+### Cart & order architecture (decided)
+
+- **Guest checkout** (no auth) — «пришёл-купил-ушёл». Cart lives client-side in nanostores + localStorage (Этап 1, done).
+- **Cart item stores a SPEC by IDs** (productSlug, form/size/sides/quantity, paperId, finishing `[{id,count}]`, foil `{id,colorId}`) + a price snapshot **for display only**. The server NEVER trusts client prices.
+- **Server runtime: hybrid** — keep pages static (`prerender`), add Astro API routes (`export const prerender = false`) via the Node adapter (standalone). Business logic stays in our code, not Directus Flows.
+- **Trust boundary = Astro API routes.** `/api/upload` (artwork → Directus files, validate type/size) and `/api/order` (create order). The order endpoint **re-resolves prices from Directus by ID** and runs `computePrice` server-side (authoritative); same engine as the client/home tiles (П2). Uses a least-privilege Directus **server token from `.env`** (never shipped to client).
+- **Order model:** one `order` with N `order_items` at checkout. `orders` (number, status, contacts, subtotal/discount/total) + `order_items` (product name/slug snapshot, `spec` JSON, qty, unit_price, line_total, `artwork`→files). Public has NO access to orders; only the server token writes.
+- **Artwork uploaded on the product page** → returns `fileId`, stored in the cart item. Orphan files (uploaded, never ordered) cleaned by a later Directus Flow/cron.
+- **Deferred:** online payment (order = заявка, status «новый», manager/payment later), discounts/promo/bonuses (Этап 3/4), notifications (§9), real preflight (separate track; for now just validate file type/size).
+
 ## Working Rules For Future Sessions
 
 - Read this file before making project-level decisions.
