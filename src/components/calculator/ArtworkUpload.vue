@@ -1,12 +1,14 @@
 <script setup lang="ts">
-// Загрузка макета на странице товара → /api/upload → id файла в calc.
-// Необязательно: можно прислать позже.
+// Загрузка макета на странице товара → /api/upload (валидация + preflight Tier 1).
+// Показывает светофор и замечания. Необязательно: можно прислать позже.
 import { inject, ref } from "vue";
 import { calcKey } from "../../composables/useCalculator";
 
 const calc = inject(calcKey)!;
 const status = ref<"idle" | "uploading" | "error">("idle");
 const error = ref("");
+
+const dot: Record<string, string> = { green: "🟢", yellow: "🟡", red: "🔴" };
 
 async function onChange(e: Event) {
   const input = e.target as HTMLInputElement;
@@ -17,11 +19,16 @@ async function onChange(e: Event) {
   try {
     const fd = new FormData();
     fd.append("file", file);
+    // контекст заказа для preflight
+    fd.append("width", String(calc.dims.w));
+    fd.append("height", String(calc.dims.h));
+    fd.append("sides", calc.sides);
     const res = await fetch("/api/upload", { method: "POST", body: fd });
     const data = await res.json();
     if (!res.ok || !data.fileId) throw new Error(data.error || "Ошибка загрузки");
     calc.artworkId = data.fileId;
     calc.artworkName = data.fileName ?? file.name;
+    calc.artworkPreflight = data.preflight ?? null;
     status.value = "idle";
   } catch (err: any) {
     status.value = "error";
@@ -34,6 +41,7 @@ async function onChange(e: Event) {
 function removeArtwork() {
   calc.artworkId = null;
   calc.artworkName = null;
+  calc.artworkPreflight = null;
 }
 </script>
 
@@ -41,9 +49,28 @@ function removeArtwork() {
   <div class="flex flex-col gap-1.5">
     <span class="text-sm font-semibold">Макет</span>
 
-    <div v-if="calc.artworkName" class="flex items-center gap-3">
-      <span class="text-sm">📎 {{ calc.artworkName }}</span>
-      <button type="button" class="btn btn-ghost btn-xs" @click="removeArtwork">убрать</button>
+    <div v-if="calc.artworkName" class="flex flex-col gap-1.5">
+      <div class="flex items-center gap-3">
+        <span class="text-sm">📎 {{ calc.artworkName }}</span>
+        <button type="button" class="btn btn-ghost btn-xs" @click="removeArtwork">убрать</button>
+      </div>
+
+      <!-- результат preflight -->
+      <div v-if="calc.artworkPreflight" class="rounded-box border border-base-300 p-2 text-sm">
+        <div class="font-medium">
+          {{ dot[calc.artworkPreflight.status] }}
+          {{ calc.artworkPreflight.status === "green" ? "Макет в норме"
+             : calc.artworkPreflight.status === "yellow" ? "Можно печатать, есть замечания"
+             : "Есть проблема — проверьте макет" }}
+        </div>
+        <ul v-if="calc.artworkPreflight.checks.length" class="mt-1 flex flex-col gap-0.5">
+          <li v-for="(c, i) in calc.artworkPreflight.checks" :key="i" class="opacity-80"
+              :class="{ 'text-error': c.level === 'error' }">
+            {{ c.level === "ok" ? "✓" : c.level === "warn" ? "⚠" : "✕" }} {{ c.message }}
+          </li>
+        </ul>
+        <p class="mt-1 text-xs opacity-60">Это предварительная проверка. Точно — после согласования макета.</p>
+      </div>
     </div>
 
     <template v-else>
@@ -54,7 +81,7 @@ function removeArtwork() {
         :disabled="status === 'uploading'"
         @change="onChange"
       />
-      <span v-if="status === 'uploading'" class="text-sm opacity-70">Загрузка…</span>
+      <span v-if="status === 'uploading'" class="text-sm opacity-70">Загрузка и проверка…</span>
       <span v-if="status === 'error'" class="text-sm text-error">{{ error }}</span>
       <span class="text-xs opacity-60">PDF, JPG, PNG, TIFF до 50 МБ. Можно прислать позже.</span>
     </template>

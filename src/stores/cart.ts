@@ -4,6 +4,7 @@
 import { persistentAtom } from "@nanostores/persistent";
 import { computed } from "nanostores";
 import type { CartSpec } from "../lib/pricing/spec";
+import type { Preflight } from "../lib/preflight";
 
 export type CartItem = {
   id: string;
@@ -14,7 +15,8 @@ export type CartItem = {
   qty: number; // итоговый тираж
   unitPrice: number; // снимок цены за шт (только показ; сервер пересчитает)
   total: number; // снимок суммы (только показ)
-  artworkId: string | null; // id загруженного макета в Directus (этап 2)
+  artworkId: string | null; // id загруженного макета в Directus
+  preflight: Preflight | null; // результат проверки макета
   createdAt: number;
 };
 

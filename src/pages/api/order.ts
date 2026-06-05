@@ -14,6 +14,7 @@ type IncomingItem = {
   name?: string;
   spec?: CartSpec;
   artworkId?: string | null;
+  preflight?: { status?: string; checks?: unknown } | null;
 };
 type Body = {
   items?: IncomingItem[];
@@ -82,6 +83,8 @@ export const POST: APIRoute = async ({ request }) => {
       unit_price: qty > 0 ? result.total / qty : result.total,
       line_total: result.total,
       artwork: typeof it.artworkId === "string" ? it.artworkId : null,
+      preflight_status: it.preflight?.status ?? null,
+      preflight_report: it.preflight ?? null,
     });
   }
 

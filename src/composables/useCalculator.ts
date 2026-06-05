@@ -66,6 +66,7 @@ export function useCalculator(props: {
   // Загруженный макет (id файла в Directus) — заполняет ArtworkUpload.
   const artworkId = ref<string | null>(null);
   const artworkName = ref<string | null>(null);
+  const artworkPreflight = ref<import("../lib/preflight").Preflight | null>(null);
   const paperGroups = computed(() => {
     const groups: { group: string; options: { index: number; name: string }[] }[] = [];
     product.papers.forEach((p, index) => {
@@ -206,7 +207,7 @@ export function useCalculator(props: {
     // материал
     paperIndex, paperGroups, currentPaper, colors, selectedColorIndex,
     // макет
-    artworkId, artworkName,
+    artworkId, artworkName, artworkPreflight,
     // постпечать
     laminationOptions, foilOption, otherOptions,
     laminationIndex, foilOn, foilColorIndex, laminationLocked,

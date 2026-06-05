@@ -1,7 +1,8 @@
 import type { APIRoute } from "astro";
+import { runPreflight } from "../../lib/preflight";
 
-// Приём макета: валидация типа/размера → загрузка в Directus files
-// серверным токеном (least-privilege). Возвращает id файла для позиции корзины.
+// Приём макета: валидация типа/размера → preflight Tier 1 против заказа →
+// загрузка в Directus files серверным токеном. Возвращает id файла + отчёт.
 export const prerender = false;
 
 const DIRECTUS_URL = import.meta.env.DIRECTUS_URL ?? "http://localhost:8055";
@@ -41,11 +42,18 @@ export const POST: APIRoute = async ({ request }) => {
   if (file.size === 0) return json({ error: "Пустой файл" }, 400);
   if (file.size > MAX_SIZE) return json({ error: "Файл больше 50 МБ" }, 400);
 
+  const bytes = new Uint8Array(await file.arrayBuffer());
   // Проверяем РЕАЛЬНЫЕ байты, а не заявленный браузером тип.
-  const head = new Uint8Array(await file.slice(0, 16).arrayBuffer());
-  if (!sniff(head)) {
-    return json({ error: "Поддерживаются PDF, JPG, PNG, TIFF" }, 400);
-  }
+  const kind = sniff(bytes.subarray(0, 16));
+  if (!kind) return json({ error: "Поддерживаются PDF, JPG, PNG, TIFF" }, 400);
+
+  // Preflight Tier 1 против параметров заказа (из формы).
+  const spec = {
+    width: Number(form.get("width")) || 0,
+    height: Number(form.get("height")) || 0,
+    sides: String(form.get("sides") ?? ""),
+  };
+  const preflight = await runPreflight(bytes, kind, spec);
 
   // Пробрасываем файл в Directus серверным токеном.
   const fd = new FormData();
@@ -61,5 +69,5 @@ export const POST: APIRoute = async ({ request }) => {
   const f = data?.data;
   if (!f?.id) return json({ error: "Directus не вернул id файла" }, 502);
 
-  return json({ fileId: f.id, fileName: f.filename_download ?? file.name });
+  return json({ fileId: f.id, fileName: f.filename_download ?? file.name, preflight });
 };

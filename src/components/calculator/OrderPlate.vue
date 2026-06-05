@@ -36,6 +36,7 @@ function add() {
     unitPrice: calc.result.total / calc.totalQty,
     total: calc.result.total,
     artworkId: calc.artworkId,
+    preflight: calc.artworkPreflight,
   });
   added.value = true;
   setTimeout(() => (added.value = false), 2000);
