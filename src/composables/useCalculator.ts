@@ -6,6 +6,7 @@ import { computePrice, type OrderConfig, type Sides } from "../lib/pricing/engin
 import type { PricingData } from "../lib/pricing/engine";
 import type { ProductPricing } from "../lib/pricing/data";
 import { isLaminationLocked, forcedLaminationIndex } from "../lib/pricing/rules";
+import type { CartSpec } from "../lib/pricing/spec";
 
 export function useCalculator(props: {
   product: ProductPricing;
@@ -162,6 +163,31 @@ export function useCalculator(props: {
   // Текущая спецификация заказа (для добавления в корзину).
   const currentConfig = () => buildConfig(totalQty.value);
 
+  // Спек по id (productSlug добавляет вызывающий — он его знает).
+  const currentSpec = (): Omit<CartSpec, "productSlug"> => ({
+    form: shape.value,
+    width: dims.value.w,
+    height: dims.value.h,
+    sides: sides.value,
+    quantity: totalQty.value,
+    paperId: currentPaper.value?.id ?? 0,
+    paperColorId: colors.value[selectedColorIndex.value]?.id ?? null,
+    laminationId:
+      laminationIndex.value >= 0
+        ? laminationOptions.value[laminationIndex.value]?.id ?? null
+        : null,
+    foil:
+      foilOn.value && foilOption.value
+        ? {
+            id: foilOption.value.id,
+            colorId: foilOption.value.colors[foilColorIndex.value]?.id ?? null,
+          }
+        : null,
+    finishing: otherOptions.value
+      .filter((x) => fin[x.i].checked)
+      .map((x) => ({ id: x.o.id, count: fin[x.i].count })),
+  });
+
   const money = (n: number) =>
     n.toLocaleString("ru-RU", { maximumFractionDigits: 0 });
 
@@ -180,7 +206,7 @@ export function useCalculator(props: {
     laminationIndex, foilOn, foilColorIndex, laminationLocked,
     fin, needsCount, countLabel,
     // расчёт
-    perUnit, result, money, currentConfig,
+    perUnit, result, money, currentConfig, currentSpec,
   });
 }
 

@@ -3,16 +3,17 @@
 // (шапка, плашка товара, страница корзины). Гостевой режим, без авторизации.
 import { persistentAtom } from "@nanostores/persistent";
 import { computed } from "nanostores";
-import type { OrderConfig } from "../lib/pricing/engine";
+import type { CartSpec } from "../lib/pricing/spec";
 
 export type CartItem = {
   id: string;
   slug: string; // для ссылки на товар
   name: string; // отображаемое имя продукта
-  config: OrderConfig; // ПОЛНАЯ спецификация (для серверного пересчёта и preflight)
+  spec: CartSpec; // спецификация по id (сервер пересчитает цену по ней)
+  summary: string; // читаемое описание для показа в корзине
   qty: number; // итоговый тираж
-  unitPrice: number; // снимок цены за шт (для показа; сервер пересчитает)
-  total: number; // снимок суммы
+  unitPrice: number; // снимок цены за шт (только показ; сервер пересчитает)
+  total: number; // снимок суммы (только показ)
   artworkId: string | null; // id загруженного макета в Directus (этап 2)
   createdAt: number;
 };

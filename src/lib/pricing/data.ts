@@ -12,6 +12,7 @@ export type SizePreset = {
 };
 
 export type PaperColor = {
+  id: number;
   name: string;
   code: string;
   hex: string | null;
@@ -20,6 +21,7 @@ export type PaperColor = {
 
 // Материал для UI: цена для движка (name+price) + презентация (group/description/colors).
 export type PaperOption = {
+  id: number;
   name: string;
   price: number;
   group: string;
@@ -29,6 +31,7 @@ export type PaperOption = {
 
 // Постпечать для UI: данные движка + презентация (group + цвета фольги).
 export type FinishingOption = Finishing & {
+  id: number;
   group: string | null;
   colors: PaperColor[];
 };
@@ -122,6 +125,7 @@ export async function getProductPricing(
     "sizes.width",
     "sizes.height",
     "sizes.shape",
+    "papers.papers_id.id",
     "papers.papers_id.name",
     "papers.papers_id.price",
     "papers.papers_id.group",
@@ -131,6 +135,8 @@ export async function getProductPricing(
     "papers.papers_id.colors.hex",
     "papers.papers_id.colors.image",
     "papers.papers_id.colors.sort",
+    "papers.papers_id.colors.id",
+    "finishing.finishing_id.id",
     "finishing.finishing_id.name",
     "finishing.finishing_id.group",
     "finishing.finishing_id.unit",
@@ -143,6 +149,7 @@ export async function getProductPricing(
     "finishing.finishing_id.colors.hex",
     "finishing.finishing_id.colors.image",
     "finishing.finishing_id.colors.sort",
+    "finishing.finishing_id.colors.id",
   ].join(",");
 
   const res = await directusFetch<{ data: any[] }>(
@@ -166,6 +173,7 @@ export async function getProductPricing(
     papers: (p.papers ?? []).map((x: any) => {
       const pp = x.papers_id;
       return {
+        id: num(pp.id),
         name: pp.name,
         price: num(pp.price),
         group: pp.group ?? "Стандартные",
@@ -174,6 +182,7 @@ export async function getProductPricing(
           .slice()
           .sort((a: any, b: any) => (a.sort ?? 0) - (b.sort ?? 0))
           .map((c: any) => ({
+            id: num(c.id),
             name: c.name,
             code: c.code,
             hex: c.hex ?? null,
@@ -184,6 +193,7 @@ export async function getProductPricing(
     finishing: (p.finishing ?? []).map((x: any) => {
       const f = x.finishing_id;
       return {
+        id: num(f.id),
         name: f.name,
         group: f.group ?? null,
         unit: f.unit,
@@ -197,6 +207,7 @@ export async function getProductPricing(
           .slice()
           .sort((a: any, b: any) => (a.sort ?? 0) - (b.sort ?? 0))
           .map((c: any) => ({
+            id: num(c.id),
             name: c.name,
             code: c.code,
             hex: c.hex ?? null,

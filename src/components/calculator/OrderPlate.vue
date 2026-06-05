@@ -9,13 +9,29 @@ const props = defineProps<{ name: string; slug: string }>();
 const calc = inject(calcKey)!;
 const added = ref(false);
 
+// читаемое описание позиции (из имён — для показа в корзине)
+function buildSummary() {
+  const c = calc;
+  const dims = c.shape === "round" ? `⌀${c.dims.w} мм` : `${c.dims.w}×${c.dims.h} мм`;
+  const parts: (string | undefined)[] = [dims, c.sides, c.currentPaper?.name];
+  const col = c.colors[c.selectedColorIndex];
+  if (col) parts.push(col.name);
+  if (c.laminationIndex >= 0) parts.push(c.laminationOptions[c.laminationIndex]?.name);
+  if (c.foilOn && c.foilOption) {
+    const fc = c.foilOption.colors[c.foilColorIndex]?.name;
+    parts.push(`Фольга${fc ? " " + fc : ""}`);
+  }
+  for (const { o, i } of c.otherOptions) if (c.fin[i].checked) parts.push(o.name);
+  return parts.filter(Boolean).join(" · ");
+}
+
 function add() {
-  const config = calc.currentConfig();
-  if (!config || !calc.result) return;
+  if (!calc.result) return;
   addToCart({
     slug: props.slug,
     name: props.name,
-    config,
+    spec: { productSlug: props.slug, ...calc.currentSpec() },
+    summary: buildSummary(),
     qty: calc.totalQty,
     unitPrice: calc.result.total / calc.totalQty,
     total: calc.result.total,

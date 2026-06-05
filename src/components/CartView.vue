@@ -2,18 +2,11 @@
 // Страница корзины: список позиций (из стора), удаление/очистка, итог.
 // Оформление и загрузка макета — этап 2.
 import { useStore } from "@nanostores/vue";
-import { cartItems, cartTotal, removeFromCart, clearCart, type CartItem } from "../stores/cart";
+import { cartItems, cartTotal, removeFromCart, clearCart } from "../stores/cart";
 
 const items = useStore(cartItems);
 const total = useStore(cartTotal);
 const money = (n: number) => n.toLocaleString("ru-RU", { maximumFractionDigits: 0 });
-
-function summary(it: CartItem) {
-  const c = it.config;
-  const dims = c.form === "round" ? `⌀${c.width} мм` : `${c.width}×${c.height} мм`;
-  const fin = c.finishing.map((f) => f.option.name).join(", ");
-  return [dims, c.sides, c.paper.name, fin].filter(Boolean).join(" · ");
-}
 </script>
 
 <template>
@@ -22,7 +15,7 @@ function summary(it: CartItem) {
       <div class="card-body flex-row items-start justify-between gap-4">
         <div class="flex flex-col gap-1">
           <a :href="`/${it.slug}`" class="link link-hover font-semibold">{{ it.name }}</a>
-          <span class="text-sm text-base-content/70">{{ summary(it) }}</span>
+          <span class="text-sm text-base-content/70">{{ it.summary }}</span>
           <span class="text-sm">{{ it.qty }} шт · {{ it.unitPrice.toFixed(2) }} ₽/шт</span>
         </div>
         <div class="flex flex-col items-end gap-2">
