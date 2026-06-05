@@ -1,5 +1,6 @@
 import { directusFetch, assetUrl } from "../directus";
-import type { PricingData, Finishing, Tier, Sides } from "./engine";
+import { computePrice } from "./engine";
+import type { PricingData, Finishing, Tier, Sides, OrderConfig } from "./engine";
 
 const num = (v: unknown): number => Number(v ?? 0);
 
@@ -82,6 +83,29 @@ export async function getPricingData(): Promise<PricingData> {
       .sort((a, b) => a.to - b.to),
     manualCuttingRate: num(s.manual_cutting_rate),
   };
+}
+
+// Тираж для цены «от» на витрине (совпадает с дефолтом калькулятора).
+export const HOME_BASE_QTY = 100;
+
+// Цена дефолтной конфигурации продукта (для плиток главной «от X ₽»).
+// Тот же движок, что в калькуляторе/заказе — единый источник истины (П2).
+export function defaultPrice(p: ProductPricing, pricing: PricingData): number | null {
+  const paper = p.papers[0];
+  const size = p.sizes[0];
+  if (!paper || !size) return null;
+  const cfg: OrderConfig = {
+    production: p.production,
+    form: "rectangular",
+    width: size.width,
+    height: size.height,
+    sides: "4+0",
+    quantity: HOME_BASE_QTY,
+    paper,
+    urgent: false,
+    finishing: [],
+  };
+  return computePrice(cfg, pricing).total;
 }
 
 // Ценовой конфиг продукта (размеры, бумаги, постпечать) → типы движка.

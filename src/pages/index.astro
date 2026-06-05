@@ -2,16 +2,29 @@
 import BaseLayout from "../layouts/BaseLayout.astro";
 import { Icon } from "astro-icon/components";
 import { getHomeProducts } from "../lib/products";
+import { getPricingData, getProductPricing, defaultPrice, HOME_BASE_QTY } from "../lib/pricing/data";
 
-const products = await getHomeProducts();
+const [homeProducts, pricing] = await Promise.all([
+  getHomeProducts(),
+  getPricingData(),
+]);
+
+// Цена «от» считается на сборке тем же движком (дефолт. конфиг калькулятора).
+// Подорожает бумага/печать в Directus → пересборка пересчитает все плитки.
+const products = await Promise.all(
+  homeProducts.map(async (p) => {
+    const pricingConfig = await getProductPricing(p.slug);
+    const price = pricingConfig ? defaultPrice(pricingConfig, pricing) : null;
+    return { ...p, price };
+  }),
+);
 
 const pageTitle = "Printmos — цифровая типография в Москве";
 const pageDescription =
   "Printmos — цифровая типография в Москве: визитки, листовки, буклеты, каталоги, наклейки, баннеры и срочная печать для бизнеса.";
 
-// Временные одинаковые значения, пока нет ценового движка (doc 03).
-const priceFrom = "от 500 ₽";
 const lead = "1–3 дня";
+const money = (n: number) => n.toLocaleString("ru-RU", { maximumFractionDigits: 0 });
 ---
 
 <BaseLayout title={pageTitle} description={pageDescription}>
@@ -27,7 +40,7 @@ const lead = "1–3 дня";
             )}
             <span class="product-tile__name">{product.name}</span>
             <span class="product-tile__meta">
-              {priceFrom} · {lead}
+              {product.price != null ? `от ${money(product.price)} ₽` : "Рассчитать"} · {lead}
             </span>
           </a>
         </li>
