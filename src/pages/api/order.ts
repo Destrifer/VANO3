@@ -1,6 +1,6 @@
 import type { APIRoute } from "astro";
 import { getPricingData, getProductPricing, type ProductPricing } from "../../lib/pricing/data";
-import { priceFromSpec, type CartSpec } from "../../lib/pricing/spec";
+import { priceFromSpec, describeSpec, type CartSpec } from "../../lib/pricing/spec";
 
 // Создание заказа: сервер ПЕРЕСЧИТЫВАЕТ цену из спека (id) по актуальным данным
 // Directus (клиентским суммам не доверяем), затем создаёт order + order_items
@@ -76,6 +76,7 @@ export const POST: APIRoute = async ({ request }) => {
     orderItems.push({
       product_name: it.name ?? spec.productSlug,
       product_slug: spec.productSlug,
+      summary: describeSpec(spec, product),
       spec,
       qty,
       unit_price: qty > 0 ? result.total / qty : result.total,

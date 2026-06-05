@@ -56,6 +56,33 @@ export function buildConfigFromSpec(
   };
 }
 
+// Человекочитаемое описание спека (по id → имена) для менеджера в админке.
+export function describeSpec(spec: CartSpec, product: ProductPricing): string {
+  const parts: string[] = [];
+  parts.push(spec.form === "round" ? `⌀${spec.width} мм` : `${spec.width}×${spec.height} мм`);
+  parts.push(spec.sides);
+
+  const paper = product.papers.find((p) => p.id === spec.paperId);
+  if (paper) {
+    const col = paper.colors.find((c) => c.id === spec.paperColorId);
+    parts.push(col ? `${paper.name} (${col.name})` : paper.name);
+  }
+  if (spec.laminationId != null) {
+    const lam = product.finishing.find((f) => f.id === spec.laminationId);
+    if (lam) parts.push(lam.name);
+  }
+  if (spec.foil) {
+    const foil = product.finishing.find((f) => f.id === spec.foil!.id);
+    const fc = foil?.colors.find((c) => c.id === spec.foil!.colorId);
+    parts.push(foil ? (fc ? `${foil.name} (${fc.name})` : foil.name) : "Фольга");
+  }
+  for (const pick of spec.finishing) {
+    const o = product.finishing.find((f) => f.id === pick.id);
+    if (o) parts.push(pick.count > 1 ? `${o.name} ×${pick.count}` : o.name);
+  }
+  return parts.join(" · ");
+}
+
 // Авторитетная цена по спеку (для серверного пересчёта при заказе).
 export function priceFromSpec(
   spec: CartSpec,
