@@ -4,7 +4,7 @@
 import { computed, reactive, ref } from "vue";
 import { useStore } from "@nanostores/vue";
 import { cartItems, cartTotal, removeFromCart, clearCart } from "../stores/cart";
-import { DELIVERY_METHODS, PAYMENT_METHODS, findDelivery, deliveryCost } from "../lib/checkout";
+import { DELIVERY_METHODS, PAYMENT_METHODS, PVZ_NETWORKS, COURIER_SERVICES, findDelivery, deliveryCost, pvzLabel, courierLabel } from "../lib/checkout";
 import AddressField from "./AddressField.vue";
 
 const items = useStore(cartItems);
@@ -19,9 +19,36 @@ const delivery = reactive({
   entrance: "",
   floor: "",
   intercom: "",
-  pvzPref: "", // желаемый ПВЗ/постамат (текст)
+  courierService: "", // предпочтительная служба курьера (по желанию)
+  pvzNetwork: "yandex", // сеть ПВЗ/постаматов
+  pvzPref: "", // желаемый пункт (текст, по желанию)
 });
-const payment = reactive({ method: "on_receipt" });
+const payment = reactive({ method: "on_receipt", requisitesFileId: null as string | null, requisitesName: "" });
+const reqStatus = ref<"idle" | "uploading" | "error">("idle");
+const reqError = ref("");
+
+async function onRequisitesChange(e: Event) {
+  const input = e.target as HTMLInputElement;
+  const file = input.files?.[0];
+  if (!file) return;
+  reqStatus.value = "uploading";
+  reqError.value = "";
+  try {
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch("/api/upload-doc", { method: "POST", body: fd });
+    const data = await res.json();
+    if (!res.ok || !data.fileId) throw new Error(data.error || "Ошибка загрузки");
+    payment.requisitesFileId = data.fileId;
+    payment.requisitesName = data.fileName ?? file.name;
+    reqStatus.value = "idle";
+  } catch (err: any) {
+    reqStatus.value = "error";
+    reqError.value = err?.message ?? "Ошибка загрузки";
+  } finally {
+    input.value = "";
+  }
+}
 const contact = reactive({ name: "", phone: "", email: "", comment: "" });
 
 const submitting = ref(false);
@@ -38,14 +65,22 @@ function onAddressSelect(s: { value: string; data: Record<string, any> }) {
 function composeAddress() {
   const m = selectedDelivery.value;
   if (!m?.needsAddress) return "";
-  const parts = [delivery.address];
+  const parts: string[] = [];
   if (m.type === "courier") {
+    const svc = courierLabel(delivery.courierService);
+    if (svc) parts.push(svc);
+    parts.push(delivery.address);
     if (delivery.apartment) parts.push(`кв./офис ${delivery.apartment}`);
     if (delivery.entrance) parts.push(`подъезд ${delivery.entrance}`);
     if (delivery.floor) parts.push(`этаж ${delivery.floor}`);
     if (delivery.intercom) parts.push(`домофон ${delivery.intercom}`);
-  } else if (m.type === "pvz" && delivery.pvzPref) {
-    parts.push(`пункт: ${delivery.pvzPref}`);
+  } else if (m.type === "pvz") {
+    const net = pvzLabel(delivery.pvzNetwork);
+    if (net) parts.push(net);
+    parts.push(delivery.address);
+    if (delivery.pvzPref) parts.push(`пункт: ${delivery.pvzPref}`);
+  } else {
+    parts.push(delivery.address);
   }
   return parts.filter(Boolean).join(", ");
 }
@@ -76,13 +111,15 @@ async function submit() {
           address: composeAddress(),
           data: {
             ...(delivery.data ?? {}),
+            courier_service: delivery.courierService || null,
+            pvz_network: delivery.pvzNetwork || null,
             apartment: delivery.apartment || null,
             entrance: delivery.entrance || null,
             floor: delivery.floor || null,
             intercom: delivery.intercom || null,
           },
         },
-        payment: { method: payment.method },
+        payment: { method: payment.method, requisitesFileId: payment.requisitesFileId },
       }),
     });
     const data = await res.json();
@@ -145,8 +182,12 @@ async function submit() {
               <template v-if="m.note">· {{ m.note }}</template>
             </span>
           </label>
-          <!-- курьер: адрес + детали дома -->
+          <!-- курьер: служба (по желанию) + адрес + детали дома -->
           <div v-if="selectedDelivery?.type === 'courier'" class="mt-1 flex flex-col gap-2">
+            <select v-model="delivery.courierService" class="select select-sm w-full max-w-xs">
+              <option value="">Служба — без предпочтения</option>
+              <option v-for="c in COURIER_SERVICES" :key="c.id" :value="c.id">{{ c.label }}</option>
+            </select>
             <AddressField v-model="delivery.address" @select="onAddressSelect" />
             <div class="flex flex-wrap gap-2">
               <input v-model="delivery.apartment" class="input input-sm w-28" placeholder="Кв./офис" />
@@ -156,8 +197,11 @@ async function submit() {
             </div>
           </div>
 
-          <!-- ПВЗ/постамат: город + пожелание по пункту -->
+          <!-- ПВЗ/постамат: сеть + город + пожелание по пункту -->
           <div v-else-if="selectedDelivery?.type === 'pvz'" class="mt-1 flex flex-col gap-2">
+            <select v-model="delivery.pvzNetwork" class="select select-sm w-full max-w-xs">
+              <option v-for="n in PVZ_NETWORKS" :key="n.id" :value="n.id">{{ n.label }}</option>
+            </select>
             <AddressField v-model="delivery.address" @select="onAddressSelect" placeholder="Город или район" />
             <input v-model="delivery.pvzPref" class="input w-full" placeholder="Желаемый ПВЗ/постамат (адрес или сеть) — по желанию" />
             <span class="text-xs text-base-content/60">Менеджер подберёт ближайший пункт и сообщит стоимость.</span>
@@ -173,6 +217,22 @@ async function submit() {
             <span>{{ m.label }}</span>
             <span v-if="m.note" class="text-sm text-base-content/60">· {{ m.note }}</span>
           </label>
+
+          <!-- реквизиты для счёта (юрлицо) -->
+          <div v-if="payment.method === 'invoice'" class="mt-1 flex flex-col gap-1.5">
+            <div v-if="payment.requisitesName" class="flex items-center gap-3 text-sm">
+              <span>📎 {{ payment.requisitesName }}</span>
+              <button type="button" class="btn btn-ghost btn-xs" @click="payment.requisitesFileId = null; payment.requisitesName = ''">убрать</button>
+            </div>
+            <template v-else>
+              <input type="file" class="file-input file-input-sm w-full max-w-xs"
+                     accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx,.rtf,.odt"
+                     :disabled="reqStatus === 'uploading'" @change="onRequisitesChange" />
+              <span v-if="reqStatus === 'uploading'" class="text-sm opacity-70">Загрузка…</span>
+              <span v-if="reqStatus === 'error'" class="text-sm text-error">{{ reqError }}</span>
+              <span class="text-xs text-base-content/60">Реквизиты для счёта (PDF/скан/Word/Excel). Можно прислать позже.</span>
+            </template>
+          </div>
         </div>
 
         <!-- Контакты -->

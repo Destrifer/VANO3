@@ -25,7 +25,7 @@ type Body = {
     address?: string;
     data?: Record<string, unknown> | null;
   };
-  payment?: { method?: string };
+  payment?: { method?: string; requisitesFileId?: string | null };
 };
 
 function json(body: unknown, status = 200) {
@@ -124,6 +124,10 @@ export const POST: APIRoute = async ({ request }) => {
     delivery_data: delivery.data ?? null,
     payment_method: pMethod.id,
     payment_status: "unpaid",
+    requisites_file:
+      pMethod.id === "invoice" && typeof body.payment?.requisitesFileId === "string"
+        ? body.payment.requisitesFileId
+        : null,
     items: orderItems,
   };
 

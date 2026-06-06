@@ -27,6 +27,19 @@ export function findDelivery(id?: string): DeliveryMethod | undefined {
   return DELIVERY_METHODS.find((m) => m.id === id);
 }
 
+// Сети ПВЗ/постаматов и службы курьеров — выбор клиента, оформляет менеджер.
+export const PVZ_NETWORKS = [
+  { id: "yandex", label: "Яндекс ПВЗ" },
+  { id: "cdek", label: "СДЭК" },
+  { id: "5post", label: "5Post" },
+];
+export const COURIER_SERVICES = [
+  { id: "yandex_go", label: "Яндекс Go" },
+  { id: "dostavista", label: "Достависта" },
+];
+export const pvzLabel = (id?: string) => PVZ_NETWORKS.find((n) => n.id === id)?.label;
+export const courierLabel = (id?: string) => COURIER_SERVICES.find((c) => c.id === id)?.label;
+
 // null = «уточнит менеджер» (manual)
 export function deliveryCost(id?: string): number | null {
   const m = findDelivery(id);
