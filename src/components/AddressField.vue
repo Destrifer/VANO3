@@ -5,7 +5,7 @@ import { ref, watch } from "vue";
 
 type Suggestion = { value: string; data: Record<string, any> };
 
-const props = defineProps<{ modelValue?: string }>();
+const props = defineProps<{ modelValue?: string; placeholder?: string }>();
 const emit = defineEmits<{
   "update:modelValue": [value: string];
   select: [suggestion: Suggestion];
@@ -56,7 +56,7 @@ function onBlur() {
       @input="query = ($event.target as HTMLInputElement).value"
       @focus="open = list.length > 0"
       @blur="onBlur"
-      placeholder="Город, улица, дом"
+      :placeholder="placeholder ?? 'Город, улица, дом'"
       autocomplete="off"
     />
     <ul

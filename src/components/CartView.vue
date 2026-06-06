@@ -19,6 +19,7 @@ const delivery = reactive({
   entrance: "",
   floor: "",
   intercom: "",
+  pvzPref: "", // желаемый ПВЗ/постамат (текст)
 });
 const payment = reactive({ method: "on_receipt" });
 const contact = reactive({ name: "", phone: "", email: "", comment: "" });
@@ -35,12 +36,17 @@ function onAddressSelect(s: { value: string; data: Record<string, any> }) {
   delivery.data = s.data;
 }
 function composeAddress() {
-  if (!selectedDelivery.value?.needsAddress) return "";
+  const m = selectedDelivery.value;
+  if (!m?.needsAddress) return "";
   const parts = [delivery.address];
-  if (delivery.apartment) parts.push(`кв./офис ${delivery.apartment}`);
-  if (delivery.entrance) parts.push(`подъезд ${delivery.entrance}`);
-  if (delivery.floor) parts.push(`этаж ${delivery.floor}`);
-  if (delivery.intercom) parts.push(`домофон ${delivery.intercom}`);
+  if (m.type === "courier") {
+    if (delivery.apartment) parts.push(`кв./офис ${delivery.apartment}`);
+    if (delivery.entrance) parts.push(`подъезд ${delivery.entrance}`);
+    if (delivery.floor) parts.push(`этаж ${delivery.floor}`);
+    if (delivery.intercom) parts.push(`домофон ${delivery.intercom}`);
+  } else if (m.type === "pvz" && delivery.pvzPref) {
+    parts.push(`пункт: ${delivery.pvzPref}`);
+  }
   return parts.filter(Boolean).join(", ");
 }
 
@@ -139,7 +145,8 @@ async function submit() {
               <template v-if="m.note">· {{ m.note }}</template>
             </span>
           </label>
-          <div v-if="selectedDelivery?.needsAddress" class="mt-1 flex flex-col gap-2">
+          <!-- курьер: адрес + детали дома -->
+          <div v-if="selectedDelivery?.type === 'courier'" class="mt-1 flex flex-col gap-2">
             <AddressField v-model="delivery.address" @select="onAddressSelect" />
             <div class="flex flex-wrap gap-2">
               <input v-model="delivery.apartment" class="input input-sm w-28" placeholder="Кв./офис" />
@@ -147,6 +154,13 @@ async function submit() {
               <input v-model="delivery.floor" class="input input-sm w-24" placeholder="Этаж" />
               <input v-model="delivery.intercom" class="input input-sm w-32" placeholder="Домофон" />
             </div>
+          </div>
+
+          <!-- ПВЗ/постамат: город + пожелание по пункту -->
+          <div v-else-if="selectedDelivery?.type === 'pvz'" class="mt-1 flex flex-col gap-2">
+            <AddressField v-model="delivery.address" @select="onAddressSelect" placeholder="Город или район" />
+            <input v-model="delivery.pvzPref" class="input w-full" placeholder="Желаемый ПВЗ/постамат (адрес или сеть) — по желанию" />
+            <span class="text-xs text-base-content/60">Менеджер подберёт ближайший пункт и сообщит стоимость.</span>
           </div>
         </div>
 
