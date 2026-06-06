@@ -21,7 +21,6 @@ const delivery = reactive({
   intercom: "",
   courierService: "", // предпочтительная служба курьера (по желанию)
   pvzNetwork: "yandex", // сеть ПВЗ/постаматов
-  pvzPref: "", // желаемый пункт (текст, по желанию)
 });
 const payment = reactive({ method: "on_receipt", requisitesFileId: null as string | null, requisitesName: "" });
 const reqStatus = ref<"idle" | "uploading" | "error">("idle");
@@ -78,7 +77,6 @@ function composeAddress() {
     const net = pvzLabel(delivery.pvzNetwork);
     if (net) parts.push(net);
     parts.push(delivery.address);
-    if (delivery.pvzPref) parts.push(`пункт: ${delivery.pvzPref}`);
   } else {
     parts.push(delivery.address);
   }
@@ -197,14 +195,13 @@ async function submit() {
             </div>
           </div>
 
-          <!-- ПВЗ/постамат: сеть + город + пожелание по пункту -->
+          <!-- ПВЗ/постамат: сеть + адрес пункта -->
           <div v-else-if="selectedDelivery?.type === 'pvz'" class="mt-1 flex flex-col gap-2">
             <select v-model="delivery.pvzNetwork" class="select select-sm w-full max-w-xs">
               <option v-for="n in PVZ_NETWORKS" :key="n.id" :value="n.id">{{ n.label }}</option>
             </select>
-            <AddressField v-model="delivery.address" @select="onAddressSelect" placeholder="Город или район" />
-            <input v-model="delivery.pvzPref" class="input w-full" placeholder="Желаемый ПВЗ/постамат (адрес или сеть) — по желанию" />
-            <span class="text-xs text-base-content/60">Менеджер подберёт ближайший пункт и сообщит стоимость.</span>
+            <AddressField v-model="delivery.address" @select="onAddressSelect" placeholder="Адрес ПВЗ или постамата" />
+            <span class="text-xs text-base-content/60">Укажите адрес пункта выдачи. Стоимость уточнит менеджер.</span>
           </div>
         </div>
 

@@ -2,7 +2,7 @@
 // Общий модуль: клиент показывает, сервер считает авторитетно (как ценовой движок).
 // Позже способы доставки переедут в Directus (delivery_methods), API — per-provider.
 
-export type DeliveryMethodId = "pickup" | "courier_msk" | "courier_rf" | "pvz";
+export type DeliveryMethodId = "pickup" | "courier_msk" | "pvz";
 // type определяет, какие поля показать: pickup — никаких; courier — адрес+детали;
 // pvz — город + пожелание по пункту. Все способы manual (везёт/оформляет менеджер).
 export type DeliveryType = "pickup" | "courier" | "pvz";
@@ -19,8 +19,7 @@ export type DeliveryMethod = {
 export const DELIVERY_METHODS: DeliveryMethod[] = [
   { id: "pickup", type: "pickup", label: "Самовывоз", needsAddress: false, costType: "free", cost: 0, note: "Москва, м. Бауманская" },
   { id: "courier_msk", type: "courier", label: "Курьер по Москве", needsAddress: true, costType: "fixed", cost: 400 },
-  { id: "courier_rf", type: "courier", label: "Курьер по России", needsAddress: true, costType: "manual", cost: 0, note: "стоимость уточнит менеджер" },
-  { id: "pvz", type: "pvz", label: "ПВЗ или постамат", needsAddress: true, costType: "manual", cost: 0, note: "менеджер подберёт ближайший пункт" },
+  { id: "pvz", type: "pvz", label: "ПВЗ или постамат", needsAddress: true, costType: "manual", cost: 0, note: "стоимость уточнит менеджер" },
 ];
 
 export function findDelivery(id?: string): DeliveryMethod | undefined {
