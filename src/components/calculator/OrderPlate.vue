@@ -9,20 +9,27 @@ const props = defineProps<{ name: string; slug: string }>();
 const calc = inject(calcKey)!;
 const added = ref(false);
 
-// читаемое описание позиции (из имён — для показа в корзине)
-function buildSummary() {
+// параметры позиции таблицей (из имён — для показа в корзине)
+function buildDetails() {
   const c = calc;
-  const dims = c.shape === "round" ? `⌀${c.dims.w} мм` : `${c.dims.w}×${c.dims.h} мм`;
-  const parts: (string | undefined)[] = [dims, c.sides, c.currentPaper?.name];
-  const col = c.colors[c.selectedColorIndex];
-  if (col) parts.push(col.name);
-  if (c.laminationIndex >= 0) parts.push(c.laminationOptions[c.laminationIndex]?.name);
+  const d: { label: string; value: string }[] = [];
+  d.push({ label: "Размер", value: c.shape === "round" ? `⌀${c.dims.w} мм` : `${c.dims.w}×${c.dims.h} мм` });
+  d.push({ label: "Печать", value: c.sides });
+  const paper = c.currentPaper?.name;
+  const col = c.colors[c.selectedColorIndex]?.name;
+  if (paper) d.push({ label: "Материал", value: col ? `${paper} (${col})` : paper });
+  if (c.laminationIndex >= 0) {
+    const lam = c.laminationOptions[c.laminationIndex]?.name;
+    if (lam) d.push({ label: "Ламинация", value: lam });
+  }
   if (c.foilOn && c.foilOption) {
     const fc = c.foilOption.colors[c.foilColorIndex]?.name;
-    parts.push(`Фольга${fc ? " " + fc : ""}`);
+    d.push({ label: "Фольга", value: fc ?? "да" });
   }
-  for (const { o, i } of c.otherOptions) if (c.fin[i].checked) parts.push(o.name);
-  return parts.filter(Boolean).join(" · ");
+  const others = c.otherOptions.filter((x) => c.fin[x.i].checked).map((x) => x.o.name);
+  if (others.length) d.push({ label: "Обработка", value: others.join(", ") });
+  d.push({ label: "Тираж", value: `${c.totalQty} шт` });
+  return d;
 }
 
 function add() {
@@ -31,7 +38,8 @@ function add() {
     slug: props.slug,
     name: props.name,
     spec: { productSlug: props.slug, ...calc.currentSpec() },
-    summary: buildSummary(),
+    details: buildDetails(),
+    thumb: calc.captureThumb(),
     qty: calc.totalQty,
     unitPrice: calc.result.total / calc.totalQty,
     total: calc.result.total,

@@ -133,6 +133,13 @@ Expected features:
 - UI library components may be used for complex controls, but the public website should remain visually quiet and monochrome unless a specific use case needs color.
 - Avoid heavy gradients, decorative backgrounds, glossy effects, and colorful marketing-style layouts.
 
+## Fluid Sizing Policy (full-width + 4K)
+
+- The layout is intentionally full-width (no max-width cap). Legibility across phone → 4K comes from a **fluid root font-size** in `src/assets/app.css`: `html { font-size: clamp(1rem, 0.96rem + 0.17vw, 1.375rem); }`. Root grows ~+37% by ~3840px.
+- Therefore **size things in `rem`** (Tailwind `text-*`, `w-*`, `h-*`, `gap-*`, `p-*` are rem-based) so they scale with the root automatically on big screens. Avoid `px` for type/spacing that should scale.
+- On **mobile do NOT just shrink** — the base size must stay readable. Adapt by **restructuring blocks** (stack columns, reflow) via responsive variants (`flex-col sm:flex-row`, grid changes), not by lowering font size.
+- Pick comfortably large base sizes for key UI (cards, prices, titles); the fluid root makes them larger still on 4K.
+
 ## Styling Policy (daisyUI-first)
 
 - Visual styling, effects, and interactive states (hover/active/focus) come from the daisyUI theme and components — not ad-hoc CSS — so the UI stays in one consistent style and avoids hand-rolled state bugs.
@@ -383,11 +390,12 @@ Goal: turn the current technical prototype into a coherent first public site ske
 - Visual design constructor (in-browser editor) — DEFERRED to a future track, not current scope. If built: use **vue-konva (MIT)** as a **template-based editor on a dedicated page** (not a popup), with **server-side export to print-ready PDF** (bleed/CMYK/embedded fonts) sharing the preflight node. The editor engine + template system are buildable in-house; the **template library, fonts and stock images are curated, properly-licensed content** stored in Directus (`templates`: preview + Konva JSON + editable-field map + product link). **Polotno rejected**: React stack mismatch (project is Vue/Astro), cloud-dependent templates/photos likely geo-blocked from RF and unpayable, commercial license. Decision recorded so it is not re-litigated.
 - Implemented cart→order flow (Этап 2): client cart (nanostores + localStorage) → `/api/upload` (signature validation + Tier 1 preflight) → `/api/order` (server recompute via `priceFromSpec`, nested create of `order` + `order_items` with the least-privilege server token). Order = заявка (payment deferred). Directus collections `orders`/`order_items` live in group `sales`; admin shows readable display templates, `spec` hidden.
 - Implemented preflight Tier 1 (`src/lib/preflight.ts`, pdf-lib + sharp): PDF — pages vs sides, size + bleed (MediaBox); raster — dpi vs ordered size, CMYK/RGB; traffic light green/yellow/red stored on `order_items.preflight_status` + `preflight_report`. Accepted formats: PDF/AI/EPS/PSD/CDR/SVG/FIG/JPG/PNG/TIFF — only PDF/raster are auto-checked; sources are accepted and marked «проверит специалист».
+- Designed (not yet built) the delivery & payment track — spec in `06-delivery-payment.md`. Decisions: payment = online prepay (reserved «скоро»), on-receipt, B2B invoice; gateway TBD (ЮKassa/Тинькофф). Delivery = provider-agnostic adapter model + data config in Directus; start contract-free via `manual` + ПВЗ `widget` (many providers, fulfilled by manager), add per-provider `api` later. Exclude Почта России / Деловые Линии (different format). Server is authoritative for delivery cost and payment status.
 
 ## Tech Debt And Open Questions
 
 - Choose exact package manager before project creation: pnpm is the current default.
-- Decide whether online payment is needed in the first production version.
+- Online payment: decided to include eventually (reserved «скоро» in UI); first launch uses on-receipt + B2B invoice. Pick the gateway (ЮKassa/Тинькофф) and build the create-payment + webhook flow in a later phase (see doc 06).
 - Decide whether SEO targets one city/region or multiple city landing pages.
 - Decide how complex pricing rules should be: fixed prices, option matrix, formula-based calculator, or hybrid.
 - Research whether to build a small internal pricing rule engine or adopt an existing rules/formula library.

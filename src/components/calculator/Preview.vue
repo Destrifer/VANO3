@@ -92,8 +92,26 @@ function draw() {
   ctx.restore();
 }
 
+// Миниатюра текущего превью (даунскейл ~240px) для позиции корзины.
+function captureThumb(): string | null {
+  const cv = canvasRef.value;
+  if (!cv || !cv.width) return null;
+  const tw = 240;
+  const th = Math.round((tw * cv.height) / cv.width);
+  const off = document.createElement("canvas");
+  off.width = tw;
+  off.height = th;
+  const c = off.getContext("2d");
+  if (!c) return null;
+  c.fillStyle = "#ffffff"; // JPEG без альфы → прозрачное стало бы чёрным; заливаем белым
+  c.fillRect(0, 0, tw, th);
+  c.drawImage(cv, 0, 0, tw, th);
+  return off.toDataURL("image/jpeg", 0.85);
+}
+
 onMounted(() => {
   requestAnimationFrame(draw);
+  calc.setThumbProvider(captureThumb);
   ro = new ResizeObserver(() => draw());
   if (canvasRef.value?.parentElement) ro.observe(canvasRef.value.parentElement);
 });

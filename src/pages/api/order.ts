@@ -1,6 +1,7 @@
 import type { APIRoute } from "astro";
 import { getPricingData, getProductPricing, type ProductPricing } from "../../lib/pricing/data";
 import { priceFromSpec, describeSpec, type CartSpec } from "../../lib/pricing/spec";
+import { findDelivery, deliveryCost, findPayment } from "../../lib/checkout";
 
 // Создание заказа: сервер ПЕРЕСЧИТЫВАЕТ цену из спека (id) по актуальным данным
 // Directus (клиентским суммам не доверяем), затем создаёт order + order_items
@@ -19,6 +20,12 @@ type IncomingItem = {
 type Body = {
   items?: IncomingItem[];
   customer?: { name?: string; phone?: string; email?: string; comment?: string };
+  delivery?: {
+    method?: string;
+    address?: string;
+    data?: Record<string, unknown> | null;
+  };
+  payment?: { method?: string; requisitesFileId?: string | null };
 };
 
 function json(body: unknown, status = 200) {
@@ -51,6 +58,19 @@ export const POST: APIRoute = async ({ request }) => {
   if (!customer.name?.trim() || !customer.phone?.trim()) {
     return json({ error: "Укажите имя и телефон" }, 400);
   }
+
+  // Доставка и оплата (валидация + авторитетная стоимость на сервере).
+  const delivery = body.delivery ?? {};
+  const dMethod = findDelivery(delivery.method);
+  if (!dMethod) return json({ error: "Выберите способ доставки" }, 400);
+  if (dMethod.needsAddress && !delivery.address?.trim()) {
+    return json({ error: "Укажите адрес доставки" }, 400);
+  }
+  const delivery_cost = deliveryCost(dMethod.id) ?? 0; // manual → 0, уточнит менеджер
+
+  const pMethod = findPayment(body.payment?.method);
+  if (!pMethod) return json({ error: "Выберите способ оплаты" }, 400);
+  if (!pMethod.available) return json({ error: "Этот способ оплаты пока недоступен" }, 400);
 
   const pricing = await getPricingData();
   const productCache = new Map<string, ProductPricing | null>();
@@ -97,7 +117,17 @@ export const POST: APIRoute = async ({ request }) => {
     comment: customer.comment?.trim() || null,
     subtotal,
     discount_total: 0,
-    total: subtotal,
+    total: subtotal + delivery_cost,
+    delivery_method: dMethod.id,
+    delivery_cost,
+    delivery_address: delivery.address?.trim() || dMethod.note || null,
+    delivery_data: delivery.data ?? null,
+    payment_method: pMethod.id,
+    payment_status: "unpaid",
+    requisites_file:
+      pMethod.id === "invoice" && typeof body.payment?.requisitesFileId === "string"
+        ? body.payment.requisitesFileId
+        : null,
     items: orderItems,
   };
 
@@ -111,5 +141,5 @@ export const POST: APIRoute = async ({ request }) => {
   });
   if (!res.ok) return json({ error: "Не удалось создать заказ" }, 502);
 
-  return json({ number: payload.number, total: subtotal });
+  return json({ number: payload.number, total: payload.total });
 };
