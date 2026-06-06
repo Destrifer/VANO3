@@ -147,45 +147,45 @@ async function submit() {
     <!-- Левая колонка: только товары -->
     <div class="flex flex-col gap-3">
       <div v-for="it in items" :key="it.id" class="card card-border border-base-300">
-        <div class="card-body flex-row gap-4 p-4">
+        <div class="card-body flex flex-col gap-4 p-4 sm:flex-row sm:gap-6 sm:p-6">
           <!-- миниатюра превью -->
           <img
             v-if="it.thumb"
             :src="it.thumb"
             alt=""
-            class="h-20 w-28 shrink-0 rounded-box border border-base-300 object-cover"
+            class="h-32 w-48 shrink-0 self-start rounded-box border border-base-300 object-cover"
           />
           <div
             v-else
-            class="grid h-20 w-28 shrink-0 place-items-center rounded-box border border-base-300 bg-base-200 text-xs text-base-content/40"
+            class="grid h-32 w-48 shrink-0 self-start place-items-center rounded-box border border-base-300 bg-base-200 text-sm text-base-content/40"
           >
             нет превью
           </div>
 
           <!-- название + параметры таблицей -->
-          <div class="flex min-w-0 flex-1 flex-col gap-1.5">
-            <a :href="`/${it.slug}`" class="link link-hover text-base font-semibold">{{ it.name }}</a>
-            <table class="text-sm">
+          <div class="flex min-w-0 flex-1 flex-col gap-2">
+            <a :href="`/${it.slug}`" class="link link-hover text-xl font-bold sm:text-2xl">{{ it.name }}</a>
+            <table class="text-base">
               <tbody>
                 <tr v-for="(d, i) in it.details" :key="i" class="align-top">
-                  <td class="py-0.5 pr-3 text-base-content/55 whitespace-nowrap">{{ d.label }}</td>
-                  <td class="py-0.5">{{ d.value }}</td>
+                  <td class="py-1 pr-5 text-base-content/55 whitespace-nowrap">{{ d.label }}</td>
+                  <td class="py-1 font-medium">{{ d.value }}</td>
                 </tr>
               </tbody>
             </table>
-            <span v-if="it.artworkId" class="text-xs text-base-content/60">
+            <span v-if="it.artworkId" class="text-sm text-base-content/60">
               📎 макет
               <span v-if="it.preflight">· {{ it.preflight.status === "green" ? "🟢" : it.preflight.status === "yellow" ? "🟡" : "🔴" }}</span>
             </span>
           </div>
 
-          <!-- цена + удалить -->
-          <div class="flex shrink-0 flex-col items-end justify-between">
+          <!-- цена + удалить: на мобайле — ряд снизу, на десктопе — колонка справа -->
+          <div class="flex shrink-0 flex-row items-center justify-between gap-4 border-t border-base-200 pt-3 sm:flex-col sm:items-end sm:justify-between sm:border-0 sm:pt-0">
             <div class="text-right">
-              <div class="text-xl font-bold leading-none">{{ money(it.total) }} ₽</div>
-              <div class="mt-1 text-xs text-base-content/55">{{ it.unitPrice.toFixed(2) }} ₽/шт</div>
+              <div class="text-2xl font-bold leading-none sm:text-3xl">{{ money(it.total) }} ₽</div>
+              <div class="mt-1.5 text-sm text-base-content/55">{{ it.unitPrice.toFixed(2) }} ₽/шт</div>
             </div>
-            <button class="btn btn-ghost btn-xs" @click="removeFromCart(it.id)">Удалить</button>
+            <button class="btn btn-ghost btn-sm" @click="removeFromCart(it.id)">Удалить</button>
           </div>
         </div>
       </div>
@@ -197,7 +197,7 @@ async function submit() {
       <div class="card-body gap-5">
         <!-- Доставка -->
         <div class="flex flex-col gap-2">
-          <span class="text-sm font-semibold">Доставка</span>
+          <span class="text-base font-semibold">Доставка</span>
           <label v-for="m in DELIVERY_METHODS" :key="m.id" class="flex items-center gap-2">
             <input type="radio" class="radio radio-sm" :value="m.id" v-model="delivery.method" />
             <span>{{ m.label }}</span>
@@ -233,7 +233,7 @@ async function submit() {
 
         <!-- Оплата -->
         <div class="flex flex-col gap-2">
-          <span class="text-sm font-semibold">Оплата</span>
+          <span class="text-base font-semibold">Оплата</span>
           <label v-for="m in PAYMENT_METHODS" :key="m.id" class="flex items-center gap-2"
                  :class="{ 'opacity-50': !m.available }">
             <input type="radio" class="radio radio-sm" :value="m.id" v-model="payment.method" :disabled="!m.available" />
@@ -260,7 +260,7 @@ async function submit() {
 
         <!-- Контакты -->
         <div class="flex flex-col gap-2">
-          <span class="text-sm font-semibold">Контакты</span>
+          <span class="text-base font-semibold">Контакты</span>
           <input v-model="contact.name" class="input w-full" placeholder="Имя*" />
           <input v-model="contact.phone" class="input w-full" placeholder="Телефон*" inputmode="tel" />
           <input v-model="contact.email" class="input w-full" placeholder="Email (по желанию)" inputmode="email" />
@@ -278,9 +278,9 @@ async function submit() {
           </div>
           <div class="flex items-baseline justify-between">
             <span class="text-base-content/70">Итого</span>
-            <span class="text-2xl font-bold">{{ money(grandTotal) }} ₽</span>
+            <span class="text-3xl font-bold">{{ money(grandTotal) }} ₽</span>
           </div>
-          <button class="btn btn-primary btn-block" :disabled="submitting" @click="submit">
+          <button class="btn btn-primary btn-lg btn-block" :disabled="submitting" @click="submit">
             {{ submitting ? "Оформляем…" : "Оформить заказ" }}
           </button>
           <p v-if="error" class="text-sm text-error">{{ error }}</p>

@@ -133,6 +133,13 @@ Expected features:
 - UI library components may be used for complex controls, but the public website should remain visually quiet and monochrome unless a specific use case needs color.
 - Avoid heavy gradients, decorative backgrounds, glossy effects, and colorful marketing-style layouts.
 
+## Fluid Sizing Policy (full-width + 4K)
+
+- The layout is intentionally full-width (no max-width cap). Legibility across phone → 4K comes from a **fluid root font-size** in `src/assets/app.css`: `html { font-size: clamp(1rem, 0.96rem + 0.17vw, 1.375rem); }`. Root grows ~+37% by ~3840px.
+- Therefore **size things in `rem`** (Tailwind `text-*`, `w-*`, `h-*`, `gap-*`, `p-*` are rem-based) so they scale with the root automatically on big screens. Avoid `px` for type/spacing that should scale.
+- On **mobile do NOT just shrink** — the base size must stay readable. Adapt by **restructuring blocks** (stack columns, reflow) via responsive variants (`flex-col sm:flex-row`, grid changes), not by lowering font size.
+- Pick comfortably large base sizes for key UI (cards, prices, titles); the fluid root makes them larger still on 4K.
+
 ## Styling Policy (daisyUI-first)
 
 - Visual styling, effects, and interactive states (hover/active/focus) come from the daisyUI theme and components — not ad-hoc CSS — so the UI stays in one consistent style and avoids hand-rolled state bugs.
