@@ -10,7 +10,9 @@ import "./gallery-lightbox.css";
 
 const lightbox = new PhotoSwipeLightbox({
   gallery: ".gallery", // каждая .gallery — своя группа листания (важно для /works)
-  children: "a.gallery__link",
+  // :not([hidden]) — чтобы отфильтрованные на /works карточки не попадали в
+  // листание лайтбокса (фильтр прячет figure через [hidden]).
+  children: ".gallery__item:not([hidden]) a.gallery__link",
   pswpModule: () => import("photoswipe"), // ядро только при первом открытии
   // PhotoSwipe сам подхватит data-pswp-srcset (наш avif) и data-pswp-width/height
   // Отступы сцены вокруг картинки: на мобиле скромнее, на десктопе просторнее,

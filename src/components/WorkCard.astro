@@ -1,0 +1,74 @@
+---
+import { Picture, getImage } from "astro:assets";
+import type { Work } from "../lib/works";
+
+// Одна карточка работы: миниатюра <picture> (AVIF/WebP+srcset) в <a.gallery__link>
+// для PhotoSwipe. data-атрибуты (products/tags/search) — для клиентского фильтра
+// на /works (на карточке продукта не мешают). Полноразмер для лайтбокса —
+// предгенерённый AVIF (Directus публичные трансформы → 403), оригинал — фоллбэк.
+interface Props {
+  work: Work;
+}
+const { work: w } = Astro.props;
+
+const LIGHTBOX_WIDTHS = [1280, 2000];
+async function lightboxSrcset(): Promise<string> {
+  if (!w.image.width || !w.image.height) return "";
+  const ratio = w.image.height / w.image.width;
+  const widths = [...new Set(LIGHTBOX_WIDTHS.map((t) => Math.min(t, w.image.width!)))];
+  const parts = await Promise.all(
+    widths.map(async (width) => {
+      const img = await getImage({
+        src: w.image.url,
+        width,
+        height: Math.round(width * ratio),
+        format: "avif",
+        quality: 60,
+      });
+      return `${img.src} ${width}w`;
+    }),
+  );
+  return parts.join(", ");
+}
+const srcset = await lightboxSrcset();
+
+const caption = w.description ?? w.title;
+const productSlugs = w.products.map((p) => p.slug).join(" ");
+const tagSlugs = w.tags.map((t) => t.slug).join(" ");
+const search = [w.title, w.description, ...w.products.map((p) => p.name), ...w.tags.map((t) => t.name)]
+  .filter(Boolean)
+  .join(" ")
+  .toLowerCase();
+---
+
+<figure
+  class="gallery__item m-0"
+  data-products={productSlugs}
+  data-tags={tagSlugs}
+  data-search={search}
+>
+  <a
+    href={w.image.url}
+    class="gallery__link block aspect-[3/2] overflow-hidden rounded-lg border border-base-300 bg-base-200"
+    data-pswp-width={w.image.width ?? undefined}
+    data-pswp-height={w.image.height ?? undefined}
+    data-pswp-srcset={srcset}
+    data-caption={caption}
+    aria-label={w.image.alt}
+  >
+    <Picture
+      src={w.image.url}
+      {...(w.image.width && w.image.height
+        ? { width: w.image.width, height: w.image.height }
+        : { inferSize: true })}
+      widths={[150, 300, 450, 600]}
+      sizes="(max-width: 768px) 45vw, 300px"
+      formats={["avif", "webp"]}
+      fallbackFormat="avif"
+      alt={w.image.alt}
+      class="h-full w-full object-cover"
+      loading="lazy"
+    />
+  </a>
+  {caption && <figcaption class="mt-1.5 text-sm text-base-content/70">{caption}</figcaption>}
+</figure>

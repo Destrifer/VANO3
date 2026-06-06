@@ -1,0 +1,162 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import WorkCard from "../components/WorkCard.astro";
+import { getWorks } from "../lib/works";
+
+// Страница «Примеры работ»: вся сетка статична (SSG) и краулится; фильтр/поиск —
+// на клиенте (прячут figure[hidden], что заодно исключает их из листания
+// лайтбокса). PhotoSwipe навешивается из BaseLayout на .gallery.
+const works = await getWorks();
+
+// Фасеты — только те продукты/теги, что реально встречаются в работах.
+const productMap = new Map<string, string>();
+const tagMap = new Map<string, string>();
+for (const w of works) {
+  for (const p of w.products) productMap.set(p.slug, p.name);
+  for (const t of w.tags) tagMap.set(t.slug, t.name);
+}
+const products = [...productMap].map(([slug, name]) => ({ slug, name }));
+const tags = [...tagMap].map(([slug, name]) => ({ slug, name }));
+
+const title = "Примеры работ — Printmos";
+const description =
+  "Портфолио типографии Printmos: визитки, листовки, наклейки и другая печатная продукция. Фильтр по продуктам и видам отделки.";
+---
+
+<BaseLayout title={title} description={description}>
+  <p class="stub-kicker">Портфолио</p>
+  <h1 class="stub-title">Примеры работ</h1>
+  <p class="mb-6 max-w-prose text-base-content/80">
+    Реальные работы нашей типографии. Отфильтруйте по продукту или виду отделки,
+    либо найдите нужное через поиск. Нажмите на фото — откроется в полном размере.
+  </p>
+
+  {
+    works.length === 0 ? (
+      <p class="text-base-content/70">Скоро здесь появятся примеры работ.</p>
+    ) : (
+      <>
+        <div class="mb-6 flex flex-col gap-4">
+          {products.length > 1 && (
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="text-sm font-semibold text-base-content/60">Продукт:</span>
+              <form class="filter" id="pm-flt-product">
+                <input class="btn btn-sm" type="reset" value="Все" />
+                {products.map((p) => (
+                  <input
+                    class="btn btn-sm"
+                    type="radio"
+                    name="pm_product"
+                    aria-label={p.name}
+                    value={p.slug}
+                  />
+                ))}
+              </form>
+            </div>
+          )}
+
+          {tags.length > 0 && (
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="text-sm font-semibold text-base-content/60">Отделка:</span>
+              <form class="filter" id="pm-flt-tag">
+                <input class="btn btn-sm" type="reset" value="Все" />
+                {tags.map((t) => (
+                  <input
+                    class="btn btn-sm"
+                    type="radio"
+                    name="pm_tag"
+                    aria-label={t.name}
+                    value={t.slug}
+                  />
+                ))}
+              </form>
+            </div>
+          )}
+
+          <input
+            type="search"
+            id="pm-search"
+            class="input input-sm w-full max-w-xs"
+            placeholder="Поиск по работам…"
+            aria-label="Поиск по работам"
+          />
+        </div>
+
+        <div class="gallery">
+          <div id="pm-works" class="works-grid">
+            {works.map((w) => (
+              <WorkCard work={w} />
+            ))}
+          </div>
+        </div>
+        <p id="pm-empty" hidden class="mt-6 text-base-content/70">
+          Ничего не найдено. Сбросьте фильтры или измените запрос.
+        </p>
+      </>
+    )
+  }
+</BaseLayout>
+
+<script>
+  // Клиентский фильтр + поиск. Источник истины — data-атрибуты карточек
+  // (products/tags/search), сами карточки статичны (SEO). Прячем через [hidden].
+  const grid = document.getElementById("pm-works");
+  if (grid) {
+    const figures = [...grid.querySelectorAll<HTMLElement>(".gallery__item")];
+    const empty = document.getElementById("pm-empty");
+    const state = { product: "", tag: "", q: "" };
+
+    const apply = () => {
+      let visible = 0;
+      for (const f of figures) {
+        const okP = !state.product || (f.dataset.products || "").split(" ").includes(state.product);
+        const okT = !state.tag || (f.dataset.tags || "").split(" ").includes(state.tag);
+        const okQ = !state.q || (f.dataset.search || "").includes(state.q);
+        const show = okP && okT && okQ;
+        f.hidden = !show;
+        if (show) visible++;
+      }
+      if (empty) empty.hidden = visible > 0;
+    };
+
+    const pf = document.getElementById("pm-flt-product");
+    pf?.addEventListener("change", (e) => {
+      const t = e.target as HTMLInputElement;
+      if (t.name === "pm_product") {
+        state.product = t.value;
+        apply();
+      }
+    });
+    pf?.addEventListener("reset", () => {
+      state.product = "";
+      apply();
+    });
+
+    const tf = document.getElementById("pm-flt-tag");
+    tf?.addEventListener("change", (e) => {
+      const t = e.target as HTMLInputElement;
+      if (t.name === "pm_tag") {
+        state.tag = t.value;
+        apply();
+      }
+    });
+    tf?.addEventListener("reset", () => {
+      state.tag = "";
+      apply();
+    });
+
+    const search = document.getElementById("pm-search") as HTMLInputElement | null;
+    search?.addEventListener("input", () => {
+      state.q = search.value.trim().toLowerCase();
+      apply();
+    });
+  }
+</script>
+
+<style>
+  .works-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  }
+</style>

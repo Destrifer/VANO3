@@ -3,8 +3,10 @@ import { directusFetch, assetUrl } from "./directus";
 // «Работа» — самостоятельная единица контента (фото готового изделия), а не
 // файл, прицепленный к продукту. Один источник для:
 //   • галереи на карточке продукта  → getWorks({ product: slug })
-//   • будущей страницы «Примеры работ» /works → getWorks() + клиентский фильтр
-// Модель в Directus: works (M2M → products, позже M2M → work_tags).
+//   • страницы «Примеры работ» /works → getWorks() + клиентский фильтр/поиск
+// Модель в Directus: works (M2M → products, M2M → work_tags).
+
+export type WorkRef = { slug: string; name: string };
 
 export type WorkImage = {
   url: string; // полный URL оригинала в Directus (astro:assets оптимизирует на сборке)
@@ -20,7 +22,8 @@ export type Work = {
   credit: string | null; // авторство → ImageObject.creditText (опц.)
   copyright: string | null; // → ImageObject.copyrightNotice (опц.)
   image: WorkImage;
-  productSlugs: string[];
+  products: WorkRef[]; // к каким продуктам относится (фасет фильтра)
+  tags: WorkRef[]; // теги/фасеты (материал, постобработка, форма…)
 };
 
 type DirectusList<T> = { data: T[] };
@@ -32,7 +35,8 @@ type WorkRow = {
   credit: string | null;
   copyright: string | null;
   image: { id: string; width: number | null; height: number | null; title: string | null } | null;
-  products: { products_id: { slug: string } | null }[] | null;
+  products: { products_id: { slug: string; name: string } | null }[] | null;
+  tags: { work_tags_id: { slug: string; name: string } | null }[] | null;
 };
 
 const FIELDS = [
@@ -46,7 +50,20 @@ const FIELDS = [
   "image.height",
   "image.title",
   "products.products_id.slug",
+  "products.products_id.name",
+  "tags.work_tags_id.slug",
+  "tags.work_tags_id.name",
 ].join(",");
+
+function refs(
+  rows: ({ products_id?: WorkRef | null } | { work_tags_id?: WorkRef | null })[] | null,
+  key: "products_id" | "work_tags_id",
+): WorkRef[] {
+  return (rows ?? [])
+    .map((r) => (r as Record<string, WorkRef | null | undefined>)[key])
+    .filter((x): x is WorkRef => !!x?.slug)
+    .map((x) => ({ slug: x.slug, name: x.name }));
+}
 
 export async function getWorks(
   opts: { product?: string; limit?: number } = {},
@@ -86,8 +103,7 @@ export async function getWorks(
         height: r.image.height ?? null,
         alt: r.title?.trim() || r.image.title?.trim() || "Пример работы",
       },
-      productSlugs: (r.products ?? [])
-        .map((p) => p.products_id?.slug)
-        .filter((s): s is string => !!s),
+      products: refs(r.products, "products_id"),
+      tags: refs(r.tags, "work_tags_id"),
     }));
 }
