@@ -148,23 +148,23 @@ async function submit() {
     <div class="flex flex-col gap-3">
       <div v-for="it in items" :key="it.id" class="card card-border border-base-300">
         <div class="card-body flex flex-col gap-4 p-4 sm:flex-row sm:gap-6 sm:p-6">
-          <!-- миниатюра превью -->
+          <!-- миниатюра превью: на мобайле широкая 3:2, на десктопе во всю высоту карточки -->
           <img
             v-if="it.thumb"
             :src="it.thumb"
             alt=""
-            class="h-32 w-48 shrink-0 self-start rounded-box border border-base-300 object-cover"
+            class="w-full aspect-[3/2] shrink-0 rounded-box border border-base-300 object-cover sm:aspect-auto sm:h-auto sm:w-64 sm:self-stretch"
           />
           <div
             v-else
-            class="grid h-32 w-48 shrink-0 self-start place-items-center rounded-box border border-base-300 bg-base-200 text-sm text-base-content/40"
+            class="grid w-full aspect-[3/2] shrink-0 place-items-center rounded-box border border-base-300 bg-base-200 text-sm text-base-content/40 sm:aspect-auto sm:h-auto sm:w-64 sm:self-stretch"
           >
             нет превью
           </div>
 
           <!-- название + параметры таблицей -->
           <div class="flex min-w-0 flex-1 flex-col gap-2">
-            <a :href="`/${it.slug}`" class="link link-hover text-xl font-bold sm:text-2xl">{{ it.name }}</a>
+            <a :href="`/${it.slug}`" class="link link-hover text-2xl font-bold sm:text-3xl">{{ it.name }}</a>
             <table class="text-base">
               <tbody>
                 <tr v-for="(d, i) in it.details" :key="i" class="align-top">
