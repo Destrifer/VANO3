@@ -1,0 +1,110 @@
+---
+import { Picture, getImage } from "astro:assets";
+import type { Work } from "../lib/works";
+
+// Статичная галерея (не Vue-остров): миниатюры — оптимизированный <picture>
+// (AVIF/WebP + srcset, выбор размера/плотности браузером по sizes+DPR).
+// Лайтбокс — PhotoSwipe v5 (см. scripts/gallery-lightbox.ts), подключается в
+// простое из BaseLayout. Каждая миниатюра — <a.gallery__link> с data-pswp-*:
+//   href            — оригинал (фоллбэк без JS и для браузеров без AVIF),
+//   data-pswp-srcset — наш AVIF (PhotoSwipe сам выберет по вьюпорту),
+//   data-pswp-width/height — размеры (нет скачка между кадрами),
+//   data-caption    — подпись.
+//
+// Полноразмер для лайтбокса оптимизирует Astro (Directus публичные трансформации
+// запрещает → 403): предгенерим AVIF (до 2000, не выше оригинала).
+interface Props {
+  works: Work[];
+  title?: string;
+}
+const { works, title = "Примеры работ" } = Astro.props;
+
+const LIGHTBOX_WIDTHS = [1280, 2000];
+
+async function lightboxSrcset(w: Work): Promise<string> {
+  if (!w.image.width || !w.image.height) return ""; // нет размеров → только фоллбэк
+  const ratio = w.image.height / w.image.width;
+  const widths = [...new Set(LIGHTBOX_WIDTHS.map((t) => Math.min(t, w.image.width!)))];
+  const parts = await Promise.all(
+    widths.map(async (width) => {
+      const img = await getImage({
+        src: w.image.url,
+        width,
+        height: Math.round(width * ratio),
+        format: "avif",
+        quality: 60,
+      });
+      return `${img.src} ${width}w`;
+    }),
+  );
+  return parts.join(", ");
+}
+
+const lightbox = new Map<number, string>();
+for (const w of works) lightbox.set(w.id, await lightboxSrcset(w));
+---
+
+{
+  works.length > 0 && (
+    <section class="gallery">
+      <h2 class="mb-3 text-lg font-bold">{title}</h2>
+
+      <div class="gallery__grid">
+        {works.map((w) => (
+          <figure class="m-0">
+            <a
+              href={w.image.url}
+              class="gallery__link block aspect-[3/2] overflow-hidden rounded-lg border border-base-300 bg-base-200"
+              data-pswp-width={w.image.width ?? undefined}
+              data-pswp-height={w.image.height ?? undefined}
+              data-pswp-srcset={lightbox.get(w.id)}
+              data-caption={w.description ?? w.title}
+              aria-label={w.image.alt}
+            >
+              <Picture
+                src={w.image.url}
+                {...(w.image.width && w.image.height
+                  ? { width: w.image.width, height: w.image.height }
+                  : { inferSize: true })}
+                widths={[150, 300, 450, 600]}
+                sizes="(max-width: 768px) 45vw, 300px"
+                formats={["avif", "webp"]}
+                fallbackFormat="avif"
+                {/* fallback тоже avif: его URL совпадает с <source> avif, поэтому
+                   догрузка <img>-кандидата (Firefox делает это при рефлоу от
+                   открытия лайтбокса) бьёт в кеш, а не в сеть. webp-<source>
+                   остаётся для браузеров без AVIF. */}
+                alt={w.image.alt}
+                class="h-full w-full object-cover"
+                loading="lazy"
+              />
+            </a>
+            {(w.description || w.title) && (
+              <figcaption class="mt-1.5 text-sm text-base-content/70">
+                {w.description ?? w.title}
+              </figcaption>
+            )}
+          </figure>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+<style>
+  /* Только раскладка: ширина-ориентир — сама колонка галереи (container query),
+     а не экран. Максимум 2 крупные миниатюры в ряд → 1 при сужении. */
+  .gallery {
+    container-type: inline-size;
+  }
+  .gallery__grid {
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: 1fr;
+  }
+  @container (min-width: 420px) {
+    .gallery__grid {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+</style>

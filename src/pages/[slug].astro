@@ -4,7 +4,9 @@ import { Icon } from "astro-icon/components";
 import { getCategories } from "../lib/categories";
 import { getProducts } from "../lib/products";
 import { getProductPricing, getPricingData } from "../lib/pricing/data";
+import { getWorks, type Work } from "../lib/works";
 import ProductConfigurator from "../components/ProductConfigurator.vue";
+import Gallery from "../components/Gallery.astro";
 
 // getStaticPaths сообщает Astro, какие страницы сгенерировать (SSG).
 // Возвращаем по записи на каждую категорию и каждый продукт.
@@ -55,11 +57,14 @@ const pageDescription = `${props.name} — печать на заказ в Мо�
 // Для продукта тянем ценовой конфиг; калькулятор показываем, если есть материалы.
 let productPricing = null;
 let pricing = null;
+let works: Work[] = [];
 if (props.type === "product") {
   productPricing = await getProductPricing(Astro.params.slug!);
   if (productPricing && productPricing.papers.length > 0) {
     pricing = await getPricingData();
   }
+  // Примеры работ этого продукта (пусто, если коллекции/фото ещё нет).
+  works = await getWorks({ product: Astro.params.slug! });
 }
 ---
 
@@ -100,9 +105,14 @@ if (props.type === "product") {
             pricing={pricing}
             name={props.name}
             slug={Astro.params.slug}
-          />
+          >
+            <Gallery slot="gallery" works={works} />
+          </ProductConfigurator>
         ) : (
-          <p>Карточка продукта — калькулятор появится позже.</p>
+          <>
+            <p>Карточка продукта — калькулятор появится позже.</p>
+            <Gallery works={works} />
+          </>
         )}
 
         {/* SEO-текст — статика (позже из Directus) */}

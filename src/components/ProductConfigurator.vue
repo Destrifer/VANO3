@@ -7,7 +7,7 @@
 //   2 кол. (≥768):  поля | превью/плашка, галерея — полной шириной ниже
 //   1 кол. (моб.):  превью → поля → плашка → галерея
 // Внутри галереи — auto-fit/minmax (миниатюры 2→1).
-import { computed, provide } from "vue";
+import { provide } from "vue";
 import type { PricingData } from "../lib/pricing/engine";
 import type { ProductPricing } from "../lib/pricing/data";
 import { useCalculator, calcKey } from "../composables/useCalculator";
@@ -20,14 +20,8 @@ const props = defineProps<{
   pricing: PricingData;
   name: string;
   slug: string;
-  gallery?: string[];
 }>();
 provide(calcKey, useCalculator(props));
-
-// заглушки, пока нет реальных фото (позже — из Directus)
-const shots = computed(() =>
-  props.gallery?.length ? props.gallery : Array.from({ length: 4 }, () => null),
-);
 </script>
 
 <template>
@@ -36,18 +30,11 @@ const shots = computed(() =>
     <Preview class="cfg__preview" />
     <OrderPlate class="cfg__plate" :name="name" :slug="slug" />
 
-    <section class="cfg__gallery">
-      <h2 class="mb-3 text-lg font-bold">Примеры работ</h2>
-      <div class="cfg__shots">
-        <div
-          v-for="(s, i) in shots"
-          :key="i"
-          class="aspect-[3/2] overflow-hidden rounded-lg border border-base-300 bg-base-200"
-        >
-          <img v-if="s" :src="s" class="h-full w-full object-cover" alt="" />
-        </div>
-      </div>
-    </section>
+    <!-- Галерея приходит статикой из Astro (см. Gallery.astro): оптимизированные
+         картинки остаются обычным <picture> в HTML, остров их не гидрирует. -->
+    <div class="cfg__gallery">
+      <slot name="gallery" />
+    </div>
   </div>
 </template>
 
@@ -86,16 +73,6 @@ const shots = computed(() =>
 .cfg__controls { grid-area: controls; }
 .cfg__preview  { grid-area: preview; }
 .cfg__plate    { grid-area: plate; }
-.cfg__gallery  { grid-area: gallery; container-type: inline-size; }
-
-/* Миниатюры галереи: максимум 2 в ряд (крупные) → 1 при сужении колонки.
-   Container query — ориентир на ширину самой галереи, а не экрана. */
-.cfg__shots {
-  display: grid;
-  gap: 0.75rem;
-  grid-template-columns: 1fr;
-}
-@container (min-width: 420px) {
-  .cfg__shots { grid-template-columns: 1fr 1fr; }
-}
+/* Сетку миниатюр и container-query держит сам Gallery.astro. */
+.cfg__gallery  { grid-area: gallery; }
 </style>

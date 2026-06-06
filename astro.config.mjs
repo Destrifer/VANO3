@@ -12,6 +12,11 @@ export default defineConfig({
   adapter: node({ mode: "standalone" }),
   // astro-icon: инлайнит SVG из локального @iconify-json/tabler на сборке
   integrations: [icon(), vue()],
+  // Картинки галереи (works) лежат в Directus. Разрешаем astro:assets тянуть
+  // оригинал и на сборке генерить AVIF/WebP + responsive srcset (см. Gallery.astro).
+  image: {
+    remotePatterns: [{ protocol: "http", hostname: "localhost", port: "8055" }],
+  },
   vite: {
     plugins: [tailwindcss()],
   },
