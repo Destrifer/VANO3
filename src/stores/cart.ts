@@ -11,7 +11,8 @@ export type CartItem = {
   slug: string; // для ссылки на товар
   name: string; // отображаемое имя продукта
   spec: CartSpec; // спецификация по id (сервер пересчитает цену по ней)
-  summary: string; // читаемое описание для показа в корзине
+  details: { label: string; value: string }[]; // параметры для таблицы в корзине
+  thumb: string | null; // миниатюра превью (dataURL)
   qty: number; // итоговый тираж
   unitPrice: number; // снимок цены за шт (только показ; сервер пересчитает)
   total: number; // снимок суммы (только показ)

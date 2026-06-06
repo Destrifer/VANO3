@@ -147,19 +147,45 @@ async function submit() {
     <!-- Левая колонка: только товары -->
     <div class="flex flex-col gap-3">
       <div v-for="it in items" :key="it.id" class="card card-border border-base-300">
-        <div class="card-body flex-row items-start justify-between gap-4">
-          <div class="flex flex-col gap-1">
-            <a :href="`/${it.slug}`" class="link link-hover font-semibold">{{ it.name }}</a>
-            <span class="text-sm text-base-content/70">{{ it.summary }}</span>
-            <span class="text-sm">{{ it.qty }} шт · {{ it.unitPrice.toFixed(2) }} ₽/шт</span>
+        <div class="card-body flex-row gap-4 p-4">
+          <!-- миниатюра превью -->
+          <img
+            v-if="it.thumb"
+            :src="it.thumb"
+            alt=""
+            class="h-20 w-28 shrink-0 rounded-box border border-base-300 object-cover"
+          />
+          <div
+            v-else
+            class="grid h-20 w-28 shrink-0 place-items-center rounded-box border border-base-300 bg-base-200 text-xs text-base-content/40"
+          >
+            нет превью
+          </div>
+
+          <!-- название + параметры таблицей -->
+          <div class="flex min-w-0 flex-1 flex-col gap-1.5">
+            <a :href="`/${it.slug}`" class="link link-hover text-base font-semibold">{{ it.name }}</a>
+            <table class="text-sm">
+              <tbody>
+                <tr v-for="(d, i) in it.details" :key="i" class="align-top">
+                  <td class="py-0.5 pr-3 text-base-content/55 whitespace-nowrap">{{ d.label }}</td>
+                  <td class="py-0.5">{{ d.value }}</td>
+                </tr>
+              </tbody>
+            </table>
             <span v-if="it.artworkId" class="text-xs text-base-content/60">
-              📎 макет приложен
+              📎 макет
               <span v-if="it.preflight">· {{ it.preflight.status === "green" ? "🟢" : it.preflight.status === "yellow" ? "🟡" : "🔴" }}</span>
             </span>
           </div>
-          <div class="flex flex-col items-end gap-2">
-            <span class="text-lg font-bold">{{ money(it.total) }} ₽</span>
-            <button class="btn btn-ghost btn-sm" @click="removeFromCart(it.id)">Удалить</button>
+
+          <!-- цена + удалить -->
+          <div class="flex shrink-0 flex-col items-end justify-between">
+            <div class="text-right">
+              <div class="text-xl font-bold leading-none">{{ money(it.total) }} ₽</div>
+              <div class="mt-1 text-xs text-base-content/55">{{ it.unitPrice.toFixed(2) }} ₽/шт</div>
+            </div>
+            <button class="btn btn-ghost btn-xs" @click="removeFromCart(it.id)">Удалить</button>
           </div>
         </div>
       </div>

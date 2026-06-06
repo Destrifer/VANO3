@@ -165,6 +165,11 @@ export function useCalculator(props: {
     return cfg ? computePrice(cfg, pricing) : null;
   });
 
+  // Превью регистрирует функцию снятия миниатюры; OrderPlate её зовёт при добавлении.
+  let thumbFn: (() => string | null) | null = null;
+  const setThumbProvider = (fn: () => string | null) => { thumbFn = fn; };
+  const captureThumb = () => (thumbFn ? thumbFn() : null);
+
   // Текущая спецификация заказа (для добавления в корзину).
   const currentConfig = () => buildConfig(totalQty.value);
 
@@ -214,6 +219,8 @@ export function useCalculator(props: {
     fin, needsCount, countLabel,
     // расчёт
     perUnit, result, money, currentConfig, currentSpec,
+    // миниатюра превью
+    setThumbProvider, captureThumb,
   });
 }
 
