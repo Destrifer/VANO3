@@ -153,7 +153,7 @@ async function submit() {
             v-if="it.thumb"
             :src="it.thumb"
             alt=""
-            class="w-full aspect-[3/2] shrink-0 rounded-box border border-base-300 object-cover sm:aspect-auto sm:h-auto sm:w-64 sm:self-stretch"
+            class="w-full aspect-[3/2] shrink-0 rounded-box border border-base-300 bg-base-100 object-contain p-2 sm:aspect-auto sm:h-auto sm:w-64 sm:self-stretch"
           />
           <div
             v-else

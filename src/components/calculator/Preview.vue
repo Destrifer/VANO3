@@ -103,8 +103,10 @@ function captureThumb(): string | null {
   off.height = th;
   const c = off.getContext("2d");
   if (!c) return null;
+  c.fillStyle = "#ffffff"; // JPEG без альфы → прозрачное стало бы чёрным; заливаем белым
+  c.fillRect(0, 0, tw, th);
   c.drawImage(cv, 0, 0, tw, th);
-  return off.toDataURL("image/jpeg", 0.7);
+  return off.toDataURL("image/jpeg", 0.85);
 }
 
 onMounted(() => {
