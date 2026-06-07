@@ -3,7 +3,7 @@
 // поэтому поля остаются «тупыми» (только отображение), без проброса десятков пропсов.
 import { reactive, ref, computed, watch, type InjectionKey } from "vue";
 import { computePrice, type OrderConfig, type AnyConfig, type Sides } from "../lib/pricing/engine";
-import type { PricingData } from "../lib/pricing/engine";
+import type { PricingData, Sheet } from "../lib/pricing/engine";
 import type { ProductPricing } from "../lib/pricing/data";
 import { isLaminationLocked, forcedLaminationIndex } from "../lib/pricing/rules";
 import type { SpecInput } from "../lib/pricing/spec";
@@ -101,6 +101,89 @@ export function useCalculator(props: {
   watch(paperIndex, () => {
     selectedColorIndex.value = 0;
   });
+
+  const sizeWarning = ref("");
+
+  const sizingSheet = computed<Sheet>(() => {
+    if (product.strategy === "fixed") return product.fixedSheet;
+    if (currentPaper.value?.fixedPrice?.length && currentPaper.value.fixedSheet) {
+      return currentPaper.value.fixedSheet;
+    }
+    const plotter = product.production === "plotter" || shape.value !== "rectangular";
+    return plotter ? pricing.plotterSheet : pricing.pressSheet;
+  });
+  const sizingBleed = computed(() =>
+    product.strategy === "fixed" || currentPaperFixed.value ? 0 : pricing.bleed,
+  );
+  const printableBox = computed(() => {
+    const sheet = sizingSheet.value;
+    const bleed = sizingBleed.value;
+    return {
+      width: Math.max(1, sheet.width - 2 * sheet.margin - 2 * bleed),
+      height: Math.max(1, sheet.height - 2 * sheet.margin - 2 * bleed),
+    };
+  });
+
+  // Клемп размера в печатный лист по каждой стороне (учёт поворота): меньшая
+  // сторона ≤ короткой стороне листа, бо́льшая ≤ длинной. Сохраняем максимум.
+  function fitInsideSheet(w: number, h: number) {
+    const box = printableBox.value;
+    const maxLong = Math.floor(Math.max(box.width, box.height));
+    const maxShort = Math.floor(Math.min(box.width, box.height));
+    let nw = Math.min(w, maxLong);
+    let nh = Math.min(h, maxLong);
+    // меньшая сторона не должна превышать короткую сторону листа
+    if (Math.min(nw, nh) > maxShort) {
+      if (nw <= nh) nw = maxShort;
+      else nh = maxShort;
+    }
+    return { width: Math.max(1, nw), height: Math.max(1, nh), changed: nw !== w || nh !== h };
+  }
+
+  // selfChange переживает асинхронный повторный запуск watch после нашего клемпа,
+  // иначе сообщение «мигает» и сбрасывается.
+  let selfChange = false;
+  function clampUserSize() {
+    if (selfChange) {
+      selfChange = false;
+      return;
+    }
+    sizeWarning.value = "";
+    if (shape.value === "round") {
+      if (!Number.isFinite(diameter.value) || diameter.value < 1) return;
+      const maxD = Math.floor(Math.min(printableBox.value.width, printableBox.value.height));
+      if (diameter.value > maxD) {
+        selfChange = true;
+        diameter.value = maxD;
+        sizeWarning.value = `Диаметр уменьшен до ${maxD} мм — максимум для печатного листа.`;
+      }
+      return;
+    }
+    if (!customMode.value) return;
+    if (!Number.isFinite(customW.value) || !Number.isFinite(customH.value) || customW.value < 1 || customH.value < 1) return;
+    const fitted = fitInsideSheet(customW.value, customH.value);
+    if (fitted.changed) {
+      selfChange = true;
+      customW.value = fitted.width;
+      customH.value = fitted.height;
+      sizeWarning.value = `Размер уменьшен до ${fitted.width}×${fitted.height} мм — максимум для печатного листа.`;
+    }
+  }
+  watch(
+    () => [
+      shape.value,
+      customMode.value,
+      customW.value,
+      customH.value,
+      diameter.value,
+      paperIndex.value,
+      currentPaperFixed.value,
+      printableBox.value.width,
+      printableBox.value.height,
+    ],
+    clampUserSize,
+    { immediate: true },
+  );
 
   // — Постпечать: ламинация / фольга / прочее —
   const laminationOptions = computed(() =>
@@ -284,7 +367,7 @@ export function useCalculator(props: {
   return reactive({
     product, pricing,
     // форма/размер
-    shapes, shape, sizeIndex, customMode, customW, customH, diameter, dims,
+    shapes, shape, sizeIndex, customMode, customW, customH, diameter, dims, sizeWarning,
     onSizeChange, backToList,
     // стороны / контурная резка / фальцовка
     singleSided, doubleSided, allowContourCut, contourCut,

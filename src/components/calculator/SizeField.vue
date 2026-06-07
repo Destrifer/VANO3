@@ -48,5 +48,6 @@ const calc = inject(calcKey)!;
         </button>
       </div>
     </div>
+    <span v-if="calc.sizeWarning" class="text-xs text-warning">{{ calc.sizeWarning }}</span>
   </div>
 </template>
