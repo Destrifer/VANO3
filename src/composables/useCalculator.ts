@@ -44,13 +44,20 @@ export function useCalculator(props: {
     return { w: s?.width ?? 0, h: s?.height ?? 0 };
   });
 
-  // — Стороны / контурная резка (наклейки) —
+  // — Стороны / контурная резка (наклейки) / фальцовка (буклеты) —
   const singleSided = product.singleSided; // печать только 4+0
+  const doubleSided = product.doubleSided; // печать всегда 4+4 (буклеты)
   const allowContourCut = product.allowContourCut;
   const contourCut = ref(product.allowContourCut); // по умолчанию вкл, если доступно
 
+  // Фальцовка: тип → число сгибов; цена через per_fold-отделку (биговка).
+  const foldTypes = product.foldTypes;
+  const foldFinishing = product.finishing.find((o) => o.unit === "per_fold") ?? null;
+  const foldTypeIndex = ref(0);
+  const selectedFold = computed(() => foldTypes[foldTypeIndex.value]);
+
   // — Тираж и виды —
-  const sides = ref<Sides>("4+0");
+  const sides = ref<Sides>(doubleSided ? "4+4" : "4+0");
   const presets = [50, 100, 250, 500, 1000, 2000];
   const quantity = ref(100);
   const views = ref(1);
@@ -102,7 +109,9 @@ export function useCalculator(props: {
     product.finishing
       .map((o, i) => ({ o, i }))
       .filter((x) => !x.o.group)
-      .filter((x) => !(shape.value === "round" && x.o.unit === "per_corner")),
+      .filter((x) => !(shape.value === "round" && x.o.unit === "per_corner"))
+      // фальцовку (per_fold) ведёт отдельное поле, не показываем в «доп. обработке»
+      .filter((x) => !(foldTypes.length && foldFinishing && x.o.id === foldFinishing.id)),
   );
 
   const laminationIndex = ref(-1);
@@ -141,6 +150,10 @@ export function useCalculator(props: {
     if (foilOn.value && foilOption.value) finishing.push({ option: foilOption.value });
     for (const { o, i } of otherOptions.value) {
       if (fin[i].checked) finishing.push({ option: o, count: fin[i].count });
+    }
+    // фальцовка буклета: выбранный тип → per_fold по числу сгибов
+    if (foldTypes.length && foldFinishing && selectedFold.value) {
+      finishing.push({ option: foldFinishing, count: selectedFold.value.folds });
     }
     return {
       production: product.production,
@@ -187,6 +200,7 @@ export function useCalculator(props: {
       value: shape.value === "round" ? `⌀${dims.value.w} мм` : `${dims.value.w}×${dims.value.h} мм`,
     });
     if (!singleSided) d.push({ label: "Печать", value: sides.value });
+    if (foldTypes.length && selectedFold.value) d.push({ label: "Фальцовка", value: selectedFold.value.name });
     if (contourCut.value) d.push({ label: "Резка", value: "контурная" });
     const paper = currentPaper.value?.name;
     const col = colors.value[selectedColorIndex.value]?.name;
@@ -227,9 +241,14 @@ export function useCalculator(props: {
             colorId: foilOption.value.colors[foilColorIndex.value]?.id ?? null,
           }
         : null,
-    finishing: otherOptions.value
-      .filter((x) => fin[x.i].checked)
-      .map((x) => ({ id: x.o.id, count: fin[x.i].count })),
+    finishing: [
+      ...otherOptions.value
+        .filter((x) => fin[x.i].checked)
+        .map((x) => ({ id: x.o.id, count: fin[x.i].count })),
+      ...(foldTypes.length && foldFinishing && selectedFold.value
+        ? [{ id: foldFinishing.id, count: selectedFold.value.folds }]
+        : []),
+    ],
   });
 
   const money = (n: number) =>
@@ -241,8 +260,9 @@ export function useCalculator(props: {
     // форма/размер
     shapes, shape, sizeIndex, customMode, customW, customH, diameter, dims,
     onSizeChange, backToList,
-    // стороны / контурная резка
-    singleSided, allowContourCut, contourCut,
+    // стороны / контурная резка / фальцовка
+    singleSided, doubleSided, allowContourCut, contourCut,
+    foldTypes, foldTypeIndex, selectedFold,
     // тираж
     sides, presets, quantity, views, totalQty, selectQty, incViews, decViews,
     // материал

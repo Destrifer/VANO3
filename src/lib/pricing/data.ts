@@ -24,6 +24,8 @@ export type SizePreset = {
 
 export type BindingOption = Binding & { id: number };
 
+export type FoldType = { name: string; folds: number; kind: string }; // тип фальцовки; kind: book|accordion|roll
+
 export type PaperColor = {
   id: number;
   name: string;
@@ -57,7 +59,9 @@ export type ProductPricing = {
   allowComplex: boolean;
   allowCustom: boolean;
   singleSided: boolean; // печать только 4+0 (наклейки)
+  doubleSided: boolean; // печать всегда 4+4 (буклеты)
   allowContourCut: boolean; // предлагать контурную резку (наклейки)
+  foldTypes: FoldType[]; // варианты фальцовки (буклеты); фальцовка считается per_fold
   sizes: SizePreset[]; // для multipage это форматы (с pagesPerSheet)
   papers: PaperOption[];
   finishing: FinishingOption[];
@@ -185,7 +189,9 @@ export async function getProductPricing(
     "production",
     "preview_kind",
     "single_sided",
+    "double_sided",
     "allow_contour_cut",
+    "fold_types",
     "allow_round",
     "allow_complex",
     "allow_custom",
@@ -254,7 +260,13 @@ export async function getProductPricing(
     allowComplex: !!p.allow_complex,
     allowCustom: !!p.allow_custom,
     singleSided: !!p.single_sided,
+    doubleSided: !!p.double_sided,
     allowContourCut: !!p.allow_contour_cut,
+    foldTypes: (Array.isArray(p.fold_types) ? p.fold_types : []).map((f: any) => ({
+      name: String(f.name ?? ""),
+      folds: num(f.folds),
+      kind: String(f.kind ?? "accordion"),
+    })),
     sizes: (p.sizes ?? []).map((s: any) => ({
       label: s.label,
       width: num(s.width),

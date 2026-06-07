@@ -9,6 +9,7 @@ export type MockupEnv = {
   ink: string; // цвет краски печати (контраст к бумаге)
   foilOn: boolean;
   foilHex: string;
+  foldCount: number; // число сгибов (буклеты) → панелей = foldCount + 1
 };
 
 export type Mockup = {
@@ -110,7 +111,37 @@ const sticker: Mockup = {
   },
 };
 
-export const mockups: Record<string, Mockup> = { card, sticker };
+// Макет «буклет/листовка»: контент колонками по числу панелей (foldCount+1).
+// Каждая панель — плашка изображения сверху, заголовок, строки текста (нечитаемо,
+// но обозначает структуру). Линии сгиба рисует Preview.vue поверх.
+const leaflet: Mockup = {
+  content(ctx, r, env) {
+    const { x, y, w, h } = r;
+    const panels = Math.max(1, (env.foldCount || 0) + 1);
+    const pw = w / panels;
+    const pad = Math.min(pw, h) * 0.08;
+    for (let i = 0; i < panels; i++) {
+      const px = x + i * pw + pad;
+      const innerW = pw - 2 * pad;
+      ctx.fillStyle = env.ink;
+      // плашка изображения
+      ctx.globalAlpha = 0.14;
+      ctx.fillRect(px, y + pad, innerW, h * 0.3);
+      // заголовок
+      ctx.globalAlpha = 0.6;
+      ctx.fillRect(px, y + h * 0.42, innerW * 0.7, Math.max(2, h * 0.03));
+      // абзац
+      ctx.globalAlpha = 0.32;
+      const lh = h * 0.06;
+      for (let l = 0; l < 4; l++) {
+        ctx.fillRect(px, y + h * 0.52 + l * lh, innerW * (l === 3 ? 0.5 : 0.95), Math.max(1, h * 0.02));
+      }
+      ctx.globalAlpha = 1;
+    }
+  },
+};
+
+export const mockups: Record<string, Mockup> = { card, sticker, leaflet };
 
 export function getMockup(kind?: string | null): Mockup {
   return (kind && mockups[kind]) || card;
