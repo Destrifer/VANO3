@@ -13,7 +13,16 @@ export type FinishingUnit =
   | "per_corner"
   | "per_hole";
 
-export type Paper = { name: string; price: number }; // ₽/лист
+export type Paper = {
+  name: string;
+  price: number; // ₽/лист (для обычного расчёта)
+  // Спецматериал с фикс-ценой за лист (световозвращающая плёнка, пластик 3M):
+  // если задано — база считается по этой таблице (всё включено: печать+резка+
+  // материал), а обычные печать/бумага/резка пропускаются. Постпечать (ламинация/
+  // фольга) добавляется сверху как обычно.
+  fixedPrice?: { to: number; price: number }[]; // ₽/лист по числу листов
+  fixedSheet?: Sheet; // печатный лист этого материала
+};
 
 export type Finishing = {
   name: string;
@@ -205,27 +214,38 @@ export function computeFixed(c: FixedConfig, d: PricingData): PriceResult {
 }
 
 // Листовая стратегия: конвейер стадий, читается как формула.
+// Спецматериал с фикс-ценой (paper.fixedPrice) → база по таблице «₽/лист × листы»
+// (всё включено), без отдельных печати/бумаги/резки; постпечать добавляется сверху.
 export function computeSheet(c: OrderConfig, d: PricingData): PriceResult {
-  const sheet = chooseSheet(c, d);
-  const fit = fitPerSheet(sheet, c.width, c.height, d.bleed);
+  const fixedMat = c.paper.fixedPrice && c.paper.fixedPrice.length ? c.paper : null;
+  const sheet = fixedMat?.fixedSheet ?? chooseSheet(c, d);
+  const fit = Math.max(1, fitPerSheet(sheet, c.width, c.height, fixedMat ? 0 : d.bleed));
   const sheets = Math.ceil(c.quantity / fit);
 
   const lines: Line[] = [];
 
-  // 1. Печать
-  const printRate = tierRate(d.printTiers[c.sides], sheets);
-  lines.push({
-    label: `Печать ${c.sides} (${sheets} л. × ${printRate})`,
-    amount: sheets * printRate,
-  });
+  if (fixedMat) {
+    // База: всё включено (печать+резка+материал) по числу листов
+    const rate = bracketRate(fixedMat.fixedPrice!, sheets);
+    lines.push({
+      label: `Печать, резка, материал «${c.paper.name}» (${sheets} л. × ${rate} ₽)`,
+      amount: rate * sheets,
+    });
+  } else {
+    // 1. Печать
+    const printRate = tierRate(d.printTiers[c.sides], sheets);
+    lines.push({
+      label: `Печать ${c.sides} (${sheets} л. × ${printRate})`,
+      amount: sheets * printRate,
+    });
+    // 2. Бумага
+    lines.push({
+      label: `Бумага «${c.paper.name}» (${sheets} л. × ${c.paper.price})`,
+      amount: sheets * c.paper.price,
+    });
+  }
 
-  // 2. Бумага
-  lines.push({
-    label: `Бумага «${c.paper.name}» (${sheets} л. × ${c.paper.price})`,
-    amount: sheets * c.paper.price,
-  });
-
-  // 3. Постпечать — единая формула для всех опций
+  // 3. Постпечать — единая формула для всех опций (и для fixed добавляется сверху)
   for (const { option, count } of c.finishing) {
     const rate = option.tiers.length
       ? tierRate(option.tiers, sheets)
@@ -238,30 +258,28 @@ export function computeSheet(c: OrderConfig, d: PricingData): PriceResult {
     });
   }
 
-  // 4. Резка: плоттер — ступенчатый тариф по листам; большой лист — % от заказа.
-  if (isPlotter(c)) {
-    // ступень выбирается по числу изделий на листе (fit), цена — за резку листа,
-    // итог — ставка × число листов.
-    const cutRate = bracketRate(d.plotterCutting, fit);
-    let cut = cutRate * sheets;
-    if (c.contourCut) cut *= 1.5; // контурная надсечка дороже на 50%
-    if (cut > 0) {
+  // 4. Резка и 5. подготовка — только для обычного расчёта (для fixed всё включено)
+  if (!fixedMat) {
+    if (isPlotter(c)) {
+      // ступень выбирается по числу изделий на листе (fit), цена — за резку листа,
+      // итог — ставка × число листов.
+      const cutRate = bracketRate(d.plotterCutting, fit);
+      let cut = cutRate * sheets;
+      if (c.contourCut) cut *= 1.5; // контурная надсечка дороже на 50%
+      if (cut > 0) {
+        lines.push({
+          label: `Резка на плоттере${c.contourCut ? " (контур)" : ""} (${sheets} л. × ${cutRate})`,
+          amount: cut,
+        });
+      }
+    } else if (d.manualCuttingRate > 0) {
+      const base = lines.reduce((s, l) => s + l.amount, 0); // печать+бумага+постпечать
       lines.push({
-        label: `Резка на плоттере${c.contourCut ? " (контур)" : ""} (${sheets} л. × ${cutRate})`,
-        amount: cut,
+        label: `Ручная резка (${Math.round(d.manualCuttingRate * 100)}%)`,
+        amount: base * d.manualCuttingRate,
       });
     }
-  } else if (d.manualCuttingRate > 0) {
-    const base = lines.reduce((s, l) => s + l.amount, 0); // печать+бумага+постпечать
-    lines.push({
-      label: `Ручная резка (${Math.round(d.manualCuttingRate * 100)}%)`,
-      amount: base * d.manualCuttingRate,
-    });
-  }
-
-  // 5. Подготовка файла
-  if (d.prepCost > 0) {
-    lines.push({ label: "Подготовка файла", amount: d.prepCost });
+    if (d.prepCost > 0) lines.push({ label: "Подготовка файла", amount: d.prepCost });
   }
 
   const subtotal = lines.reduce((s, l) => s + l.amount, 0);

@@ -94,6 +94,8 @@ export function useCalculator(props: {
     return groups;
   });
   const currentPaper = computed(() => product.papers[paperIndex.value]);
+  // спецматериал с фикс-ценой (плёнка/пластик): резка/печать уже включены
+  const currentPaperFixed = computed(() => !!currentPaper.value?.fixedPrice?.length);
   const colors = computed(() => currentPaper.value?.colors ?? []);
   const selectedColorIndex = ref(0);
   watch(paperIndex, () => {
@@ -290,7 +292,7 @@ export function useCalculator(props: {
     // тираж
     sides, presets, quantity, views, totalQty, selectQty, incViews, decViews,
     // материал
-    paperIndex, paperGroups, currentPaper, colors, selectedColorIndex,
+    paperIndex, paperGroups, currentPaper, currentPaperFixed, colors, selectedColorIndex,
     // макет
     artworkId, artworkName, artworkPreflight,
     // постпечать

@@ -24,7 +24,7 @@ const calc = inject(calcKey)!;
     <MaterialField v-if="calc.product.papers.length" />
     <FoldField v-if="calc.foldTypes.length" />
     <FinishingField />
-    <CuttingField v-if="calc.allowContourCut" />
+    <CuttingField v-if="calc.allowContourCut && !calc.currentPaperFixed" />
     <ArtworkUpload />
   </div>
 </template>

@@ -45,6 +45,9 @@ export type PaperOption = {
   group: string;
   description: string | null;
   colors: PaperColor[];
+  // спецматериал с фикс-ценой за лист (световозвращающая плёнка, пластик 3M)
+  fixedPrice?: CuttingBracket[];
+  fixedSheet?: Sheet;
 };
 
 // Постпечать для UI: данные движка + презентация (group + цвета фольги).
@@ -198,6 +201,10 @@ export async function getProductPricing(
     `${rel}.papers_id.price`,
     `${rel}.papers_id.group`,
     `${rel}.papers_id.description`,
+    `${rel}.papers_id.fixed_price`,
+    `${rel}.papers_id.fixed_sheet_width`,
+    `${rel}.papers_id.fixed_sheet_height`,
+    `${rel}.papers_id.fixed_sheet_margin`,
     `${rel}.papers_id.colors.name`,
     `${rel}.papers_id.colors.code`,
     `${rel}.papers_id.colors.hex`,
@@ -259,6 +266,7 @@ export async function getProductPricing(
   // junction-строка бумаги (x.papers_id) → PaperOption
   const mapPaper = (x: any): PaperOption => {
     const pp = x.papers_id;
+    const hasFixed = Array.isArray(pp.fixed_price) && pp.fixed_price.length > 0;
     return {
       id: num(pp.id),
       name: pp.name,
@@ -275,6 +283,12 @@ export async function getProductPricing(
           hex: c.hex ?? null,
           image: assetUrl(c.image),
         })),
+      fixedPrice: hasFixed
+        ? pp.fixed_price.map((b: any) => ({ to: num(b.to), price: num(b.price) })).sort((a: any, z: any) => a.to - z.to)
+        : undefined,
+      fixedSheet: hasFixed
+        ? { width: num(pp.fixed_sheet_width) || 275, height: num(pp.fixed_sheet_height) || 405, margin: num(pp.fixed_sheet_margin) || 5 }
+        : undefined,
     };
   };
 
