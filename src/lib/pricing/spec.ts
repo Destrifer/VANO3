@@ -18,6 +18,7 @@ export type SheetSpec = {
   quantity: number;
   paperId: number;
   paperColorId: number | null; // на цену не влияет, но нужен для производства
+  contourCut?: boolean; // контурная резка (наклейки)
   laminationId: number | null;
   foil: { id: number; colorId: number | null } | null;
   finishing: FinishingPick[];
@@ -91,6 +92,7 @@ function buildSheetConfig(spec: SheetSpec, product: ProductPricing): AnyConfig |
     quantity: spec.quantity,
     paper,
     urgent: false,
+    contourCut: spec.contourCut ?? false,
     finishing,
   };
 }
@@ -145,6 +147,7 @@ function describeSheet(spec: SheetSpec, product: ProductPricing): string {
   const parts: string[] = [];
   parts.push(spec.form === "round" ? `⌀${spec.width} мм` : `${spec.width}×${spec.height} мм`);
   parts.push(spec.sides);
+  if (spec.contourCut) parts.push("контурная резка");
 
   const paper = product.papers.find((p) => p.id === spec.paperId);
   if (paper) {

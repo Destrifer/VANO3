@@ -82,7 +82,35 @@ const card: Mockup = {
   },
 };
 
-export const mockups: Record<string, Mockup> = { card };
+// Макет «наклейка»: крупный центрированный знак + подпись (под любую форму).
+const sticker: Mockup = {
+  content(ctx, r, env) {
+    const { x, y, w, h } = r;
+    const cx = x + w / 2;
+    const cy = y + h / 2;
+    const m = Math.min(w, h);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    if (!env.foilOn) {
+      ctx.fillStyle = env.ink;
+      ctx.font = `800 ${Math.round(m * 0.34)}px Georgia, serif`;
+      ctx.fillText("PM", cx, cy - h * 0.04);
+    }
+    ctx.fillStyle = env.ink;
+    ctx.globalAlpha = 0.7;
+    ctx.font = `600 ${Math.round(m * 0.09)}px system-ui, sans-serif`;
+    ctx.fillText("PRINTMOS", cx, cy + h * 0.22);
+    ctx.globalAlpha = 1;
+  },
+  foil(ctx, r, env) {
+    const { x, y, w, h } = r;
+    const m = Math.min(w, h);
+    const size = Math.round(m * 0.34);
+    drawFoilText(ctx, "PM", x + w / 2, y + h / 2 - h * 0.04 - size / 2, size, "center", env.foilHex);
+  },
+};
+
+export const mockups: Record<string, Mockup> = { card, sticker };
 
 export function getMockup(kind?: string | null): Mockup {
   return (kind && mockups[kind]) || card;

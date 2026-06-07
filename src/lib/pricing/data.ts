@@ -56,6 +56,8 @@ export type ProductPricing = {
   allowRound: boolean;
   allowComplex: boolean;
   allowCustom: boolean;
+  singleSided: boolean; // печать только 4+0 (наклейки)
+  allowContourCut: boolean; // предлагать контурную резку (наклейки)
   sizes: SizePreset[]; // для multipage это форматы (с pagesPerSheet)
   papers: PaperOption[];
   finishing: FinishingOption[];
@@ -181,7 +183,9 @@ export async function getProductPricing(
   const fields = [
     "strategy",
     "production",
-    // "preview_kind", // включить, когда поле появится в Directus (пока → "card")
+    "preview_kind",
+    "single_sided",
+    "allow_contour_cut",
     "allow_round",
     "allow_complex",
     "allow_custom",
@@ -249,6 +253,8 @@ export async function getProductPricing(
     allowRound: !!p.allow_round,
     allowComplex: !!p.allow_complex,
     allowCustom: !!p.allow_custom,
+    singleSided: !!p.single_sided,
+    allowContourCut: !!p.allow_contour_cut,
     sizes: (p.sizes ?? []).map((s: any) => ({
       label: s.label,
       width: num(s.width),

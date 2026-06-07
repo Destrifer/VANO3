@@ -48,6 +48,7 @@ export type OrderConfig = {
   quantity: number; // тираж
   paper: Paper;
   urgent: boolean;
+  contourCut?: boolean; // контурная надсечка (наклейки): +50% к резке
   finishing: { option: Finishing; count?: number }[];
 };
 
@@ -210,9 +211,16 @@ export function computeSheet(c: OrderConfig, d: PricingData): PriceResult {
 
   // 4. Резка: плоттер — ступенчатый тариф по листам; большой лист — % от заказа.
   if (isPlotter(c)) {
-    const cut = bracketRate(d.plotterCutting, sheets);
+    // ступень выбирается по числу изделий на листе (fit), цена — за резку листа,
+    // итог — ставка × число листов.
+    const cutRate = bracketRate(d.plotterCutting, fit);
+    let cut = cutRate * sheets;
+    if (c.contourCut) cut *= 1.5; // контурная надсечка дороже на 50%
     if (cut > 0) {
-      lines.push({ label: `Резка на плоттере (${sheets} л.)`, amount: cut });
+      lines.push({
+        label: `Резка на плоттере${c.contourCut ? " (контур)" : ""} (${sheets} л. × ${cutRate})`,
+        amount: cut,
+      });
     }
   } else if (d.manualCuttingRate > 0) {
     const base = lines.reduce((s, l) => s + l.amount, 0); // печать+бумага+постпечать

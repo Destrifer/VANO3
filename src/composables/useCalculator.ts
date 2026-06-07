@@ -44,6 +44,11 @@ export function useCalculator(props: {
     return { w: s?.width ?? 0, h: s?.height ?? 0 };
   });
 
+  // — Стороны / контурная резка (наклейки) —
+  const singleSided = product.singleSided; // печать только 4+0
+  const allowContourCut = product.allowContourCut;
+  const contourCut = ref(product.allowContourCut); // по умолчанию вкл, если доступно
+
   // — Тираж и виды —
   const sides = ref<Sides>("4+0");
   const presets = [50, 100, 250, 500, 1000, 2000];
@@ -146,6 +151,7 @@ export function useCalculator(props: {
       quantity: total,
       paper,
       urgent: false,
+      contourCut: contourCut.value,
       finishing,
     };
   }
@@ -180,7 +186,8 @@ export function useCalculator(props: {
       label: "Размер",
       value: shape.value === "round" ? `⌀${dims.value.w} мм` : `${dims.value.w}×${dims.value.h} мм`,
     });
-    d.push({ label: "Печать", value: sides.value });
+    if (!singleSided) d.push({ label: "Печать", value: sides.value });
+    if (contourCut.value) d.push({ label: "Резка", value: "контурная" });
     const paper = currentPaper.value?.name;
     const col = colors.value[selectedColorIndex.value]?.name;
     if (paper) d.push({ label: "Материал", value: col ? `${paper} (${col})` : paper });
@@ -208,6 +215,7 @@ export function useCalculator(props: {
     quantity: totalQty.value,
     paperId: currentPaper.value?.id ?? 0,
     paperColorId: colors.value[selectedColorIndex.value]?.id ?? null,
+    contourCut: contourCut.value,
     laminationId:
       laminationIndex.value >= 0
         ? laminationOptions.value[laminationIndex.value]?.id ?? null
@@ -233,6 +241,8 @@ export function useCalculator(props: {
     // форма/размер
     shapes, shape, sizeIndex, customMode, customW, customH, diameter, dims,
     onSizeChange, backToList,
+    // стороны / контурная резка
+    singleSided, allowContourCut, contourCut,
     // тираж
     sides, presets, quantity, views, totalQty, selectQty, incViews, decViews,
     // материал
