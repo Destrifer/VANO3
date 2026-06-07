@@ -1,22 +1,17 @@
 <script setup lang="ts">
+// Материал визитки = общий PaperSelect, привязанный к calc (визиток).
 import { inject } from "vue";
 import { calcKey } from "../../composables/useCalculator";
-import SwatchPalette from "./SwatchPalette.vue";
+import PaperSelect from "./PaperSelect.vue";
 
 const calc = inject(calcKey)!;
 </script>
 
 <template>
-  <div class="flex flex-col gap-1.5">
-    <span class="text-sm font-semibold">Материал</span>
-    <div class="flex flex-wrap items-center gap-3">
-      <select class="select max-w-xs" v-model.number="calc.paperIndex">
-        <optgroup v-for="g in calc.paperGroups" :key="g.group" :label="g.group">
-          <option v-for="o in g.options" :key="o.index" :value="o.index">{{ o.name }}</option>
-        </optgroup>
-      </select>
-
-      <SwatchPalette v-if="calc.colors.length" :colors="calc.colors" v-model="calc.selectedColorIndex" />
-    </div>
-  </div>
+  <PaperSelect
+    :groups="calc.paperGroups"
+    v-model:index="calc.paperIndex"
+    :colors="calc.colors"
+    v-model:colorIndex="calc.selectedColorIndex"
+  />
 </template>

@@ -23,10 +23,11 @@ export type Finishing = {
   tiers: Tier[]; // для ступенчатых (фольга); иначе []
 };
 
-export type CuttingBracket = { to: number; price: number }; // до N листов → цена
+export type CuttingBracket = { to: number; price: number }; // до N (листов/тиража) → цена
 export type PricingData = {
   pressSheet: Sheet;
   plotterSheet: Sheet;
+  brochureSheet: Sheet; // печатный лист брошюр (438×309) — для спуска многостраничной
   bleed: number;
   urgencyMultiplier: number;
   prepCost: number;
@@ -38,6 +39,7 @@ export type PricingData = {
 };
 
 export type OrderConfig = {
+  strategy?: "sheet"; // дефолтная стратегия (раскладка на лист)
   production: "sheet" | "plotter";
   form: "rectangular" | "round" | "complex";
   width: number; // мм (или диаметр для круга)
@@ -49,11 +51,46 @@ export type OrderConfig = {
   finishing: { option: Finishing; count?: number }[];
 };
 
+// Многостраничная (брошюры/каталоги/…): блок + обложка + переплёт.
+// Цена переплёта — по тиражу (брекеты ₽/экз). Диапазон полос (min/max) задаёт
+// совместимость переплёта (скоба ≤64, пружина ≤200, клей ≥100).
+export type Binding = {
+  name: string;
+  priceBrackets: CuttingBracket[]; // ₽/экз по тиражу: первый bracket, где тираж ≤ to
+  minPages: number;
+  maxPages: number;
+};
+export const PAGE_STEP = 4; // полосы всегда кратны 4
+
+export type MultipageConfig = {
+  strategy: "multipage";
+  width: number; // формат, мм
+  height: number;
+  pages: number; // полос блока (кратно 4)
+  innerSides: Sides; // печать блока (обычно 4+4)
+  coverSides: Sides; // печать обложки
+  innerPaper: Paper; // бумага блока (₽/лист)
+  coverPaper: Paper; // бумага обложки
+  binding: Binding;
+  quantity: number; // тираж
+  urgent: boolean;
+  finishing: { option: Finishing; count?: number }[]; // отделка обложки
+};
+
+// Спуск брошюры: сколько полос даёт один печатный лист бумаги. Геометрически —
+// (страниц формата на сторону, обе ориентации) × 2 стороны. Без вылетов между
+// полосами (трим общий). Минимум 2 (одна полоса на сторону).
+export function pagesPerSheet(sheet: Sheet, w: number, h: number): number {
+  return Math.max(2, fitPerSheet(sheet, w, h, 0) * 2);
+}
+
+export type AnyConfig = OrderConfig | MultipageConfig;
+
 export type Line = { label: string; amount: number };
 export type PriceResult = {
-  sheet: Sheet;
-  fitPerSheet: number;
-  sheets: number;
+  sheet?: Sheet; // только для листовой стратегии
+  fitPerSheet?: number;
+  sheets?: number;
   lines: Line[];
   subtotal: number;
   total: number;
@@ -127,8 +164,18 @@ function roundUp(value: number, step: number): number {
   return step > 0 ? Math.ceil(value / step) * step : value;
 }
 
-// Главный расчёт: конвейер стадий, читается как формула.
-export function computePrice(c: OrderConfig, d: PricingData): PriceResult {
+// Диспетчер стратегий: выбирает расчёт по c.strategy. Текущая листовая логика —
+// computeSheet; многостраничная — computeMultipage. Новые паттерны (area,
+// perpiece) добавляются сюда же, не трогая существующие.
+export function computePrice(c: AnyConfig, d: PricingData): PriceResult {
+  if ((c as MultipageConfig).strategy === "multipage") {
+    return computeMultipage(c as MultipageConfig, d);
+  }
+  return computeSheet(c as OrderConfig, d);
+}
+
+// Листовая стратегия: конвейер стадий, читается как формула.
+export function computeSheet(c: OrderConfig, d: PricingData): PriceResult {
   const sheet = chooseSheet(c, d);
   const fit = fitPerSheet(sheet, c.width, c.height, d.bleed);
   const sheets = Math.ceil(c.quantity / fit);
@@ -188,4 +235,69 @@ export function computePrice(c: OrderConfig, d: PricingData): PriceResult {
   total = roundUp(total, d.roundingStep);
 
   return { sheet, fitPerSheet: fit, sheets, lines, subtotal, total };
+}
+
+// Многостраничная стратегия: блок (страницы → листы) + обложка + переплёт.
+// Печатные тарифы — общие (d.printTiers), бумаги/переплёт приходят в конфиге
+// (как `paper` у листовой). Числа продукта — из Directus (data-driven).
+export function computeMultipage(c: MultipageConfig, d: PricingData): PriceResult {
+  const lines: Line[] = [];
+
+  const pps = pagesPerSheet(d.brochureSheet, c.width, c.height); // спуск от листа
+  const innerPerCopy = Math.max(1, Math.ceil(c.pages / pps));
+  const innerSheets = innerPerCopy * c.quantity;
+  const coverSheets = c.quantity; // один печатный лист обложки на экземпляр
+
+  // 1. Блок
+  const innerRate = tierRate(d.printTiers[c.innerSides], innerSheets);
+  lines.push({
+    label: `Печать блока ${c.innerSides} (${innerSheets} л. × ${innerRate})`,
+    amount: innerSheets * innerRate,
+  });
+  lines.push({
+    label: `Бумага блока «${c.innerPaper.name}» (${innerSheets} л. × ${c.innerPaper.price})`,
+    amount: innerSheets * c.innerPaper.price,
+  });
+
+  // 2. Обложка
+  const coverRate = tierRate(d.printTiers[c.coverSides], coverSheets);
+  lines.push({
+    label: `Печать обложки ${c.coverSides} (${coverSheets} л. × ${coverRate})`,
+    amount: coverSheets * coverRate,
+  });
+  lines.push({
+    label: `Бумага обложки «${c.coverPaper.name}» (${coverSheets} л. × ${c.coverPaper.price})`,
+    amount: coverSheets * c.coverPaper.price,
+  });
+
+  // 3. Переплёт — ₽/экз по тиражу (брекеты)
+  const b = c.binding;
+  const bindRate = bracketRate(b.priceBrackets, c.quantity);
+  lines.push({
+    label: `Переплёт «${b.name}» (${bindRate} ₽/экз × ${c.quantity})`,
+    amount: bindRate * c.quantity,
+  });
+
+  // 4. Отделка обложки — та же таблица единиц (per_item=экз, per_sheet=обложки)
+  for (const { option, count } of c.finishing) {
+    const rate = option.tiers.length
+      ? tierRate(option.tiers, coverSheets)
+      : option.unitPrice ?? 0;
+    const cnt = count ?? DEFAULT_COUNT[option.unit];
+    const qty = UNIT_QTY[option.unit]({ sheets: coverSheets, quantity: c.quantity, count: cnt });
+    lines.push({
+      label: `${option.name} (${option.setupPrice} + ${rate}×${qty})`,
+      amount: option.setupPrice + rate * qty,
+    });
+  }
+
+  // 5. Подготовка файла
+  if (d.prepCost > 0) lines.push({ label: "Подготовка файла", amount: d.prepCost });
+
+  const subtotal = lines.reduce((s, l) => s + l.amount, 0);
+  let total = c.urgent ? subtotal * d.urgencyMultiplier : subtotal;
+  total = Math.max(total, d.minOrder);
+  total = roundUp(total, d.roundingStep);
+
+  return { sheets: innerSheets + coverSheets, lines, subtotal, total };
 }

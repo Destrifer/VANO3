@@ -1,15 +1,28 @@
 import { directusFetch, assetUrl } from "../directus";
 import { computePrice } from "./engine";
-import type { PricingData, Finishing, Tier, Sides, OrderConfig } from "./engine";
+import type {
+  PricingData,
+  Finishing,
+  Tier,
+  Sides,
+  OrderConfig,
+  MultipageConfig,
+  Binding,
+} from "./engine";
 
 const num = (v: unknown): number => Number(v ?? 0);
+
+export type Strategy = "sheet" | "multipage" | "area" | "perpiece";
 
 export type SizePreset = {
   label: string;
   width: number;
   height: number;
   shape: "rectangular" | "round";
+  pagesPerSheet?: number; // импозиция (только multipage)
 };
+
+export type BindingOption = Binding & { id: number };
 
 export type PaperColor = {
   id: number;
@@ -37,14 +50,19 @@ export type FinishingOption = Finishing & {
 };
 
 export type ProductPricing = {
+  strategy: Strategy; // листовая / многостраничная / площадь / поштучно
   production: "sheet" | "plotter";
   previewKind: string | null; // какой макет превью рисовать (null → "card")
   allowRound: boolean;
   allowComplex: boolean;
   allowCustom: boolean;
-  sizes: SizePreset[];
+  sizes: SizePreset[]; // для multipage это форматы (с pagesPerSheet)
   papers: PaperOption[];
   finishing: FinishingOption[];
+  // только multipage:
+  coverPapers: PaperOption[];
+  innerPapers: PaperOption[];
+  bindings: BindingOption[];
 };
 
 // Глобальные параметры + ступени печати → PricingData движка.
@@ -75,6 +93,11 @@ export async function getPricingData(): Promise<PricingData> {
       height: num(s.plotter_sheet_height),
       margin: num(s.plotter_sheet_margin),
     },
+    brochureSheet: {
+      width: num(s.brochure_sheet_width) || 438,
+      height: num(s.brochure_sheet_height) || 309,
+      margin: num(s.brochure_sheet_margin) || 6,
+    },
     bleed: num(s.default_bleed),
     urgencyMultiplier: num(s.urgency_multiplier) || 1,
     prepCost: num(s.prep_cost),
@@ -94,6 +117,8 @@ export const HOME_BASE_QTY = 100;
 // Цена дефолтной конфигурации продукта (для плиток главной «от X ₽»).
 // Тот же движок, что в калькуляторе/заказе — единый источник истины (П2).
 export function defaultPrice(p: ProductPricing, pricing: PricingData): number | null {
+  if (p.strategy === "multipage") return defaultMultipagePrice(p, pricing);
+
   const paper = p.papers[0];
   const size = p.sizes[0];
   if (!paper || !size) return null;
@@ -111,11 +136,50 @@ export function defaultPrice(p: ProductPricing, pricing: PricingData): number | 
   return computePrice(cfg, pricing).total;
 }
 
+function defaultMultipagePrice(p: ProductPricing, pricing: PricingData): number | null {
+  const fmt = p.sizes[0];
+  const inner = p.innerPapers[0];
+  const cover = p.coverPapers[0];
+  const bind = p.bindings[0];
+  if (!fmt || !inner || !cover || !bind) return null;
+  const cfg: MultipageConfig = {
+    strategy: "multipage",
+    width: fmt.width,
+    height: fmt.height,
+    pages: Math.max(4, Math.ceil(bind.minPages / 4) * 4),
+    innerSides: "4+4",
+    coverSides: "4+0",
+    innerPaper: inner,
+    coverPaper: cover,
+    binding: bind,
+    quantity: HOME_BASE_QTY,
+    urgent: false,
+    finishing: [],
+  };
+  return computePrice(cfg, pricing).total;
+}
+
 // Ценовой конфиг продукта (размеры, бумаги, постпечать) → типы движка.
 export async function getProductPricing(
   slug: string,
 ): Promise<ProductPricing | null> {
+  // поля бумаги (переиспользуем для papers / cover_papers / inner_papers)
+  const paperFields = (rel: string) => [
+    `${rel}.papers_id.id`,
+    `${rel}.papers_id.name`,
+    `${rel}.papers_id.price`,
+    `${rel}.papers_id.group`,
+    `${rel}.papers_id.description`,
+    `${rel}.papers_id.colors.name`,
+    `${rel}.papers_id.colors.code`,
+    `${rel}.papers_id.colors.hex`,
+    `${rel}.papers_id.colors.image`,
+    `${rel}.papers_id.colors.sort`,
+    `${rel}.papers_id.colors.id`,
+  ];
+
   const fields = [
+    "strategy",
     "production",
     // "preview_kind", // включить, когда поле появится в Directus (пока → "card")
     "allow_round",
@@ -125,17 +189,15 @@ export async function getProductPricing(
     "sizes.width",
     "sizes.height",
     "sizes.shape",
-    "papers.papers_id.id",
-    "papers.papers_id.name",
-    "papers.papers_id.price",
-    "papers.papers_id.group",
-    "papers.papers_id.description",
-    "papers.papers_id.colors.name",
-    "papers.papers_id.colors.code",
-    "papers.papers_id.colors.hex",
-    "papers.papers_id.colors.image",
-    "papers.papers_id.colors.sort",
-    "papers.papers_id.colors.id",
+    "sizes.pages_per_sheet",
+    ...paperFields("papers"),
+    ...paperFields("cover_papers"),
+    ...paperFields("inner_papers"),
+    "bindings.bindings_id.id",
+    "bindings.bindings_id.name",
+    "bindings.bindings_id.price",
+    "bindings.bindings_id.min_pages",
+    "bindings.bindings_id.max_pages",
     "finishing.finishing_id.id",
     "finishing.finishing_id.name",
     "finishing.finishing_id.group",
@@ -158,7 +220,30 @@ export async function getProductPricing(
   const p = res.data?.[0];
   if (!p) return null;
 
+  // junction-строка бумаги (x.papers_id) → PaperOption
+  const mapPaper = (x: any): PaperOption => {
+    const pp = x.papers_id;
+    return {
+      id: num(pp.id),
+      name: pp.name,
+      price: num(pp.price),
+      group: pp.group ?? "Стандартные",
+      description: pp.description ?? null,
+      colors: (pp.colors ?? [])
+        .slice()
+        .sort((a: any, b: any) => (a.sort ?? 0) - (b.sort ?? 0))
+        .map((c: any) => ({
+          id: num(c.id),
+          name: c.name,
+          code: c.code,
+          hex: c.hex ?? null,
+          image: assetUrl(c.image),
+        })),
+    };
+  };
+
   return {
+    strategy: (p.strategy ?? "sheet") as Strategy,
     production: p.production ?? "sheet",
     previewKind: p.preview_kind ?? null,
     allowRound: !!p.allow_round,
@@ -169,27 +254,23 @@ export async function getProductPricing(
       width: num(s.width),
       height: num(s.height),
       shape: s.shape ?? "rectangular",
+      pagesPerSheet: s.pages_per_sheet == null ? undefined : num(s.pages_per_sheet),
     })),
-    papers: (p.papers ?? []).map((x: any) => {
-      const pp = x.papers_id;
+    papers: (p.papers ?? []).map(mapPaper),
+    coverPapers: (p.cover_papers ?? []).map(mapPaper),
+    innerPapers: (p.inner_papers ?? []).map(mapPaper),
+    bindings: (p.bindings ?? []).map((x: any) => {
+      const b = x.bindings_id;
       return {
-        id: num(pp.id),
-        name: pp.name,
-        price: num(pp.price),
-        group: pp.group ?? "Стандартные",
-        description: pp.description ?? null,
-        colors: (pp.colors ?? [])
-          .slice()
-          .sort((a: any, b: any) => (a.sort ?? 0) - (b.sort ?? 0))
-          .map((c: any) => ({
-            id: num(c.id),
-            name: c.name,
-            code: c.code,
-            hex: c.hex ?? null,
-            image: assetUrl(c.image),
-          })),
-      };
-    }) as PaperOption[],
+        id: num(b.id),
+        name: b.name,
+        priceBrackets: (Array.isArray(b.price) ? b.price : [])
+          .map((br: any) => ({ to: num(br.to), price: num(br.price) }))
+          .sort((a: any, z: any) => a.to - z.to),
+        minPages: num(b.min_pages),
+        maxPages: num(b.max_pages),
+      } as BindingOption;
+    }),
     finishing: (p.finishing ?? []).map((x: any) => {
       const f = x.finishing_id;
       return {

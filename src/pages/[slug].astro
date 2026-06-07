@@ -60,7 +60,13 @@ let pricing = null;
 let works: Work[] = [];
 if (props.type === "product") {
   productPricing = await getProductPricing(Astro.params.slug!);
-  if (productPricing && productPricing.papers.length > 0) {
+  // Калькулятор показываем, если есть данные под стратегию:
+  //   листовая — есть бумаги; многостраничная — есть переплёты.
+  const hasCalc =
+    !!productPricing &&
+    (productPricing.papers.length > 0 ||
+      (productPricing.strategy === "multipage" && productPricing.bindings.length > 0));
+  if (hasCalc) {
     pricing = await getPricingData();
   }
   // Примеры работ этого продукта (пусто, если коллекции/фото ещё нет).

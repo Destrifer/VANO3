@@ -2,43 +2,22 @@
 // Плашка заказа: итог + «В корзину». Кладёт позицию (полная спецификация
 // + снимок цены) в стор корзины. Загрузка макета и серверный заказ — этап 2.
 import { inject, ref } from "vue";
-import { calcKey } from "../../composables/useCalculator";
+import { sharedKey } from "../../composables/calcShared";
 import { addToCart } from "../../stores/cart";
+import type { CartSpec } from "../../lib/pricing/spec";
 
 const props = defineProps<{ name: string; slug: string }>();
-const calc = inject(calcKey)!;
+// Общий контракт: плашка не зависит от стратегии (лист/многостраничная).
+const calc = inject(sharedKey)!;
 const added = ref(false);
-
-// параметры позиции таблицей (из имён — для показа в корзине)
-function buildDetails() {
-  const c = calc;
-  const d: { label: string; value: string }[] = [];
-  d.push({ label: "Размер", value: c.shape === "round" ? `⌀${c.dims.w} мм` : `${c.dims.w}×${c.dims.h} мм` });
-  d.push({ label: "Печать", value: c.sides });
-  const paper = c.currentPaper?.name;
-  const col = c.colors[c.selectedColorIndex]?.name;
-  if (paper) d.push({ label: "Материал", value: col ? `${paper} (${col})` : paper });
-  if (c.laminationIndex >= 0) {
-    const lam = c.laminationOptions[c.laminationIndex]?.name;
-    if (lam) d.push({ label: "Ламинация", value: lam });
-  }
-  if (c.foilOn && c.foilOption) {
-    const fc = c.foilOption.colors[c.foilColorIndex]?.name;
-    d.push({ label: "Фольга", value: fc ?? "да" });
-  }
-  const others = c.otherOptions.filter((x) => c.fin[x.i].checked).map((x) => x.o.name);
-  if (others.length) d.push({ label: "Обработка", value: others.join(", ") });
-  d.push({ label: "Тираж", value: `${c.totalQty} шт` });
-  return d;
-}
 
 function add() {
   if (!calc.result) return;
   addToCart({
     slug: props.slug,
     name: props.name,
-    spec: { productSlug: props.slug, ...calc.currentSpec() },
-    details: buildDetails(),
+    spec: { productSlug: props.slug, ...calc.currentSpec() } as CartSpec,
+    details: calc.details(),
     thumb: calc.captureThumb(),
     qty: calc.totalQty,
     unitPrice: calc.result.total / calc.totalQty,

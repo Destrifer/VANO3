@@ -2,9 +2,9 @@
 // Загрузка макета на странице товара → /api/upload (валидация + preflight Tier 1).
 // Показывает светофор и замечания. Необязательно: можно прислать позже.
 import { inject, ref } from "vue";
-import { calcKey } from "../../composables/useCalculator";
+import { sharedKey } from "../../composables/calcShared";
 
-const calc = inject(calcKey)!;
+const calc = inject(sharedKey)!;
 const status = ref<"idle" | "uploading" | "error">("idle");
 const error = ref("");
 

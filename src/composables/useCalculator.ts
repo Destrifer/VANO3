@@ -173,8 +173,34 @@ export function useCalculator(props: {
   // Текущая спецификация заказа (для добавления в корзину).
   const currentConfig = () => buildConfig(totalQty.value);
 
+  // Параметры позиции таблицей (имена) — для корзины/плашки (контракт SharedCalc).
+  function details(): { label: string; value: string }[] {
+    const d: { label: string; value: string }[] = [];
+    d.push({
+      label: "Размер",
+      value: shape.value === "round" ? `⌀${dims.value.w} мм` : `${dims.value.w}×${dims.value.h} мм`,
+    });
+    d.push({ label: "Печать", value: sides.value });
+    const paper = currentPaper.value?.name;
+    const col = colors.value[selectedColorIndex.value]?.name;
+    if (paper) d.push({ label: "Материал", value: col ? `${paper} (${col})` : paper });
+    if (laminationIndex.value >= 0) {
+      const lam = laminationOptions.value[laminationIndex.value]?.name;
+      if (lam) d.push({ label: "Ламинация", value: lam });
+    }
+    if (foilOn.value && foilOption.value) {
+      const fc = foilOption.value.colors[foilColorIndex.value]?.name;
+      d.push({ label: "Фольга", value: fc ?? "да" });
+    }
+    const others = otherOptions.value.filter((x) => fin[x.i].checked).map((x) => x.o.name);
+    if (others.length) d.push({ label: "Обработка", value: others.join(", ") });
+    d.push({ label: "Тираж", value: `${totalQty.value} шт` });
+    return d;
+  }
+
   // Спек по id (productSlug добавляет вызывающий — он его знает).
   const currentSpec = (): Omit<CartSpec, "productSlug"> => ({
+    kind: "sheet",
     form: shape.value,
     width: dims.value.w,
     height: dims.value.h,
@@ -218,7 +244,7 @@ export function useCalculator(props: {
     laminationIndex, foilOn, foilColorIndex, laminationLocked,
     fin, needsCount, countLabel,
     // расчёт
-    perUnit, result, money, currentConfig, currentSpec,
+    perUnit, result, money, currentConfig, currentSpec, details,
     // миниатюра превью
     setThumbProvider, captureThumb,
   });
