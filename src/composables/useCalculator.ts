@@ -2,11 +2,11 @@
 // Компонент Calculator.vue создаёт это состояние и раздаёт полям через provide/inject,
 // поэтому поля остаются «тупыми» (только отображение), без проброса десятков пропсов.
 import { reactive, ref, computed, watch, type InjectionKey } from "vue";
-import { computePrice, type OrderConfig, type Sides } from "../lib/pricing/engine";
+import { computePrice, type OrderConfig, type AnyConfig, type Sides } from "../lib/pricing/engine";
 import type { PricingData } from "../lib/pricing/engine";
 import type { ProductPricing } from "../lib/pricing/data";
 import { isLaminationLocked, forcedLaminationIndex } from "../lib/pricing/rules";
-import type { CartSpec } from "../lib/pricing/spec";
+import type { SpecInput } from "../lib/pricing/spec";
 
 export function useCalculator(props: {
   product: ProductPricing;
@@ -23,8 +23,10 @@ export function useCalculator(props: {
     return list;
   });
   const shape = ref<"rectangular" | "round" | "complex">("rectangular");
-  const sizeIndex = ref(0);
-  const customMode = ref(false);
+  // нет пресетов + разрешён свой размер → сразу режим ввода (с дефолтом)
+  const hasPresets = product.sizes.length > 0;
+  const sizeIndex = ref(hasPresets ? 0 : -1);
+  const customMode = ref(!hasPresets && product.allowCustom);
   const customW = ref(90);
   const customH = ref(50);
   const diameter = ref(40);
@@ -141,7 +143,20 @@ export function useCalculator(props: {
   };
 
   // — Сборка конфига и расчёт —
-  function buildConfig(total: number): OrderConfig | null {
+  function buildConfig(total: number): AnyConfig | null {
+    // Фикс-цена за лист: размер изделия + тираж → листы → ставка по числу листов
+    if (product.strategy === "fixed") {
+      if (dims.value.w < 1 || dims.value.h < 1 || !product.fixedPrice.length) return null;
+      return {
+        strategy: "fixed",
+        width: dims.value.w,
+        height: dims.value.h,
+        quantity: total,
+        sheet: product.fixedSheet,
+        priceBrackets: product.fixedPrice,
+        urgent: false,
+      };
+    }
     const paper = product.papers[paperIndex.value];
     if (!paper || dims.value.w < 1 || dims.value.h < 1) return null;
     const finishing: OrderConfig["finishing"] = [];
@@ -194,11 +209,15 @@ export function useCalculator(props: {
 
   // Параметры позиции таблицей (имена) — для корзины/плашки (контракт SharedCalc).
   function details(): { label: string; value: string }[] {
+    const sizeStr = shape.value === "round" ? `⌀${dims.value.w} мм` : `${dims.value.w}×${dims.value.h} мм`;
+    if (product.strategy === "fixed") {
+      return [
+        { label: "Размер", value: sizeStr },
+        { label: "Тираж", value: `${totalQty.value} шт` },
+      ];
+    }
     const d: { label: string; value: string }[] = [];
-    d.push({
-      label: "Размер",
-      value: shape.value === "round" ? `⌀${dims.value.w} мм` : `${dims.value.w}×${dims.value.h} мм`,
-    });
+    d.push({ label: "Размер", value: sizeStr });
     if (!singleSided) d.push({ label: "Печать", value: sides.value });
     if (foldTypes.length && selectedFold.value) d.push({ label: "Фальцовка", value: selectedFold.value.name });
     if (contourCut.value) d.push({ label: "Резка", value: "контурная" });
@@ -220,7 +239,11 @@ export function useCalculator(props: {
   }
 
   // Спек по id (productSlug добавляет вызывающий — он его знает).
-  const currentSpec = (): Omit<CartSpec, "productSlug"> => ({
+  const currentSpec = (): SpecInput => {
+    if (product.strategy === "fixed") {
+      return { kind: "fixed", form: shape.value, width: dims.value.w, height: dims.value.h, quantity: totalQty.value };
+    }
+    return {
     kind: "sheet",
     form: shape.value,
     width: dims.value.w,
@@ -249,7 +272,8 @@ export function useCalculator(props: {
         ? [{ id: foldFinishing.id, count: selectedFold.value.folds }]
         : []),
     ],
-  });
+    };
+  };
 
   const money = (n: number) =>
     n.toLocaleString("ru-RU", { maximumFractionDigits: 0 });

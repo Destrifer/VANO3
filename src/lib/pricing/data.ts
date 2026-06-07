@@ -7,7 +7,10 @@ import type {
   Sides,
   OrderConfig,
   MultipageConfig,
+  FixedConfig,
   Binding,
+  CuttingBracket,
+  Sheet,
 } from "./engine";
 
 const num = (v: unknown): number => Number(v ?? 0);
@@ -69,6 +72,9 @@ export type ProductPricing = {
   coverPapers: PaperOption[];
   innerPapers: PaperOption[];
   bindings: BindingOption[];
+  // только fixed (фикс-цена за лист):
+  fixedPrice: CuttingBracket[]; // ₽/лист по числу листов
+  fixedSheet: Sheet; // печатный лист продукта
 };
 
 // Глобальные параметры + ступени печати → PricingData движка.
@@ -124,6 +130,7 @@ export const HOME_BASE_QTY = 100;
 // Тот же движок, что в калькуляторе/заказе — единый источник истины (П2).
 export function defaultPrice(p: ProductPricing, pricing: PricingData): number | null {
   if (p.strategy === "multipage") return defaultMultipagePrice(p, pricing);
+  if (p.strategy === "fixed") return defaultFixedPrice(p, pricing);
 
   const paper = p.papers[0];
   const size = p.sizes[0];
@@ -138,6 +145,21 @@ export function defaultPrice(p: ProductPricing, pricing: PricingData): number | 
     paper,
     urgent: false,
     finishing: [],
+  };
+  return computePrice(cfg, pricing).total;
+}
+
+function defaultFixedPrice(p: ProductPricing, pricing: PricingData): number | null {
+  const size = p.sizes[0];
+  if (!size || !p.fixedPrice.length) return null;
+  const cfg: FixedConfig = {
+    strategy: "fixed",
+    width: size.width,
+    height: size.height,
+    quantity: HOME_BASE_QTY,
+    sheet: p.fixedSheet,
+    priceBrackets: p.fixedPrice,
+    urgent: false,
   };
   return computePrice(cfg, pricing).total;
 }
@@ -192,6 +214,10 @@ export async function getProductPricing(
     "double_sided",
     "allow_contour_cut",
     "fold_types",
+    "fixed_price",
+    "fixed_sheet_width",
+    "fixed_sheet_height",
+    "fixed_sheet_margin",
     "allow_round",
     "allow_complex",
     "allow_custom",
@@ -289,6 +315,14 @@ export async function getProductPricing(
         maxPages: num(b.max_pages),
       } as BindingOption;
     }),
+    fixedPrice: (Array.isArray(p.fixed_price) ? p.fixed_price : [])
+      .map((b: any) => ({ to: num(b.to), price: num(b.price) }))
+      .sort((a: any, z: any) => a.to - z.to),
+    fixedSheet: {
+      width: num(p.fixed_sheet_width) || 275,
+      height: num(p.fixed_sheet_height) || 405,
+      margin: num(p.fixed_sheet_margin) || 0,
+    },
     finishing: (p.finishing ?? []).map((x: any) => {
       const f = x.finishing_id;
       return {

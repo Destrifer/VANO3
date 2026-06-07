@@ -85,7 +85,20 @@ export function pagesPerSheet(sheet: Sheet, w: number, h: number): number {
   return Math.max(2, fitPerSheet(sheet, w, h, 0) * 2);
 }
 
-export type AnyConfig = OrderConfig | MultipageConfig;
+// Фикс-цена за лист (наклейки на спецплёнке/пластике): цена ВКЛЮЧАЕТ всё
+// (печать+резка+материал) и зависит от числа листов (скидка за объём). Листов
+// считаем из размера изделия (сколько влезает на лист продукта) и тиража.
+export type FixedConfig = {
+  strategy: "fixed";
+  width: number; // размер изделия, мм
+  height: number;
+  quantity: number; // тираж
+  sheet: Sheet; // печатный лист продукта (напр. 275×405)
+  priceBrackets: CuttingBracket[]; // ₽/лист по числу листов (всё включено)
+  urgent: boolean;
+};
+
+export type AnyConfig = OrderConfig | MultipageConfig | FixedConfig;
 
 export type Line = { label: string; amount: number };
 export type PriceResult = {
@@ -169,10 +182,26 @@ function roundUp(value: number, step: number): number {
 // computeSheet; многостраничная — computeMultipage. Новые паттерны (area,
 // perpiece) добавляются сюда же, не трогая существующие.
 export function computePrice(c: AnyConfig, d: PricingData): PriceResult {
-  if ((c as MultipageConfig).strategy === "multipage") {
-    return computeMultipage(c as MultipageConfig, d);
-  }
+  const strat = (c as { strategy?: string }).strategy;
+  if (strat === "multipage") return computeMultipage(c as MultipageConfig, d);
+  if (strat === "fixed") return computeFixed(c as FixedConfig, d);
   return computeSheet(c as OrderConfig, d);
+}
+
+// Фикс-цена за лист: листов = ceil(тираж / влезает на лист), ставка по числу
+// листов (брекеты), итог = ставка × листов. Всё включено.
+export function computeFixed(c: FixedConfig, d: PricingData): PriceResult {
+  const fit = Math.max(1, fitPerSheet(c.sheet, c.width, c.height, 0));
+  const sheets = Math.ceil(Math.max(1, c.quantity) / fit);
+  const rate = bracketRate(c.priceBrackets, sheets);
+  const amount = rate * sheets;
+  const lines: Line[] = [
+    { label: `Печать, резка, материал (${sheets} л. × ${rate} ₽)`, amount },
+  ];
+  let total = c.urgent ? amount * d.urgencyMultiplier : amount;
+  total = Math.max(total, d.minOrder);
+  total = roundUp(total, d.roundingStep);
+  return { sheet: c.sheet, fitPerSheet: fit, sheets, lines, subtotal: amount, total };
 }
 
 // Листовая стратегия: конвейер стадий, читается как формула.

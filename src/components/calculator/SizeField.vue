@@ -21,7 +21,12 @@ const calc = inject(calcKey)!;
           <span>×</span>
           <input type="number" class="input w-20" v-model.number="calc.customH" min="1" />
           <span class="text-sm opacity-70">мм</span>
-          <button type="button" class="btn btn-ghost btn-sm" @click="calc.backToList">из списка</button>
+          <button
+            v-if="calc.product.sizes.length"
+            type="button"
+            class="btn btn-ghost btn-sm"
+            @click="calc.backToList"
+          >из списка</button>
         </div>
         <select v-else class="select w-full" v-model.number="calc.sizeIndex" @change="calc.onSizeChange">
           <option v-for="(s, i) in calc.product.sizes" :key="i" :value="i">{{ s.label }}</option>

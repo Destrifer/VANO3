@@ -45,14 +45,29 @@ export type MultipageSpec = {
   finishing: FinishingPick[]; // прочая отделка обложки
 };
 
-export type CartSpec = SheetSpec | MultipageSpec;
+// Фикс-цена за лист (наклейки на спецплёнке/пластике).
+export type FixedSpec = {
+  kind: "fixed";
+  productSlug: string;
+  form: "rectangular" | "round" | "complex";
+  width: number;
+  height: number;
+  quantity: number;
+};
+
+export type CartSpec = SheetSpec | MultipageSpec | FixedSpec;
 
 // Спек без productSlug — то, что отдаёт калькулятор (slug добавит плашка).
-export type SpecInput = Omit<SheetSpec, "productSlug"> | Omit<MultipageSpec, "productSlug">;
+export type SpecInput =
+  | Omit<SheetSpec, "productSlug">
+  | Omit<MultipageSpec, "productSlug">
+  | Omit<FixedSpec, "productSlug">;
 
 // Старые позиции корзины могли не иметь kind → считаем их листовыми.
-function specKind(spec: CartSpec): "sheet" | "multipage" {
-  return spec.kind === "multipage" ? "multipage" : "sheet";
+function specKind(spec: CartSpec): "sheet" | "multipage" | "fixed" {
+  if (spec.kind === "multipage") return "multipage";
+  if (spec.kind === "fixed") return "fixed";
+  return "sheet";
 }
 
 // Спек (id) + актуальные данные продукта → priced-конфиг движка.
@@ -60,9 +75,23 @@ export function buildConfigFromSpec(
   spec: CartSpec,
   product: ProductPricing,
 ): AnyConfig | null {
-  return specKind(spec) === "multipage"
-    ? buildMultipageConfig(spec as MultipageSpec, product)
-    : buildSheetConfig(spec as SheetSpec, product);
+  const k = specKind(spec);
+  if (k === "multipage") return buildMultipageConfig(spec as MultipageSpec, product);
+  if (k === "fixed") return buildFixedConfig(spec as FixedSpec, product);
+  return buildSheetConfig(spec as SheetSpec, product);
+}
+
+function buildFixedConfig(spec: FixedSpec, product: ProductPricing): AnyConfig | null {
+  if (spec.width < 1 || spec.height < 1 || !product.fixedPrice.length) return null;
+  return {
+    strategy: "fixed",
+    width: spec.width,
+    height: spec.height,
+    quantity: spec.quantity,
+    sheet: product.fixedSheet,
+    priceBrackets: product.fixedPrice,
+    urgent: false,
+  };
 }
 
 function buildSheetConfig(spec: SheetSpec, product: ProductPricing): AnyConfig | null {
@@ -138,9 +167,14 @@ function buildMultipageConfig(
 
 // Человекочитаемое описание спека (по id → имена) для менеджера в админке.
 export function describeSpec(spec: CartSpec, product: ProductPricing): string {
-  return specKind(spec) === "multipage"
-    ? describeMultipage(spec as MultipageSpec, product)
-    : describeSheet(spec as SheetSpec, product);
+  const k = specKind(spec);
+  if (k === "multipage") return describeMultipage(spec as MultipageSpec, product);
+  if (k === "fixed") {
+    const s = spec as FixedSpec;
+    const sz = s.form === "round" ? `⌀${s.width} мм` : `${s.width}×${s.height} мм`;
+    return `${sz} · ${s.quantity} шт`;
+  }
+  return describeSheet(spec as SheetSpec, product);
 }
 
 function describeSheet(spec: SheetSpec, product: ProductPricing): string {

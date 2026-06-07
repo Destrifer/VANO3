@@ -21,7 +21,7 @@ const calc = inject(calcKey)!;
     <SizeField />
     <QuantityField />
     <SidesField v-if="!calc.singleSided && !calc.doubleSided" />
-    <MaterialField />
+    <MaterialField v-if="calc.product.papers.length" />
     <FoldField v-if="calc.foldTypes.length" />
     <FinishingField />
     <CuttingField v-if="calc.allowContourCut" />

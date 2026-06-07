@@ -65,7 +65,8 @@ if (props.type === "product") {
   const hasCalc =
     !!productPricing &&
     (productPricing.papers.length > 0 ||
-      (productPricing.strategy === "multipage" && productPricing.bindings.length > 0));
+      (productPricing.strategy === "multipage" && productPricing.bindings.length > 0) ||
+      (productPricing.strategy === "fixed" && productPricing.fixedPrice.length > 0));
   if (hasCalc) {
     pricing = await getPricingData();
   }
