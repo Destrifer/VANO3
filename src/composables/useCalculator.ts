@@ -155,7 +155,7 @@ export function useCalculator(props: {
       if (diameter.value > maxD) {
         selfChange = true;
         diameter.value = maxD;
-        sizeWarning.value = `Диаметр уменьшен до ${maxD} мм — максимум для печатного листа.`;
+        sizeWarning.value = `Уменьшено до ⌀${maxD} мм — максимум для листа.`;
       }
       return;
     }
@@ -166,7 +166,7 @@ export function useCalculator(props: {
       selfChange = true;
       customW.value = fitted.width;
       customH.value = fitted.height;
-      sizeWarning.value = `Размер уменьшен до ${fitted.width}×${fitted.height} мм — максимум для печатного листа.`;
+      sizeWarning.value = `Уменьшено до ${fitted.width}×${fitted.height} мм — максимум для листа.`;
     }
   }
   watch(

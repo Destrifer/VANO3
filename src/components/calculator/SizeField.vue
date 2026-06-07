@@ -48,6 +48,9 @@ const calc = inject(calcKey)!;
         </button>
       </div>
     </div>
-    <span v-if="calc.sizeWarning" class="text-xs text-warning">{{ calc.sizeWarning }}</span>
+    <!-- место под предупреждение зарезервировано всегда (2 строки) — без сдвигов -->
+    <span class="block text-xs text-error min-h-8 leading-4" :class="{ invisible: !calc.sizeWarning }">
+      {{ calc.sizeWarning || "‎" }}
+    </span>
   </div>
 </template>
