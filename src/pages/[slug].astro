@@ -3,7 +3,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 import { Icon } from "astro-icon/components";
 import { getCategories } from "../lib/categories";
 import { getProducts } from "../lib/products";
-import { getProductPricing, getPricingData, defaultPrice } from "../lib/pricing/data";
+import { getProductPricing, getPricingData, minPrice } from "../lib/pricing/data";
 import { getWorks, type Work } from "../lib/works";
 import { getServiceContent, type ServiceContent } from "../lib/services";
 import { productOffer, faqPage } from "../lib/seo/jsonld";
@@ -91,7 +91,7 @@ if (props.type === "product") {
   if (hasCalc) pricing = await getPricingData();
   works = await getWorks({ product: slug });
   content = await getServiceContent(slug);
-  if (productPricing && pricing) lowPrice = defaultPrice(productPricing, pricing);
+  if (productPricing && pricing) lowPrice = minPrice(productPricing, pricing);
 }
 
 // H1 / мета / JSON-LD страницы.

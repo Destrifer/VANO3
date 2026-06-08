@@ -167,6 +167,37 @@ function defaultFixedPrice(p: ProductPricing, pricing: PricingData): number | nu
   return computePrice(cfg, pricing).total;
 }
 
+// Минимальный тираж витрины (для честной цены «от»).
+export const MIN_SHOWCASE_QTY = 50;
+
+// Цена «от» = самый дешёвый реальный заказ: минимальный тираж × одна сторона ×
+// самая дешёвая из доступных бумаг. Это честный минимум для title/Offer
+// (дефолт конфигуратора может быть дороже — это нормально, не враньё).
+// Для multipage/fixed «от» = дефолтная конфигурация (там минимум так не считается).
+export function minPrice(p: ProductPricing, pricing: PricingData): number | null {
+  if (p.strategy !== "sheet") return defaultPrice(p, pricing);
+  const size = p.sizes[0];
+  if (!size || !p.papers.length) return null;
+  const sides: Sides = p.doubleSided ? "4+4" : "4+0";
+  let min = Infinity;
+  for (const paper of p.papers) {
+    const cfg: OrderConfig = {
+      production: p.production,
+      form: "rectangular",
+      width: size.width,
+      height: size.height,
+      sides,
+      quantity: MIN_SHOWCASE_QTY,
+      paper,
+      urgent: false,
+      finishing: [],
+    };
+    const total = computePrice(cfg, pricing).total;
+    if (total < min) min = total;
+  }
+  return Number.isFinite(min) ? min : null;
+}
+
 function defaultMultipagePrice(p: ProductPricing, pricing: PricingData): number | null {
   const fmt = p.sizes[0];
   const inner = p.innerPapers[0];
