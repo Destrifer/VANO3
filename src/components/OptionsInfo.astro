@@ -69,17 +69,19 @@ if (postpress.length) cards.push({ title: "Постпечать и отделк�
                 <div class="cell-preview">
                   {card.items.map((it, i) => (
                     <div class={`opt-panel flex gap-4 ${i === 0 ? "" : "hidden"}`} data-idx={i}>
-                      <Picture
-                        src={placeholder}
-                        width={320}
-                        height={320}
-                        fit="cover"
-                        position="center"
-                        formats={["avif", "webp"]}
-                        quality={50}
-                        alt={it.name}
-                        class="size-32 shrink-0 rounded-box object-cover"
-                      />
+                      <div class="size-32 shrink-0 overflow-hidden rounded-box">
+                        <Picture
+                          src={placeholder}
+                          width={320}
+                          height={320}
+                          fit="cover"
+                          position="center"
+                          formats={["avif", "webp"]}
+                          quality={50}
+                          alt={it.name}
+                          class="size-full object-cover"
+                        />
+                      </div>
                       <div>
                         <p class="font-semibold">{it.name}</p>
                         <p class="mt-1 text-sm text-base-content/70">
