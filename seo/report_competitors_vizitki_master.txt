@@ -1,0 +1,140 @@
+хостов=823 url=2192
+
+=== ТОП ХОСТОВ (sum queries) ===
+m.avito.ru                         стр=345 q=749
+izoproekt.ru                       стр= 19 q=668
+digital-printing.ru                стр= 38 q=542
+kopirka.ru                         стр= 66 q=416
+tipografia-gorod.ru                стр= 43 q=369
+coral-print.ru                     стр= 79 q=367
+printkov.ru                        стр= 19 q=348
+tpsprint.ru                        стр= 61 q=310
+enjoyprint.ru                      стр= 48 q=309
+printhit.org                       стр= 36 q=289
+gmprint.ru                         стр= 30 q=268
+copy.ru                            стр= 53 q=264
+irm1.ru                            стр= 20 q=232
+mdmprint.ru                        стр= 67 q=203
+projectorprint.ru                  стр= 14 q=192
+yandex.ru                          стр= 98 q=192
+dpl-print.ru                       стр= 54 q=191
+iprint.ru                          стр= 39 q=161
+niceprint.ru                       стр= 25 q=160
+2gis.ru                            стр= 71 q=157
+print24.su                         стр=  9 q=155
+zsa-print.ru                       стр= 21 q=141
+ozon.ru                            стр= 43 q=140
+speedy-print.ru                    стр= 11 q=138
+multifoto.ru                       стр= 41 q=134
+avito.ru                           стр= 65 q=129
+printut.com                        стр= 27 q=122
+profi.ru                           стр= 62 q=118
+ok-press.ru                        стр= 10 q=117
+unopress.ru                        стр= 20 q=113
+uslugi.yandex.ru                   стр= 66 q=108
+giprint.ru                         стр= 15 q=94
+icolorit.ru                        стр= 25 q=92
+pmg.ru                             стр= 46 q=89
+optpoligraf.ru                     стр= 23 q=84
+printdirect.ru                     стр=  8 q=83
+printb.ru                          стр=  6 q=73
+printside.ru                       стр= 16 q=72
+di-project.studio                  стр=  8 q=71
+50k.ru                             стр= 12 q=71
+fsfera.ru                          стр=  7 q=70
+vyatka-it.ru                       стр= 12 q=67
+ru-cafe.ru                         стр=  7 q=66
+fastprint.info                     стр=  8 q=65
+limtek.ru                          стр=  3 q=64
+
+=== ТОП-45 СТРАНИЦ ===
+  149 https://izoproekt.ru/uslugi/pechat-vizitok/
+      Печать визиток в Москве, изготовление и дизайн визиток | Изопроект
+  114 https://printkov.ru/prints/businesscards
+      Печать визиток в Москве на заказ | Цены онлайн | Принтков
+  104 https://digital-printing.ru/prints/businesscards
+      Печать визиток - цены на изготовление визиток в Москве
+   76 https://izoproekt.ru/
+      Заказ офсетной печати и цифровой печати | Изготовление визиток, брошюр, буклетов | Типография в
+   72 https://printhit.org/product/vizitki
+      Визитки - печать по доступной цене! Типография PrintHit
+   65 https://kopirka.ru/uslugi/vizitki/
+      Печать визиток ● Копирка
+   59 https://projectorprint.ru/production/vizitki-s-tisneniem/
+      Печать и изготовление визиток с логотипом на заказ
+   56 https://www.limtek.ru/vizitka/
+      Цена на создание сайта визитки в Москве, стоимость и продвижение
+   54 https://tpsprint.ru/printing_products/sheet_printing/business_cards/
+      Печать визиток в типографии на заказ. Изготовление визитных карточек в Москве
+   53 https://di-project.studio/visitka.php
+      Создание сайта визитки под ключ за 50 000 рублей в Москве
+   50 https://printut.com/constructor
+      Конструктор визиток, листовок и флаеров - бесплатный графический онлайн редактор для создания м
+   48 https://supa.ru/features/business-card
+      Создавайте визитки в бесплатном онлайн редакторе - SUPA
+   47 https://digital-printing.ru/prints/vizitki-srochno
+      Срочная печать визиток в Москве | Digital Printing
+   47 https://speedy-print.ru/product/vizitki/
+      Печать визиток в Москве — срочное изготовление | SpeedyPrint
+   46 https://niceprint.ru/service/vizitki/
+      Печать визиток на заказ - печать и изготовление визиток в Москве по низкой цене - Хорошая типог
+   46 https://tipografia-gorod.ru/catalog-product/srochnaya-pechat-visitok/
+      Срочное изготовление визиток в Москве - заказать визитки
+   46 https://print24.su/cards/
+      Печать визиток в Москве, заказать изготовление визиток по низкой цене | Срочная круглосуточная 
+   45 https://mnogoland.ru/sajty-vizitki/
+      Разработка сайтов визиток под ключ в Москве
+   45 https://ok-press.ru/vizitki/
+      Заказать печать визиток в типографии в Москве срочно и недорого
+   44 https://irm1.ru/price/pechat-vizitok.html
+      Печать визиток в Москве. Расчет цены на сайте, онлайн-заказ. Быстро, удобно, недорого. Заказать
+   42 https://www.coral-print.ru/vizitki
+      Печать визиток в Москве - заказать изготовление визитки недорого на производстве
+   41 https://gmprint.ru/calc/cards
+      Печать визиток в Москве от 749 ₽ | Типография «Группа М»
+   39 https://vyatka-it.ru/moskva/sozdanie-sajt-vizitki/
+      Заказать сайт визитку в городе Москва | цена на разработку и стоимость создания визитки под клю
+   36 https://www.fotor.com/ru/design/card-maker/business/
+      Онлайновый производитель визитных карточек | Cделать визитку онлайн | Fotor
+   35 https://enjoyprint.ru/pechat-vizitok
+      Печать визиток в Москве - заказать онлайн с доставкой в EnjoyPrint
+   34 https://zsa-print.ru/
+      Типография в Москве - печать полиграфии по доступным ценам: срочно, оптом, в розницу | Гарант
+   33 https://copy.ru/catalog/pechat-vizitok/
+      Печать визиток онлайн заказ в Москве
+   33 https://printdirect.ru/pechyat/poligrafiya/vizitki
+      Печать визиток от 50 шт. Онлайн заказ, быстрая доставка.
+   33 https://irm1.ru/price/pechat-vizitok/srochnaya.html
+      Срочная цифровая печать визиток в Москве. Расчет цены на сайте, онлайн-заказ. Быстро, удобно, н
+   32 https://enjoyprint.ru/pechat-vizitok/izgotovlenie-deshevyh-vizitok
+      Печать недорогих визиток в Москве - Изготовление недорогих визиток на заказ в EnjoyPrint
+   32 https://tipografia-gorod.ru/catalog-product/pechat-vizitok/
+      Печать визиток в Москве — изготовление визиток | Типография Город
+   32 https://www.coral-print.ru/
+      Печать визиток, изготовление, первая цифровая типография дешево в Москве
+   31 https://gmprint.ru/
+      Типография «Группа М» в Москве - недорогие и качественные услуги полиграфии
+   31 https://drawcon.ru/tools/bcards
+      Создать визитку бесплатно - DRAWCON
+   29 https://www.ozon.ru/category/vizitki-na-zakaz/
+      Визитки на заказ купить на OZON по низкой цене
+   29 https://kopirka.ru/uslugi/vizitki/tsifrovaya-pechat/
+      Печать визиток Москва • Копирка
+   29 https://wilda.ru/onlayn-konstruktor-vizitok
+      Создать визитку быстро и без регистрации! 100+ шаблонов
+   29 https://www.unopress.ru/products/pechat-vizitok/
+      Печать визиток в Москве недорого - цены в «Унопресс»
+   28 https://tipografia-gorod.ru/catalog-product/vizitki-plastic/
+      Заказать изготовление и печать пластиковых визиток в Москве недорого
+   28 https://m.avito.ru/moskva/predlozheniya_uslug?q=%D1%81%D1%80%D0%BE%D1%87%D0%BD%D0%B0%D1%8F+%D0%BF%D0%B5%D1%87%D0%B0%D1%82%D1%8C+%D0%B2%D0%B8%D0%B7%D0%B8%D1%82%D0%BE%D0%BA
+      срочная печать визиток в Москве - цены и отзывы | Услуги на Авито | Поиск специалистов
+   27 https://printb.ru/production/businesscard
+      Быстрая печать визиток в Москве недорого - изготовление, дизайн и доставка
+   26 https://mdmprint.ru/pechat-vizitok
+      Печать визиток в Москве недорого - любой тираж от 5️⃣2️⃣5️⃣₽ / МДМпринт
+   26 https://masterhtml.ru/uslugi/card/
+      Создание сайта-визитки в Москве под ключ недорого, цены на разработку
+   26 https://fsfera.ru/pechat-vizitok/
+      Печать визиток в Москве - Заказать визитки Москва недорого
+   26 https://sajt-vizitka-nedorogo.ru/
+      Разработка сайта под ключ в Москве, заказать создание сайтов недорого, цена без предоплаты пром
