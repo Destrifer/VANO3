@@ -231,22 +231,40 @@ export function useCalculator(props: {
   };
 
   // — Сборка конфига и расчёт —
-  function buildConfig(total: number): AnyConfig | null {
+  // Переопределения для ячеек таблицы цен: считаем как текущее состояние,
+  // но с другим тиражом/бумагой/размером/сторонами (без мутации стейта).
+  type CellOverride = {
+    quantity?: number;
+    paperIndex?: number;
+    sizeIndex?: number;
+    sides?: Sides;
+  };
+  function buildConfig(total: number, ov?: CellOverride): AnyConfig | null {
+    // размер: из пресета (override) или текущий
+    let w = dims.value.w;
+    let h = dims.value.h;
+    if (ov?.sizeIndex != null) {
+      const s = product.sizes[ov.sizeIndex];
+      if (s) {
+        w = s.width;
+        h = s.height;
+      }
+    }
     // Фикс-цена за лист: размер изделия + тираж → листы → ставка по числу листов
     if (product.strategy === "fixed") {
-      if (dims.value.w < 1 || dims.value.h < 1 || !product.fixedPrice.length) return null;
+      if (w < 1 || h < 1 || !product.fixedPrice.length) return null;
       return {
         strategy: "fixed",
-        width: dims.value.w,
-        height: dims.value.h,
+        width: w,
+        height: h,
         quantity: total,
         sheet: product.fixedSheet,
         priceBrackets: product.fixedPrice,
         urgent: false,
       };
     }
-    const paper = product.papers[paperIndex.value];
-    if (!paper || dims.value.w < 1 || dims.value.h < 1) return null;
+    const paper = product.papers[ov?.paperIndex ?? paperIndex.value];
+    if (!paper || w < 1 || h < 1) return null;
     const finishing: OrderConfig["finishing"] = [];
     const lam = laminationOptions.value[laminationIndex.value];
     if (laminationIndex.value >= 0 && lam) finishing.push({ option: lam });
@@ -261,9 +279,9 @@ export function useCalculator(props: {
     return {
       production: product.production,
       form: shape.value,
-      width: dims.value.w,
-      height: dims.value.h,
-      sides: sides.value,
+      width: w,
+      height: h,
+      sides: ov?.sides ?? sides.value,
       quantity: total,
       paper,
       urgent: false,
@@ -279,6 +297,14 @@ export function useCalculator(props: {
     const cfg = buildConfig(total);
     if (!cfg) return null;
     return computePrice(cfg, pricing).total / total;
+  }
+
+  // Цена ячейки таблицы: тираж × (бумага|размер|стороны); прочие параметры — текущие.
+  function priceForCell(ov: CellOverride): number | null {
+    const total = ov.quantity ?? totalQty.value;
+    if (total < 1) return null;
+    const cfg = buildConfig(total, ov);
+    return cfg ? computePrice(cfg, pricing).total : null;
   }
 
   const result = computed(() => {
@@ -386,7 +412,7 @@ export function useCalculator(props: {
     laminationIndex, foilOn, foilColorIndex, laminationLocked,
     fin, needsCount, countLabel,
     // расчёт
-    perUnit, result, money, currentConfig, currentSpec, details,
+    perUnit, priceForCell, result, money, currentConfig, currentSpec, details,
     // миниатюра превью
     setThumbProvider, captureThumb,
   });

@@ -10,6 +10,7 @@ import { applyPreset, initUrlSync, type CalcPreset } from "../composables/calcUr
 import Preview from "./calculator/Preview.vue";
 import OrderPlate from "./calculator/OrderPlate.vue";
 import Calculator from "./Calculator.vue";
+import PriceTable from "./PriceTable.vue";
 
 const props = defineProps<{
   product: ProductPricing;
@@ -38,6 +39,9 @@ onMounted(() => initUrlSync(calc));
       <slot name="gallery" />
     </div>
   </div>
+
+  <!-- Динамическая таблица цен (делит состояние с калькулятором) -->
+  <PriceTable />
 </template>
 
 <style scoped>

@@ -42,6 +42,12 @@
   --font-sans:
     system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
     "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+
+  /* Семантика «выгоды» для таблицы цен — единственный осознанный цветной
+     акцент в монохромной теме (как цветное превью). Tailwind генерит
+     утилиты text-gain / text-loss. Контраст под текст на белом. */
+  --color-gain: oklch(52% 0.15 150);
+  --color-loss: oklch(55% 0.2 27);
 }
 
 :root {
