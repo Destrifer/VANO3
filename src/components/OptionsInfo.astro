@@ -1,8 +1,12 @@
 ---
-// Авто-блок «Материалы и технологии». Product-agnostic: собирается из опций,
-// что реально есть у продукта. Статический HTML (П6, краулится), инлайн (без попапов).
-// Материалы — из papers.description; постпечать — из optionInfo по группам.
-// Один блок на категорию (не на опцию): плёнка 150/200 = две строки, не два блока.
+// Авто-блок «Материалы и технологии». Product-agnostic: из опций продукта.
+// Группы по papers.group (тип материала) и по finishing.group (постпечать).
+// Внутри группы — выбор варианта (daisyUI tabs на радио = чистый CSS, без JS,
+// без попапа; все панели в HTML → краулится, П6). В панели — квадратный тумб
+// (astro:assets: cover-кроп + avif/webp) + описание.
+// Картинка пока единый плейсхолдер; реальные — в papers.image/finishing_options.image.
+import { Picture } from "astro:assets";
+import placeholder from "../assets/materials/placeholder.jpg";
 import type { ProductPricing } from "../lib/pricing/data";
 import { optionInfo } from "../lib/optionInfo";
 
@@ -14,16 +18,15 @@ const { papers = [], finishing = [], foldTypes = [], allowContourCut = false } =
     allowContourCut?: boolean;
   };
 
-// Материалы: только с описанием, сгруппированы по group (Стандартные/Дизайнерские…).
-const paperItems = papers.filter((p) => p.description);
-const paperGroups = new Map<string, typeof paperItems>();
-for (const p of paperItems) {
-  const g = p.group || "Бумаги";
+// Материалы по группам (group = тип материала).
+const paperGroups = new Map<string, typeof papers>();
+for (const p of papers) {
+  const g = p.group || "Материалы";
   if (!paperGroups.has(g)) paperGroups.set(g, []);
   paperGroups.get(g)!.push(p);
 }
 
-// Постпечать: концепты из групп отделки + признаков продукта, у кого есть текст.
+// Постпечать: концепты из групп отделки + признаков продукта (у кого есть текст).
 const concepts: string[] = [
   ...new Set(finishing.map((f) => f.group).filter((g): g is string => !!g)),
 ];
@@ -38,23 +41,49 @@ const hasContent = paperGroups.size > 0 || conceptItems.length > 0;
 
 {
   hasContent && (
-    <section class="my-10 max-w-prose">
+    <section class="my-10">
       <h2 class="mb-4 text-xl font-bold">Материалы и технологии</h2>
 
       {paperGroups.size > 0 && (
-        <div class="mb-6">
-          <h3 class="mb-2 font-semibold">Бумаги и материалы</h3>
-          {[...paperGroups.entries()].map(([group, items]) => (
-            <div class="mb-3">
-              <p class="text-sm font-medium text-base-content/70">{group}</p>
-              <dl class="mt-1 space-y-1">
-                {items.map((p) => (
-                  <div class="flex flex-col sm:flex-row sm:gap-2">
-                    <dt class="font-medium sm:min-w-48">{p.name}</dt>
-                    <dd class="text-base-content/70">{p.description}</dd>
-                  </div>
+        <div class="mb-8 space-y-5">
+          {[...paperGroups.entries()].map(([group, items], gi) => (
+            <div>
+              <p class="mb-2 text-sm font-medium text-base-content/70">{group}</p>
+              <div role="tablist" class="tabs tabs-box">
+                {items.map((p, i) => (
+                  <>
+                    <input
+                      type="radio"
+                      name={`mat-${gi}`}
+                      role="tab"
+                      class="tab"
+                      aria-label={p.name}
+                      checked={i === 0}
+                    />
+                    <div role="tabpanel" class="tab-content p-3">
+                      <div class="flex gap-4">
+                        <Picture
+                          src={placeholder}
+                          width={300}
+                          height={300}
+                          fit="cover"
+                          position="center"
+                          formats={["avif", "webp"]}
+                          quality={50}
+                          alt={p.name}
+                          class="size-28 shrink-0 rounded-box object-cover"
+                        />
+                        <div>
+                          <p class="font-semibold">{p.name}</p>
+                          <p class="mt-1 text-sm text-base-content/70">
+                            {p.description ?? "Описание появится позже."}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </>
                 ))}
-              </dl>
+              </div>
             </div>
           ))}
         </div>
@@ -62,15 +91,40 @@ const hasContent = paperGroups.size > 0 || conceptItems.length > 0;
 
       {conceptItems.length > 0 && (
         <div>
-          <h3 class="mb-2 font-semibold">Постпечать и отделка</h3>
-          <dl class="space-y-1">
-            {conceptItems.map((c) => (
-              <div class="flex flex-col sm:flex-row sm:gap-2">
-                <dt class="font-medium sm:min-w-48">{c.title}</dt>
-                <dd class="text-base-content/70">{c.text}</dd>
-              </div>
+          <p class="mb-2 text-sm font-medium text-base-content/70">Постпечать и отделка</p>
+          <div role="tablist" class="tabs tabs-box">
+            {conceptItems.map((c, i) => (
+              <>
+                <input
+                  type="radio"
+                  name="postpress"
+                  role="tab"
+                  class="tab"
+                  aria-label={c.title}
+                  checked={i === 0}
+                />
+                <div role="tabpanel" class="tab-content p-3">
+                  <div class="flex gap-4">
+                    <Picture
+                      src={placeholder}
+                      width={300}
+                      height={300}
+                      fit="cover"
+                      position="center"
+                      formats={["avif", "webp"]}
+                      quality={50}
+                      alt={c.title}
+                      class="size-28 shrink-0 rounded-box object-cover"
+                    />
+                    <div>
+                      <p class="font-semibold">{c.title}</p>
+                      <p class="mt-1 text-sm text-base-content/70">{c.text}</p>
+                    </div>
+                  </div>
+                </div>
+              </>
             ))}
-          </dl>
+          </div>
         </div>
       )}
     </section>
