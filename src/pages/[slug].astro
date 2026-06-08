@@ -11,6 +11,7 @@ import ProductConfigurator from "../components/ProductConfigurator.vue";
 import Gallery from "../components/Gallery.astro";
 import Breadcrumbs from "../components/Breadcrumbs.astro";
 import SegmentTiles from "../components/SegmentTiles.astro";
+import OptionsInfo from "../components/OptionsInfo.astro";
 
 // getStaticPaths сообщает Astro, какие страницы сгенерировать (SSG).
 // Возвращаем по записи на каждую категорию и каждый продукт.
@@ -182,6 +183,16 @@ if (props.type === "product") {
             </p>
           )}
         </section>
+
+        {/* Авто-блок «Материалы и технологии» — из опций продукта (П6, инлайн) */}
+        {productPricing && (
+          <OptionsInfo
+            papers={productPricing.papers}
+            finishing={productPricing.finishing}
+            foldTypes={productPricing.foldTypes}
+            allowContourCut={productPricing.allowContourCut}
+          />
+        )}
 
         {/* Требования к макету + скачиваемый шаблон */}
         {content?.templateUrl && (

@@ -3,6 +3,11 @@
 // палитра цвета). Единое для всех калькуляторов (визитки, обложка брошюры…).
 // Никакой бизнес-логики — только отображение и v-model наружу.
 import SwatchPalette from "./SwatchPalette.vue";
+import InfoTip from "../InfoTip.vue";
+import { optionInfo } from "../../lib/optionInfo";
+
+const lamInfo = optionInfo("Ламинация");
+const foilInfo = optionInfo("Фольгирование");
 
 type Color = { name: string; code: string; hex: string | null; image: string | null };
 defineProps<{
@@ -23,7 +28,10 @@ const emit = defineEmits<{
 <template>
   <!-- Ламинация -->
   <div class="flex flex-col gap-1.5" v-if="laminationOptions.length">
-    <span class="text-sm font-semibold">Ламинация</span>
+    <span class="text-sm font-semibold">
+      Ламинация
+      <InfoTip v-if="lamInfo" :text="lamInfo" />
+    </span>
     <select
       class="select max-w-xs"
       :value="laminationIndex"
@@ -40,7 +48,10 @@ const emit = defineEmits<{
 
   <!-- Фольгирование -->
   <div class="flex flex-col gap-1.5" v-if="foilOption">
-    <span class="text-sm font-semibold">Фольгирование</span>
+    <span class="text-sm font-semibold">
+      Фольгирование
+      <InfoTip v-if="foilInfo" :text="foilInfo" />
+    </span>
     <div class="flex min-h-12 flex-wrap items-center gap-3">
       <label class="inline-flex items-center gap-2">
         <input

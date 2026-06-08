@@ -1,0 +1,78 @@
+---
+// Авто-блок «Материалы и технологии». Product-agnostic: собирается из опций,
+// что реально есть у продукта. Статический HTML (П6, краулится), инлайн (без попапов).
+// Материалы — из papers.description; постпечать — из optionInfo по группам.
+// Один блок на категорию (не на опцию): плёнка 150/200 = две строки, не два блока.
+import type { ProductPricing } from "../lib/pricing/data";
+import { optionInfo } from "../lib/optionInfo";
+
+const { papers = [], finishing = [], foldTypes = [], allowContourCut = false } =
+  Astro.props as {
+    papers?: ProductPricing["papers"];
+    finishing?: ProductPricing["finishing"];
+    foldTypes?: ProductPricing["foldTypes"];
+    allowContourCut?: boolean;
+  };
+
+// Материалы: только с описанием, сгруппированы по group (Стандартные/Дизайнерские…).
+const paperItems = papers.filter((p) => p.description);
+const paperGroups = new Map<string, typeof paperItems>();
+for (const p of paperItems) {
+  const g = p.group || "Бумаги";
+  if (!paperGroups.has(g)) paperGroups.set(g, []);
+  paperGroups.get(g)!.push(p);
+}
+
+// Постпечать: концепты из групп отделки + признаков продукта, у кого есть текст.
+const concepts: string[] = [
+  ...new Set(finishing.map((f) => f.group).filter((g): g is string => !!g)),
+];
+if (foldTypes.length) concepts.push("Фальцовка");
+if (allowContourCut) concepts.push("Контурная резка");
+const conceptItems = concepts
+  .map((c) => ({ title: c, text: optionInfo(c) }))
+  .filter((x): x is { title: string; text: string } => !!x.text);
+
+const hasContent = paperGroups.size > 0 || conceptItems.length > 0;
+---
+
+{
+  hasContent && (
+    <section class="my-10 max-w-prose">
+      <h2 class="mb-4 text-xl font-bold">Материалы и технологии</h2>
+
+      {paperGroups.size > 0 && (
+        <div class="mb-6">
+          <h3 class="mb-2 font-semibold">Бумаги и материалы</h3>
+          {[...paperGroups.entries()].map(([group, items]) => (
+            <div class="mb-3">
+              <p class="text-sm font-medium text-base-content/70">{group}</p>
+              <dl class="mt-1 space-y-1">
+                {items.map((p) => (
+                  <div class="flex flex-col sm:flex-row sm:gap-2">
+                    <dt class="font-medium sm:min-w-48">{p.name}</dt>
+                    <dd class="text-base-content/70">{p.description}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {conceptItems.length > 0 && (
+        <div>
+          <h3 class="mb-2 font-semibold">Постпечать и отделка</h3>
+          <dl class="space-y-1">
+            {conceptItems.map((c) => (
+              <div class="flex flex-col sm:flex-row sm:gap-2">
+                <dt class="font-medium sm:min-w-48">{c.title}</dt>
+                <dd class="text-base-content/70">{c.text}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      )}
+    </section>
+  )
+}
