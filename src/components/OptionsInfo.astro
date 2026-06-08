@@ -1,10 +1,9 @@
 ---
-// Авто-блок «Материалы и технологии». Product-agnostic: из опций продукта.
-// Группы по papers.group (тип материала) и по finishing.group (постпечать).
-// Внутри группы — выбор варианта (daisyUI tabs на радио = чистый CSS, без JS,
-// без попапа; все панели в HTML → краулится, П6). В панели — квадратный тумб
-// (astro:assets: cover-кроп + avif/webp) + описание.
-// Картинка пока единый плейсхолдер; реальные — в papers.image/finishing_options.image.
+// Блок «Материалы и технологии» — карточки-ячейки (по типу материала + постпечать).
+// В каждой ячейке: список слева (daisyUI menu) + превью справа (квадратный тумб +
+// описание). Все панели в HTML (краулится, П6); лёгкий прогрессивный JS только
+// переключает видимость. Картинка пока единый плейсхолдер; реальные — позже из
+// papers.image / finishing_options.image.
 import { Picture } from "astro:assets";
 import placeholder from "../assets/materials/placeholder.jpg";
 import type { ProductPricing } from "../lib/pricing/data";
@@ -18,13 +17,17 @@ const { papers = [], finishing = [], foldTypes = [], allowContourCut = false } =
     allowContourCut?: boolean;
   };
 
+type Item = { name: string; description: string | null };
+const cards: { title: string; items: Item[] }[] = [];
+
 // Материалы по группам (group = тип материала).
-const paperGroups = new Map<string, typeof papers>();
+const paperGroups = new Map<string, Item[]>();
 for (const p of papers) {
   const g = p.group || "Материалы";
   if (!paperGroups.has(g)) paperGroups.set(g, []);
-  paperGroups.get(g)!.push(p);
+  paperGroups.get(g)!.push({ name: p.name, description: p.description });
 }
+for (const [title, items] of paperGroups) cards.push({ title, items });
 
 // Постпечать: концепты из групп отделки + признаков продукта (у кого есть текст).
 const concepts: string[] = [
@@ -32,101 +35,81 @@ const concepts: string[] = [
 ];
 if (foldTypes.length) concepts.push("Фальцовка");
 if (allowContourCut) concepts.push("Контурная резка");
-const conceptItems = concepts
-  .map((c) => ({ title: c, text: optionInfo(c) }))
-  .filter((x): x is { title: string; text: string } => !!x.text);
-
-const hasContent = paperGroups.size > 0 || conceptItems.length > 0;
+const postpress = concepts
+  .map((c) => ({ name: c, description: optionInfo(c) }))
+  .filter((x) => x.description);
+if (postpress.length) cards.push({ title: "Постпечать и отделка", items: postpress });
 ---
 
 {
-  hasContent && (
+  cards.length > 0 && (
     <section class="my-10">
       <h2 class="mb-4 text-xl font-bold">Материалы и технологии</h2>
-
-      {paperGroups.size > 0 && (
-        <div class="mb-8 space-y-5">
-          {[...paperGroups.entries()].map(([group, items], gi) => (
-            <div>
-              <p class="mb-2 text-sm font-medium text-base-content/70">{group}</p>
-              <div role="tablist" class="tabs tabs-box">
-                {items.map((p, i) => (
-                  <>
-                    <input
-                      type="radio"
-                      name={`mat-${gi}`}
-                      role="tab"
-                      class="tab"
-                      aria-label={p.name}
-                      checked={i === 0}
-                    />
-                    <div role="tabpanel" class="tab-content p-3">
-                      <div class="flex gap-4">
-                        <Picture
-                          src={placeholder}
-                          width={300}
-                          height={300}
-                          fit="cover"
-                          position="center"
-                          formats={["avif", "webp"]}
-                          quality={50}
-                          alt={p.name}
-                          class="size-28 shrink-0 rounded-box object-cover"
-                        />
-                        <div>
-                          <p class="font-semibold">{p.name}</p>
-                          <p class="mt-1 text-sm text-base-content/70">
-                            {p.description ?? "Описание появится позже."}
-                          </p>
-                        </div>
+      <div class="grid gap-4">
+        {cards.map((card, ci) => (
+          <div class="options-cell card border border-base-300 bg-base-100 shadow-sm" data-cell={ci}>
+            <div class="card-body gap-3 p-4">
+              <h3 class="card-title text-base">{card.title}</h3>
+              <div class="grid gap-4 sm:grid-cols-[16rem_1fr]">
+                {/* список слева */}
+                <ul class="menu menu-sm w-full gap-0.5 p-0">
+                  {card.items.map((it, i) => (
+                    <li>
+                      <button
+                        type="button"
+                        class={`opt-tab ${i === 0 ? "menu-active" : ""}`}
+                        data-idx={i}
+                      >
+                        {it.name}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                {/* превью справа */}
+                <div class="sm:border-l sm:border-base-200 sm:pl-4">
+                  {card.items.map((it, i) => (
+                    <div class={`opt-panel flex gap-4 ${i === 0 ? "" : "hidden"}`} data-idx={i}>
+                      <Picture
+                        src={placeholder}
+                        width={320}
+                        height={320}
+                        fit="cover"
+                        position="center"
+                        formats={["avif", "webp"]}
+                        quality={50}
+                        alt={it.name}
+                        class="size-32 shrink-0 rounded-box object-cover sm:size-40"
+                      />
+                      <div>
+                        <p class="font-semibold">{it.name}</p>
+                        <p class="mt-1 text-sm text-base-content/70">
+                          {it.description ?? "Описание появится позже."}
+                        </p>
                       </div>
                     </div>
-                  </>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
-          ))}
-        </div>
-      )}
-
-      {conceptItems.length > 0 && (
-        <div>
-          <p class="mb-2 text-sm font-medium text-base-content/70">Постпечать и отделка</p>
-          <div role="tablist" class="tabs tabs-box">
-            {conceptItems.map((c, i) => (
-              <>
-                <input
-                  type="radio"
-                  name="postpress"
-                  role="tab"
-                  class="tab"
-                  aria-label={c.title}
-                  checked={i === 0}
-                />
-                <div role="tabpanel" class="tab-content p-3">
-                  <div class="flex gap-4">
-                    <Picture
-                      src={placeholder}
-                      width={300}
-                      height={300}
-                      fit="cover"
-                      position="center"
-                      formats={["avif", "webp"]}
-                      quality={50}
-                      alt={c.title}
-                      class="size-28 shrink-0 rounded-box object-cover"
-                    />
-                    <div>
-                      <p class="font-semibold">{c.title}</p>
-                      <p class="mt-1 text-sm text-base-content/70">{c.text}</p>
-                    </div>
-                  </div>
-                </div>
-              </>
-            ))}
           </div>
-        </div>
-      )}
+        ))}
+      </div>
     </section>
   )
 }
+
+<script>
+  // Прогрессивное переключение: клик по пункту списка показывает его превью.
+  // Весь контент уже в HTML — JS лишь меняет видимость.
+  document.querySelectorAll<HTMLElement>(".options-cell").forEach((cell) => {
+    const tabs = cell.querySelectorAll<HTMLElement>(".opt-tab");
+    const panels = cell.querySelectorAll<HTMLElement>(".opt-panel");
+    cell.addEventListener("click", (e) => {
+      const btn = (e.target as HTMLElement).closest<HTMLElement>(".opt-tab");
+      if (!btn) return;
+      const idx = btn.dataset.idx;
+      tabs.forEach((b) => b.classList.toggle("menu-active", b === btn));
+      panels.forEach((p) => p.classList.toggle("hidden", p.dataset.idx !== idx));
+    });
+  });
+</script>
