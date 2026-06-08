@@ -57,7 +57,7 @@ if (postpress.length) cards.push({ title: "Постпечать и отделк�
                     <li>
                       <button
                         type="button"
-                        class={`opt-tab ${i === 0 ? "menu-active" : ""}`}
+                        class={`opt-tab whitespace-normal text-left ${i === 0 ? "menu-active" : ""}`}
                         data-idx={i}
                       >
                         {it.name}
@@ -124,7 +124,16 @@ if (postpress.length) cards.push({ title: "Постпечать и отделк�
     display: flex;
     flex-wrap: wrap;
     gap: 1rem;
-    align-items: flex-start;
+    align-items: stretch; /* карточки в ряду — равной высоты */
+  }
+  /* Длинный список не растягивает карточку — вертикальная прокрутка внутри.
+     flex-wrap: nowrap — иначе daisyUI menu при лимите высоты переносит пункты
+     во второй столбец. */
+  .options-cell .menu {
+    max-height: 13rem;
+    overflow-y: auto;
+    overflow-x: hidden;
+    flex-wrap: nowrap;
   }
   /* Каждая карточка — container: внутренняя раскладка реагирует на ЕЁ ширину. */
   .options-cell {
