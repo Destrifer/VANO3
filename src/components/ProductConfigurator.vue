@@ -5,6 +5,7 @@
 // (статичная Astro-галерея) прокидывается внутрь выбранного конфигуратора.
 import type { PricingData } from "../lib/pricing/engine";
 import type { ProductPricing } from "../lib/pricing/data";
+import type { CalcPreset } from "../composables/calcUrlState";
 import SheetConfigurator from "./SheetConfigurator.vue";
 import MultipageConfigurator from "./MultipageConfigurator.vue";
 
@@ -13,15 +14,29 @@ const props = defineProps<{
   pricing: PricingData;
   name: string;
   slug: string;
+  preset?: CalcPreset; // предустановка для кластерной/pSEO-страницы (только листовой)
 }>();
 const isMultipage = props.product.strategy === "multipage";
 </script>
 
 <template>
-  <MultipageConfigurator v-if="isMultipage" v-bind="props">
+  <MultipageConfigurator
+    v-if="isMultipage"
+    :product="props.product"
+    :pricing="props.pricing"
+    :name="props.name"
+    :slug="props.slug"
+  >
     <template #gallery><slot name="gallery" /></template>
   </MultipageConfigurator>
-  <SheetConfigurator v-else v-bind="props">
+  <SheetConfigurator
+    v-else
+    :product="props.product"
+    :pricing="props.pricing"
+    :name="props.name"
+    :slug="props.slug"
+    :preset="props.preset"
+  >
     <template #gallery><slot name="gallery" /></template>
   </SheetConfigurator>
 </template>
