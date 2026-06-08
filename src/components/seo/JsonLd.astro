@@ -1,0 +1,10 @@
+---
+// Печатает один JSON-LD блок. Контент — статический HTML (П6),
+// доступен краулерам без исполнения JS.
+interface Props {
+  data: Record<string, unknown>;
+}
+const { data } = Astro.props;
+const json = JSON.stringify(data);
+---
+<script type="application/ld+json" is:inline set:html={json} />

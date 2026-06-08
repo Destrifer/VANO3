@@ -7,6 +7,7 @@ import { getProductPricing, getPricingData } from "../lib/pricing/data";
 import { getWorks, type Work } from "../lib/works";
 import ProductConfigurator from "../components/ProductConfigurator.vue";
 import Gallery from "../components/Gallery.astro";
+import Breadcrumbs from "../components/Breadcrumbs.astro";
 
 // getStaticPaths сообщает Astro, какие страницы сгенерировать (SSG).
 // Возвращаем по записи на каждую категорию и каждый продукт.
@@ -51,8 +52,24 @@ export async function getStaticPaths() {
 
 // props приходят из getStaticPaths для конкретной страницы
 const props = Astro.props;
+const slug = Astro.params.slug!;
 const pageTitle = `${props.name} — Printmos`;
 const pageDescription = `${props.name} — печать на заказ в Москве. Страница в разработке.`;
+
+// Хлебные крошки: Главная → (категория) → текущая.
+const crumbs =
+  props.type === "category"
+    ? [
+        { name: "Главная", href: "/" },
+        { name: props.name, href: `/${slug}` },
+      ]
+    : [
+        { name: "Главная", href: "/" },
+        ...(props.parentSlug
+          ? [{ name: props.parentName!, href: `/${props.parentSlug}` }]
+          : []),
+        { name: props.name, href: `/${slug}` },
+      ];
 
 // Для продукта тянем ценовой конфиг; калькулятор показываем, если есть материалы.
 let productPricing = null;
@@ -76,6 +93,7 @@ if (props.type === "product") {
 ---
 
 <BaseLayout title={pageTitle} description={pageDescription}>
+  <Breadcrumbs items={crumbs} />
   <p class="stub-kicker">
     {props.type === "category" ? "Категория" : "Продукт"}
   </p>

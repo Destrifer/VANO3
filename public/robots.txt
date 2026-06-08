@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /cart
+Disallow: /api/
+
+Sitemap: https://printmos.ru/sitemap-index.xml

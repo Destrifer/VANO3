@@ -1,0 +1,32 @@
+---
+// Видимые крошки (daisyUI `breadcrumbs`) + BreadcrumbList JSON-LD (док 02 §20).
+// Последний элемент — текущая страница (без ссылки). URL для разметки —
+// абсолютные (строим из Astro.site).
+import JsonLd from "./seo/JsonLd.astro";
+import { breadcrumbList } from "../lib/seo/jsonld";
+
+interface Item {
+  name: string;
+  href: string;
+}
+const { items } = Astro.props as { items: Item[] };
+
+const siteUrl = Astro.site?.toString() ?? "https://printmos.ru";
+const ld = breadcrumbList(
+  items.map((i) => ({ name: i.name, url: new URL(i.href, siteUrl).toString() })),
+);
+---
+
+<nav class="breadcrumbs text-sm" aria-label="Хлебные крошки">
+  <ul>
+    {
+      items.map((it, i) => (
+        <li>
+          {i < items.length - 1 ? <a href={it.href}>{it.name}</a> : <span>{it.name}</span>}
+        </li>
+      ))
+    }
+  </ul>
+</nav>
+
+<JsonLd data={ld} />

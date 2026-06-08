@@ -6,11 +6,28 @@ import officeMap from "../assets/office-map.png";
 import { getMenu } from "../lib/categories";
 import { getSettings } from "../lib/settings";
 import CartButton from "../components/CartButton.vue";
+import JsonLd from "../components/seo/JsonLd.astro";
+import { localBusiness } from "../lib/seo/jsonld";
 
 const menu = await getMenu();
 const settings = await getSettings();
 const year = new Date().getFullYear();
-const { title, description } = Astro.props;
+// jsonLd: массив объектов Schema.org для конкретной страницы (Product/Breadcrumb/FAQ).
+const {
+  title,
+  description,
+  canonical: canonicalProp,
+  ogImage,
+  noindex = false,
+  jsonLd = [],
+} = Astro.props as {
+  title: string;
+  description?: string;
+  canonical?: string;
+  ogImage?: string;
+  noindex?: boolean;
+  jsonLd?: Record<string, unknown>[];
+};
 
 // tel: ссылка из отображаемого телефона (оставляем цифры и +)
 const telHref = settings.phone
@@ -23,6 +40,17 @@ const mapSrc =
     ? `https://yandex.ru/map-widget/v1/?ll=${settings.map_lng}%2C${settings.map_lat}&z=${settings.map_zoom ?? 16}&pt=${settings.map_lng},${settings.map_lat}`
     : null;
 
+// — SEO-обвязка <head> —
+const siteUrl = Astro.site?.toString() ?? "https://printmos.ru";
+// Канонический URL: по умолчанию текущий путь на каноническом домене;
+// pSEO-страница может передать свой через проп (док 05 §60).
+const canonical =
+  canonicalProp ?? new URL(Astro.url.pathname, siteUrl).toString();
+const ogImageUrl = ogImage
+  ? new URL(ogImage, siteUrl).toString()
+  : null;
+// Глобальная разметка бизнеса — на всех страницах (брендовый + локальный).
+const businessLd = localBusiness(settings, siteUrl);
 ---
 
 <html lang="ru">
@@ -34,6 +62,39 @@ const mapSrc =
     <meta name="generator" content={Astro.generator} />
     <meta name="description" content={description} />
     <title>{title}</title>
+
+    <link rel="canonical" href={canonical} />
+    {noindex && <meta name="robots" content="noindex, nofollow" />}
+
+    {/* Open Graph + Twitter — превью при расшаривании */}
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="ru_RU" />
+    <meta property="og:site_name" content={settings.company_name ?? "Printmos"} />
+    <meta property="og:title" content={title} />
+    {description && <meta property="og:description" content={description} />}
+    <meta property="og:url" content={canonical} />
+    {ogImageUrl && <meta property="og:image" content={ogImageUrl} />}
+    <meta name="twitter:card" content={ogImageUrl ? "summary_large_image" : "summary"} />
+    <meta name="twitter:title" content={title} />
+    {description && <meta name="twitter:description" content={description} />}
+    {ogImageUrl && <meta name="twitter:image" content={ogImageUrl} />}
+
+    {/* Глобальная разметка бизнеса (LocalBusiness/Organization) на всех страницах */}
+    <JsonLd data={businessLd} />
+    {jsonLd.map((block) => <JsonLd data={block} />)}
+
+    {/* Speculation Rules: префетч вероятного следующего перехода (док 02 §18) */}
+    <script
+      type="speculationrules"
+      is:inline
+      set:html={JSON.stringify({
+        prefetch: [
+          { source: "document", where: { href_matches: "/*" }, eagerness: "moderate" },
+        ],
+      })}
+    />
+
+    <slot name="head" />
   </head>
 
   <body>
