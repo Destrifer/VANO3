@@ -3,11 +3,14 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 import { Icon } from "astro-icon/components";
 import { getCategories } from "../lib/categories";
 import { getProducts } from "../lib/products";
-import { getProductPricing, getPricingData } from "../lib/pricing/data";
+import { getProductPricing, getPricingData, defaultPrice } from "../lib/pricing/data";
 import { getWorks, type Work } from "../lib/works";
+import { getServiceContent, type ServiceContent } from "../lib/services";
+import { productOffer, faqPage } from "../lib/seo/jsonld";
 import ProductConfigurator from "../components/ProductConfigurator.vue";
 import Gallery from "../components/Gallery.astro";
 import Breadcrumbs from "../components/Breadcrumbs.astro";
+import SegmentTiles from "../components/SegmentTiles.astro";
 
 // getStaticPaths сообщает Astro, какие страницы сгенерировать (SSG).
 // Возвращаем по записи на каждую категорию и каждый продукт.
@@ -50,11 +53,11 @@ export async function getStaticPaths() {
   return [...categoryPaths, ...productPaths];
 }
 
-// props приходят из getStaticPaths для конкретной страницы
 const props = Astro.props;
 const slug = Astro.params.slug!;
-const pageTitle = `${props.name} — Printmos`;
-const pageDescription = `${props.name} — печать на заказ в Москве. Страница в разработке.`;
+const siteUrl = Astro.site?.toString() ?? "https://printmos.ru";
+const pageUrl = new URL(`/${slug}`, siteUrl).toString();
+const money = (n: number) => n.toLocaleString("ru-RU", { maximumFractionDigits: 0 });
 
 // Хлебные крошки: Главная → (категория) → текущая.
 const crumbs =
@@ -71,35 +74,56 @@ const crumbs =
         { name: props.name, href: `/${slug}` },
       ];
 
-// Для продукта тянем ценовой конфиг; калькулятор показываем, если есть материалы.
+// Для продукта: ценовой конфиг, цена «от», примеры работ, SEO-контент.
 let productPricing = null;
 let pricing = null;
 let works: Work[] = [];
+let content: ServiceContent | null = null;
+let lowPrice: number | null = null;
 if (props.type === "product") {
-  productPricing = await getProductPricing(Astro.params.slug!);
-  // Калькулятор показываем, если есть данные под стратегию:
-  //   листовая — есть бумаги; многостраничная — есть переплёты.
+  productPricing = await getProductPricing(slug);
+  // Калькулятор показываем, если есть данные под стратегию.
   const hasCalc =
     !!productPricing &&
     (productPricing.papers.length > 0 ||
       (productPricing.strategy === "multipage" && productPricing.bindings.length > 0) ||
       (productPricing.strategy === "fixed" && productPricing.fixedPrice.length > 0));
-  if (hasCalc) {
-    pricing = await getPricingData();
-  }
-  // Примеры работ этого продукта (пусто, если коллекции/фото ещё нет).
-  works = await getWorks({ product: Astro.params.slug! });
+  if (hasCalc) pricing = await getPricingData();
+  works = await getWorks({ product: slug });
+  content = await getServiceContent(slug);
+  if (productPricing && pricing) lowPrice = defaultPrice(productPricing, pricing);
+}
+
+// H1 / мета / JSON-LD страницы.
+const h1 = (props.type === "product" && content?.h1) || props.name;
+let pageTitle: string;
+let pageDescription: string;
+const jsonLd: Record<string, unknown>[] = [];
+if (props.type === "product") {
+  pageTitle =
+    content?.metaTitle ??
+    `${props.name} в Москве${lowPrice != null ? ` — от ${money(lowPrice)} ₽` : ""} | Printmos`;
+  pageDescription =
+    content?.metaDescription ??
+    `${props.name} на заказ в Москве. Расчёт цены онлайн в конфигураторе, срок от 1 дня. Доставка по Москве и РФ.`;
+  jsonLd.push(
+    productOffer({ name: props.name, url: pageUrl, lowPrice, description: pageDescription }),
+  );
+  if (content && content.faq.length > 0) jsonLd.push(faqPage(content.faq));
+} else {
+  pageTitle = `${props.name} — Printmos`;
+  pageDescription = `${props.name}: услуги печати в Москве.`;
 }
 ---
 
-<BaseLayout title={pageTitle} description={pageDescription}>
+<BaseLayout title={pageTitle} description={pageDescription} jsonLd={jsonLd}>
   <Breadcrumbs items={crumbs} />
   <p class="stub-kicker">
     {props.type === "category" ? "Категория" : "Продукт"}
   </p>
   <h1 class="stub-title">
     {props.icon && <Icon name={props.icon} class="stub-icon" />}
-    {props.name}
+    {h1}
   </h1>
 
   {
@@ -123,13 +147,14 @@ if (props.type === "product") {
   {
     props.type === "product" && (
       <>
+        {/* Первый экран: конфигуратор (мгновенная цена) */}
         {pricing && productPricing ? (
           <ProductConfigurator
             client:load
             product={productPricing}
             pricing={pricing}
             name={props.name}
-            slug={Astro.params.slug}
+            slug={slug}
           >
             <Gallery slot="gallery" works={works} />
           </ProductConfigurator>
@@ -140,22 +165,61 @@ if (props.type === "product") {
           </>
         )}
 
-        {/* SEO-текст — статика (позже из Directus) */}
+        {/* Плитки видов/опций → кластерные страницы (наполнятся в Фазе 5) */}
+        <SegmentTiles items={[]} />
+
+        {/* Характеристики текстом — главный SEO-актив (05 §24), из Directus с фолбэком */}
         <section class="my-10 max-w-prose">
           <h2 class="mb-3 text-xl font-bold">{props.name} в Москве</h2>
-          <p class="mb-3 text-base-content/80">
-            {props.name} — печать на заказ в Москве. Расчёт стоимости — мгновенно
-            в конфигураторе выше. Срок от 1 рабочего дня.
-          </p>
-          {props.parentSlug && (
-            <p class="text-base-content/60">
-              Категория:{" "}
-              <a class="link link-hover" href={`/${props.parentSlug}`}>
-                {props.parentName}
-              </a>
+          {content?.characteristics ? (
+            <div set:html={content.characteristics} />
+          ) : content?.introText ? (
+            <div set:html={content.introText} />
+          ) : (
+            <p class="text-base-content/80">
+              {props.name} — печать на заказ в Москве. Расчёт стоимости — мгновенно
+              в конфигураторе выше. Срок от 1 рабочего дня. Доставка по Москве и РФ.
             </p>
           )}
         </section>
+
+        {/* Требования к макету + скачиваемый шаблон */}
+        {content?.templateUrl && (
+          <section class="my-8 max-w-prose">
+            <h2 class="mb-3 text-xl font-bold">Требования к макету</h2>
+            <p>
+              <a class="link" href={content.templateUrl} download>
+                Скачать шаблон макета
+              </a>{" "}
+              · <a class="link link-hover" href="/guides">гайд по подготовке файла</a>
+            </p>
+          </section>
+        )}
+
+        {/* FAQ (FAQPage JSON-LD уже в <head>) */}
+        {content && content.faq.length > 0 && (
+          <section class="my-10 max-w-prose">
+            <h2 class="mb-4 text-xl font-bold">Частые вопросы</h2>
+            {content.faq.map((f) => (
+              <details class="collapse collapse-arrow mb-2 border border-base-content">
+                <summary class="collapse-title font-medium">{f.question}</summary>
+                <div class="collapse-content">
+                  <p>{f.answer}</p>
+                </div>
+              </details>
+            ))}
+          </section>
+        )}
+
+        {/* Вверх по иерархии */}
+        {props.parentSlug && (
+          <p class="my-6 text-base-content/60">
+            Категория:{" "}
+            <a class="link link-hover" href={`/${props.parentSlug}`}>
+              {props.parentName}
+            </a>
+          </p>
+        )}
       </>
     )
   }

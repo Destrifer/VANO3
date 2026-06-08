@@ -1,0 +1,38 @@
+---
+// Плитки «виды/опции» на хабе — ссылки-карточки на кластерные страницы (Tier-1)
+// с ценой «от» (делает страницу хабом, связь «вниз»). Пусто → ничего не рендерит.
+// Данные появятся с promoted_pages (Фаза 5). Стиль — токены темы (daisyUI/lofi).
+interface Tile {
+  name: string;
+  href: string;
+  priceFrom?: number | null;
+}
+const { items = [], heading = "Виды и опции" } = Astro.props as {
+  items?: Tile[];
+  heading?: string;
+};
+const money = (n: number) => n.toLocaleString("ru-RU", { maximumFractionDigits: 0 });
+---
+
+{
+  items.length > 0 && (
+    <section class="my-10">
+      <h2 class="mb-4 text-xl font-bold">{heading}</h2>
+      <ul class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        {items.map((t) => (
+          <li>
+            <a
+              href={t.href}
+              class="flex h-full flex-col justify-between gap-2 rounded-box border border-base-content p-4 transition-colors hover:bg-base-200"
+            >
+              <span class="font-medium">{t.name}</span>
+              {t.priceFrom != null && (
+                <span class="text-base-content/70">от {money(t.priceFrom)} ₽</span>
+              )}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
