@@ -6,11 +6,13 @@ import { getProducts } from "../lib/products";
 import { getProductPricing, getPricingData, defaultPrice } from "../lib/pricing/data";
 import { getWorks, type Work } from "../lib/works";
 import { getServiceContent, type ServiceContent } from "../lib/services";
+import { priceTable, type PriceTableData } from "../lib/pricing/table";
 import { productOffer, faqPage } from "../lib/seo/jsonld";
 import ProductConfigurator from "../components/ProductConfigurator.vue";
 import Gallery from "../components/Gallery.astro";
 import Breadcrumbs from "../components/Breadcrumbs.astro";
 import SegmentTiles from "../components/SegmentTiles.astro";
+import PriceTable from "../components/PriceTable.astro";
 
 // getStaticPaths сообщает Astro, какие страницы сгенерировать (SSG).
 // Возвращаем по записи на каждую категорию и каждый продукт.
@@ -80,6 +82,7 @@ let pricing = null;
 let works: Work[] = [];
 let content: ServiceContent | null = null;
 let lowPrice: number | null = null;
+let table: PriceTableData = null;
 if (props.type === "product") {
   productPricing = await getProductPricing(slug);
   // Калькулятор показываем, если есть данные под стратегию.
@@ -91,7 +94,10 @@ if (props.type === "product") {
   if (hasCalc) pricing = await getPricingData();
   works = await getWorks({ product: slug });
   content = await getServiceContent(slug);
-  if (productPricing && pricing) lowPrice = defaultPrice(productPricing, pricing);
+  if (productPricing && pricing) {
+    lowPrice = defaultPrice(productPricing, pricing);
+    table = priceTable(productPricing, pricing);
+  }
 }
 
 // H1 / мета / JSON-LD страницы.
@@ -182,6 +188,9 @@ if (props.type === "product") {
             </p>
           )}
         </section>
+
+        {/* Таблица цен (тираж × стороны) — генерится движком (П2), статично (П6) */}
+        <PriceTable table={table} productName={props.name} />
 
         {/* Требования к макету + скачиваемый шаблон */}
         {content?.templateUrl && (

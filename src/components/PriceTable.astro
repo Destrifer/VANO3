@@ -1,0 +1,52 @@
+---
+// Статическая таблица цен (генерится движком в [slug].astro). Строки — тираж,
+// колонки — стороны, ячейка — итог + ₽/шт (падение ₽/шт подталкивает к тиражу).
+import type { PriceTableData } from "../lib/pricing/table";
+const { table, productName } = Astro.props as {
+  table: PriceTableData;
+  productName: string;
+};
+const money = (n: number) => n.toLocaleString("ru-RU", { maximumFractionDigits: 0 });
+// ₽/шт — с копейками: для визиток разница 4.76 vs 5 заметна.
+const perUnitMoney = (n: number) =>
+  n.toLocaleString("ru-RU", { maximumFractionDigits: 2 });
+---
+
+{
+  table && (
+    <section class="my-10">
+      <h2 class="mb-3 text-xl font-bold">Цены на {productName.toLowerCase()}</h2>
+      <div class="overflow-x-auto">
+        <table class="table border border-base-content">
+          <thead>
+            <tr>
+              <th>Тираж</th>
+              {table.sideLabels.map((l) => (
+                <th>{l}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {table.rows.map((r) => (
+              <tr>
+                <td class="font-medium">{r.quantity} шт</td>
+                {r.cells.map((c) => (
+                  <td>
+                    <span class="font-medium">{money(c.total)} ₽</span>{" "}
+                    <span class="text-sm text-base-content/60">
+                      ({perUnitMoney(c.perUnit)} ₽/шт)
+                    </span>
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p class="mt-2 text-sm text-base-content/60">
+        Цены для стандартного формата {table.width}×{table.height} мм, бумага «{table.paperName}».
+        Точный расчёт с вашими параметрами — в конфигураторе выше.
+      </p>
+    </section>
+  )
+}
