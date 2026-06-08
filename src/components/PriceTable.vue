@@ -103,39 +103,50 @@ const pct = (d: number) => `${d > 0 ? "+" : ""}${d.toFixed(0)}%`;
 <template>
   <section v-if="axis && rows.length" class="price-table my-8">
     <h2 class="mb-3 text-xl font-bold">Цены: тираж × {{ axisLabel.toLowerCase() }}</h2>
-    <div class="overflow-x-auto">
-      <table class="table border border-base-content">
+    <div class="overflow-x-auto rounded-box border border-base-300 shadow-sm">
+      <table class="table table-sm md:table-md table-pin-cols">
         <thead>
           <tr>
-            <th>{{ axisLabel }}</th>
-            <th v-for="q in quantities" :key="q">{{ q }} шт</th>
+            <th class="bg-base-200">{{ axisLabel }}</th>
+            <th
+              v-for="q in quantities"
+              :key="q"
+              class="bg-base-200 text-center font-semibold"
+            >
+              {{ q }} шт
+            </th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="(r, ri) in rows" :key="ri">
-            <td class="font-medium">{{ r.label }}</td>
+            <th class="bg-base-100 font-medium whitespace-nowrap">{{ r.label }}</th>
             <td
               v-for="(c, ci) in grid[ri]"
               :key="ci"
-              class="price-cell"
-              :class="c.active ? 'bg-base-300 font-semibold' : 'hover:bg-base-200'"
+              class="cursor-pointer text-center align-middle whitespace-nowrap transition-colors"
+              :class="
+                c.active
+                  ? 'bg-base-200 outline outline-2 -outline-offset-2 outline-primary'
+                  : 'hover:bg-base-200/60'
+              "
               role="button"
               tabindex="0"
+              :aria-pressed="c.active"
               @click="select(ri, ci)"
               @keydown.enter="select(ri, ci)"
             >
               <template v-if="c.total != null">
-                <div>{{ money(c.total) }} ₽</div>
+                <div class="text-base font-bold leading-tight">{{ money(c.total) }} ₽</div>
                 <div class="text-xs text-base-content/60">{{ per(c.perUnit!) }} ₽/шт</div>
                 <div
                   v-if="c.delta != null && Math.round(c.delta) !== 0"
-                  class="text-xs font-medium"
-                  :class="c.delta < 0 ? 'text-gain' : 'text-loss'"
+                  class="badge badge-sm mt-1 border-0 font-medium"
+                  :class="c.delta < 0 ? 'bg-gain/15 text-gain' : 'bg-loss/15 text-loss'"
                 >
                   {{ pct(c.delta) }}
                 </div>
               </template>
-              <span v-else class="text-base-content/40">—</span>
+              <span v-else class="text-base-content/30">—</span>
             </td>
           </tr>
         </tbody>
@@ -147,10 +158,3 @@ const pct = (d: number) => `${d > 0 ? "+" : ""}${d.toFixed(0)}%`;
     </p>
   </section>
 </template>
-
-<style scoped>
-.price-cell {
-  cursor: pointer;
-  white-space: nowrap;
-}
-</style>
