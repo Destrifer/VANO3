@@ -38,8 +38,9 @@ export async function getStaticPaths() {
     const siblings = pages
       .filter((o) => o.productSlug === page.productSlug && o.slug !== page.slug)
       .map((o) => ({
-        name: o.h1 ?? o.slug,
+        name: o.tileLabel ?? o.h1 ?? o.slug,
         href: `/${o.productSlug}/${o.slug}`,
+        icon: o.icon,
         priceFrom:
           productPricing && pricing ? presetPrice(productPricing, pricing, o.preset) : null,
       }));
@@ -69,7 +70,7 @@ const { page, productName, parentName, parentSlug, productPricing, pricing, work
     productPricing: Awaited<ReturnType<typeof getProductPricing>>;
     pricing: Awaited<ReturnType<typeof getPricingData>> | null;
     works: Work[];
-    siblings: { name: string; href: string; priceFrom: number | null }[];
+    siblings: { name: string; href: string; icon: string | null; priceFrom: number | null }[];
   };
 
 const siteUrl = Astro.site?.toString() ?? "https://printmos.ru";
@@ -110,8 +111,14 @@ if (page.faq.length > 0) jsonLd.push(faqPage(page.faq));
 
 <BaseLayout title={pageTitle} description={pageDescription} jsonLd={jsonLd}>
   <Breadcrumbs items={crumbs} />
-  <p class="stub-kicker">Услуга</p>
-  <h1 class="stub-title">{h1}</h1>
+  <div class="hub-head">
+    <div class="hub-head__title">
+      <p class="stub-kicker">Услуга</p>
+      <h1 class="stub-title">{h1}</h1>
+    </div>
+    {/* Сиблинги-альтернативы — правый верхний угол, первый экран */}
+    <SegmentTiles items={siblings} />
+  </div>
 
   {/* Первый экран: конфигуратор с пресетом */}
   {
@@ -159,9 +166,6 @@ if (page.faq.length > 0) jsonLd.push(faqPage(page.faq));
     }
     <Faq items={page.faq} class="lg:min-w-0 lg:flex-1" />
   </div>
-
-  {/* Сиблинги: другие виды того же продукта (латеральная перелинковка) */}
-  <SegmentTiles items={siblings} heading={`Другие виды: ${productName.toLowerCase()}`} />
 
   {/* Вверх по иерархии — к родительской услуге (анти-каннибализация, 04 §97) */}
   <p class="my-6 text-base-content/60">

@@ -8,6 +8,8 @@ export type PromotedPage = {
   slug: string; // сегмент URL после продукта (напр. "foil")
   productSlug: string; // родительский продукт (первый сегмент URL)
   h1: string | null;
+  tileLabel: string | null; // короткая подпись для плитки (иначе h1)
+  icon: string | null; // иконка плитки (Tabler)
   metaTitle: string | null;
   metaDescription: string | null;
   introText: string | null; // rich HTML
@@ -18,6 +20,8 @@ export type PromotedPage = {
 const FIELDS = [
   "slug",
   "h1",
+  "tile_label",
+  "icon",
   "meta_title",
   "meta_description",
   "intro_text",
@@ -37,6 +41,8 @@ function mapPage(p: any): PromotedPage {
     slug: String(p.slug),
     productSlug: String(p.product.slug),
     h1: trim(p.h1),
+    tileLabel: trim(p.tile_label),
+    icon: trim(p.icon),
     metaTitle: trim(p.meta_title),
     metaDescription: trim(p.meta_description),
     introText: trim(p.intro_text),

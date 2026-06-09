@@ -1,29 +1,35 @@
 ---
-// Плитки «виды/опции» на хабе — ссылки-карточки на кластерные страницы (Tier-1).
-// Тот же вид, что у карточек на главной (ProductTile), но с ценой по пресету и
-// БЕЗ срока (чтобы не раздувать). Пусто → ничего не рендерит.
+// Плитки-альтернативы (кластеры Tier-1) — компактные квадратные карточки с
+// иконкой и ценой по пресету, БЕЗ заголовка. Размещаются в правом верхнем углу
+// хаба/кластера (первый экран, не съедают калькулятор). Пусто → ничего.
 import ProductTile from "./ProductTile.astro";
 
 interface Tile {
   name: string;
   href: string;
+  icon?: string | null;
   priceFrom?: number | null;
 }
-const { items = [], heading = "Виды и опции" } = Astro.props as {
+const { items = [], label = "Похожие виды" } = Astro.props as {
   items?: Tile[];
-  heading?: string;
+  label?: string;
 };
 ---
 
 {
   items.length > 0 && (
-    <section class="my-10">
-      <h2 class="mb-4 text-xl font-bold">{heading}</h2>
-      <ul class="product-grid">
+    <nav class="segment-nav" aria-label={label}>
+      <ul class="segment-nav__grid">
         {items.map((t) => (
-          <ProductTile href={t.href} name={t.name} priceFrom={t.priceFrom ?? null} />
+          <ProductTile
+            href={t.href}
+            name={t.name}
+            icon={t.icon ?? null}
+            priceFrom={t.priceFrom ?? null}
+            compact
+          />
         ))}
       </ul>
-    </section>
+    </nav>
   )
 }
