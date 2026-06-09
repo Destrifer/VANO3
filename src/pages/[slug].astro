@@ -3,7 +3,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 import { Icon } from "astro-icon/components";
 import { getCategories } from "../lib/categories";
 import { getProducts } from "../lib/products";
-import { getProductPricing, getPricingData, minPrice } from "../lib/pricing/data";
+import { getProductPricing, getPricingData, minPrice, presetPrice } from "../lib/pricing/data";
 import { getWorks, type Work } from "../lib/works";
 import { getServiceContent, type ServiceContent } from "../lib/services";
 import { getPromotedPages } from "../lib/promotedPages";
@@ -98,13 +98,19 @@ if (props.type === "product") {
   if (productPricing && pricing) lowPrice = minPrice(productPricing, pricing);
 }
 
-// Плитки хаба → кластерные страницы (Tier-1) этого продукта.
-let tiles: { name: string; href: string }[] = [];
+// Плитки хаба → кластерные страницы (Tier-1) этого продукта. Цена «от» — по
+// пресету кластера (тот же движок, что в конфигураторе), без срока.
+let tiles: { name: string; href: string; priceFrom: number | null }[] = [];
 if (props.type === "product") {
   const promoted = await getPromotedPages();
   tiles = promoted
     .filter((p) => p.productSlug === slug)
-    .map((p) => ({ name: p.h1 ?? p.slug, href: `/${slug}/${p.slug}` }));
+    .map((p) => ({
+      name: p.h1 ?? p.slug,
+      href: `/${slug}/${p.slug}`,
+      priceFrom:
+        productPricing && pricing ? presetPrice(productPricing, pricing, p.preset) : null,
+    }));
 }
 
 // FAQ и интро-текст — из Directus (поля `faq` / `intro_text` на продукте).

@@ -198,6 +198,51 @@ export function minPrice(p: ProductPricing, pricing: PricingData): number | null
   return Number.isFinite(min) ? min : null;
 }
 
+// Цена «от» с учётом пресета кластерной страницы (для плиток хаба).
+// Зеркалит дефолт калькулятора при заданном пресете: бумага/форма/стороны/тираж
+// + фольга. Совпадает с тем, что покажет конфигуратор на кластере при открытии.
+// Для не-sheet стратегий пресет не применяется → обычный defaultPrice.
+export function presetPrice(
+  p: ProductPricing,
+  pricing: PricingData,
+  preset: import("../../composables/calcUrlState").CalcPreset | null | undefined,
+): number | null {
+  if (p.strategy !== "sheet" || !preset) return defaultPrice(p, pricing);
+  const round = preset.shape === "round";
+  const size = p.sizes[0];
+  // Круглая форма: диаметр по умолчанию как в калькуляторе (40 мм), иначе размер[0].
+  const ROUND_D = 40;
+  const width = round ? ROUND_D : size?.width ?? 0;
+  const height = round ? ROUND_D : size?.height ?? 0;
+  const idx =
+    preset.paperIndex != null &&
+    preset.paperIndex >= 0 &&
+    preset.paperIndex < p.papers.length
+      ? preset.paperIndex
+      : 0;
+  const paper = p.papers[idx];
+  if (!paper || width < 1 || height < 1) return null;
+  const sides: Sides = preset.sides ?? (p.doubleSided ? "4+4" : "4+0");
+  const quantity = preset.quantity && preset.quantity > 0 ? preset.quantity : HOME_BASE_QTY;
+  const finishing: OrderConfig["finishing"] = [];
+  if (preset.foil) {
+    const foil = p.finishing.find((o) => o.group === "Фольгирование");
+    if (foil) finishing.push({ option: foil });
+  }
+  const cfg: OrderConfig = {
+    production: p.production,
+    form: preset.shape ?? "rectangular",
+    width,
+    height,
+    sides,
+    quantity,
+    paper,
+    urgent: false,
+    finishing,
+  };
+  return computePrice(cfg, pricing).total;
+}
+
 function defaultMultipagePrice(p: ProductPricing, pricing: PricingData): number | null {
   const fmt = p.sizes[0];
   const inner = p.innerPapers[0];
