@@ -9,8 +9,7 @@ export type ServiceContent = {
   h1: string | null;
   metaTitle: string | null;
   metaDescription: string | null;
-  introText: string | null; // rich HTML
-  characteristics: string | null; // rich HTML — характеристики текстом (05 §24)
+  introText: string | null; // rich HTML — интро (вхождения головы + перелинковка)
   templateUrl: string | null; // скачиваемый шаблон макета
   faq: ServiceFaq[];
 };
@@ -20,7 +19,6 @@ const EMPTY: ServiceContent = {
   metaTitle: null,
   metaDescription: null,
   introText: null,
-  characteristics: null,
   templateUrl: null,
   faq: [],
 };
@@ -32,7 +30,6 @@ const FIELDS = [
   "meta_title",
   "meta_description",
   "intro_text",
-  "characteristics",
   "template_file",
   "faq.faq_items_id.question",
   "faq.faq_items_id.answer",
@@ -56,7 +53,6 @@ export async function getServiceContent(slug: string): Promise<ServiceContent> {
       metaTitle: trimOrNull(p.meta_title),
       metaDescription: trimOrNull(p.meta_description),
       introText: trimOrNull(p.intro_text),
-      characteristics: trimOrNull(p.characteristics),
       templateUrl: assetUrl(p.template_file),
       faq,
     };
