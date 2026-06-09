@@ -12,6 +12,43 @@ import Gallery from "../components/Gallery.astro";
 import Breadcrumbs from "../components/Breadcrumbs.astro";
 import SegmentTiles from "../components/SegmentTiles.astro";
 import OptionsInfo from "../components/OptionsInfo.astro";
+import Faq from "../components/Faq.astro";
+import type { ServiceFaq } from "../lib/services";
+
+// TODO(temp): рыба для тест-верстки FAQ, пока поле `faq` не наполнено в Directus
+// (Этап 2). Показываем только на странице визиток. Убрать после наполнения.
+const FISH_FAQ: ServiceFaq[] = [
+  {
+    question: "Сколько стоит напечатать визитки?",
+    answer:
+      "Цена зависит от тиража и бумаги: чем больше тираж, тем ниже цена за штуку. Стандартные визитки 90×50 мм — от 1,5 ₽/шт при тираже 1000. Точную стоимость под вашу бумагу, ламинацию и тираж считает конфигуратор выше — мгновенно, без заявки.",
+  },
+  {
+    question: "Какие сроки изготовления визиток?",
+    answer:
+      "Стандартный срок — от 1 рабочего дня. Есть срочная печать: при заказе до 12:00 простые визитки успеваем сделать в день обращения. Сроки с ламинацией, фольгой или вырубкой — на 1–2 дня дольше, точную дату готовности конфигуратор показывает при расчёте.",
+  },
+  {
+    question: "Нужен ли готовый макет или вы поможете?",
+    answer:
+      "Можно прислать готовый макет (PDF/TIFF в CMYK, 300 dpi, с вылетами 2 мм) — скачайте наш шаблон, чтобы ничего не обрезалось. Если макета нет, поможем подготовить: правки текста и базовую вёрстку делаем, сложный дизайн с нуля — по согласованию.",
+  },
+  {
+    question: "Какая плотность бумаги используется для визиток?",
+    answer:
+      "Базовая плотность — 300–350 г/м². Это плотный картон, который не гнётся в руках и не выглядит дёшево. Для дизайнерских визиток доступны бумаги до 640 г/м², а также фактурные, хлопковые и софт-тач варианты — все доступные опции есть в конфигураторе.",
+  },
+  {
+    question: "Какой минимальный тираж?",
+    answer:
+      "Минимальный тираж — от 100 штук. Меньше печатать невыгодно: цена за штуку будет почти как за 100. Оптимально по соотношению цена/качество — тиражи от 500 шт, на них уже работает скидка за объём.",
+  },
+  {
+    question: "Делаете двусторонние визитки?",
+    answer:
+      "Да, печатаем и односторонние, и двусторонние. Двусторонние удобны, когда нужно разместить больше информации: контакты с одной стороны, услуги или QR-код — с другой. Сторона печати выбирается в конфигураторе, на цену влияет незначительно.",
+  },
+];
 
 // getStaticPaths сообщает Astro, какие страницы сгенерировать (SSG).
 // Возвращаем по записи на каждую категорию и каждый продукт.
@@ -95,6 +132,14 @@ if (props.type === "product") {
   if (productPricing && pricing) lowPrice = minPrice(productPricing, pricing);
 }
 
+// FAQ к выводу: реальный контент из Directus, иначе временная рыба на визитках (см. FISH_FAQ).
+const faqItems: ServiceFaq[] =
+  content && content.faq.length > 0
+    ? content.faq
+    : slug === "business-cards"
+      ? FISH_FAQ
+      : [];
+
 // H1 / мета / JSON-LD страницы.
 const h1 = (props.type === "product" && content?.h1) || props.name;
 let pageTitle: string;
@@ -110,7 +155,7 @@ if (props.type === "product") {
   jsonLd.push(
     productOffer({ name: props.name, url: pageUrl, lowPrice, description: pageDescription }),
   );
-  if (content && content.faq.length > 0) jsonLd.push(faqPage(content.faq));
+  if (faqItems.length > 0) jsonLd.push(faqPage(faqItems));
 } else {
   pageTitle = `${props.name} — Printmos`;
   pageDescription = `${props.name}: услуги печати в Москве.`;
@@ -184,16 +229,6 @@ if (props.type === "product") {
           )}
         </section>
 
-        {/* Авто-блок «Материалы и технологии» — из опций продукта (П6, инлайн) */}
-        {productPricing && (
-          <OptionsInfo
-            papers={productPricing.papers}
-            finishing={productPricing.finishing}
-            foldTypes={productPricing.foldTypes}
-            allowContourCut={productPricing.allowContourCut}
-          />
-        )}
-
         {/* Требования к макету + скачиваемый шаблон */}
         {content?.templateUrl && (
           <section class="my-8 max-w-prose">
@@ -207,20 +242,25 @@ if (props.type === "product") {
           </section>
         )}
 
-        {/* FAQ (FAQPage JSON-LD уже в <head>) */}
-        {content && content.faq.length > 0 && (
-          <section class="my-10 max-w-prose">
-            <h2 class="mb-4 text-xl font-bold">Частые вопросы</h2>
-            {content.faq.map((f) => (
-              <details class="collapse collapse-arrow mb-2 border border-base-content">
-                <summary class="collapse-title font-medium">{f.question}</summary>
-                <div class="collapse-content">
-                  <p>{f.answer}</p>
-                </div>
-              </details>
-            ))}
-          </section>
-        )}
+        {/* «Материалы и технологии» (слева) + FAQ (справа): рядом на десктопе,
+            друг под другом на мобильных. flex-1 + min-w-0 — равные колонки; если
+            один блок пуст, второй занимает всю ширину. items-start — колонки не
+            тянутся по высоте друг за другом. */}
+        <div class="my-10 flex flex-col gap-8 lg:flex-row lg:items-start">
+          {/* Авто-блок «Материалы» — из опций продукта (П6, инлайн) */}
+          {productPricing && (
+            <OptionsInfo
+              papers={productPricing.papers}
+              finishing={productPricing.finishing}
+              foldTypes={productPricing.foldTypes}
+              allowContourCut={productPricing.allowContourCut}
+              class="lg:min-w-0 lg:flex-1"
+            />
+          )}
+
+          {/* FAQ (FAQPage JSON-LD уже в <head>) */}
+          <Faq items={faqItems} class="lg:min-w-0 lg:flex-1" />
+        </div>
 
         {/* Вверх по иерархии */}
         {props.parentSlug && (

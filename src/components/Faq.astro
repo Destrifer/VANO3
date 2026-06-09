@@ -1,0 +1,52 @@
+---
+// Блок «Частые вопросы». Контент — из Directus (поле faq), 05 «Откуда брать FAQ».
+// Цель — вопросный хвост + AEO (AI-ответы), НЕ rich result (Google убрал с мая 2026).
+// Аккордеон на <details>/<summary> — раскрывается без JS (важно для SSG/индексации).
+import type { ServiceFaq } from "../lib/services";
+import { Icon } from "astro-icon/components";
+
+interface Props {
+  items: ServiceFaq[];
+  title?: string;
+  class?: string;
+}
+
+const { items, title = "Частые вопросы", class: className = "" } = Astro.props;
+---
+
+{
+  items.length > 0 && (
+    <section class={`faq ${className}`}>
+      <h2 class="mb-1 text-2xl font-bold">{title}</h2>
+      <p class="mb-6 text-base-content/60">
+        Коротко о ценах, сроках и макете — чего обычно спрашивают перед заказом.
+      </p>
+
+      {/* Одна колонка: блок целиком стоит в правой колонке секции (рядом с «Материалами»). */}
+      <div class="space-y-3">
+        {items.map((f, i) => (
+          <details
+            class="collapse collapse-arrow rounded-box border border-base-content/20 bg-base-100"
+            open={i === 0}
+          >
+            <summary class="collapse-title pr-12 text-base font-semibold sm:text-lg">
+              {f.question}
+            </summary>
+            <div class="collapse-content">
+              <p class="leading-relaxed text-base-content/80">{f.answer}</p>
+            </div>
+          </details>
+        ))}
+      </div>
+
+      {/* Замыкающий CTA — добивает холодного к действию (05: призыв к конфигуратору) */}
+      <div class="mt-6 flex flex-wrap items-center gap-3 rounded-box border border-base-content/20 bg-base-200 px-5 py-4">
+        <span class="font-medium">Не нашли ответ?</span>
+        <button type="button" class="btn btn-sm btn-primary" data-sheet-open>
+          <Icon name="tabler:message" />
+          Задать вопрос
+        </button>
+      </div>
+    </section>
+  )
+}
