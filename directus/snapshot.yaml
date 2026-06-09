@@ -7258,6 +7258,32 @@ fields:
       has_auto_increment: false
       foreign_key_table: directus_files
       foreign_key_column: id
+  - collection: products
+    field: cluster_pages
+    type: alias
+    meta:
+      collection: products
+      conditions: null
+      display: null
+      display_options: null
+      field: cluster_pages
+      group: null
+      hidden: false
+      interface: list-o2m
+      note: Кластерные страницы этого продукта (Tier-1, pSEO)
+      options:
+        enableCreate: true
+        enableSelect: false
+      readonly: false
+      required: false
+      searchable: true
+      sort: 36
+      special:
+        - o2m
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
   - collection: products_bindings
     field: id
     type: integer
@@ -8181,8 +8207,8 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: products
-      foreign_key_column: id
+      foreign_key_table: null
+      foreign_key_column: null
   - collection: promoted_pages
     field: h1
     type: string
@@ -10300,16 +10326,8 @@ relations:
       one_collection: products
       one_collection_field: null
       one_deselect_action: nullify
-      one_field: null
+      one_field: cluster_pages
       sort_field: null
-    schema:
-      table: promoted_pages
-      column: product
-      foreign_key_table: products
-      foreign_key_column: id
-      constraint_name: promoted_pages_product_foreign
-      on_update: NO ACTION
-      on_delete: SET NULL
   - collection: promoted_pages_faq_items
     field: promoted_pages_id
     related_collection: promoted_pages
