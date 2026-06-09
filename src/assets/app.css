@@ -496,10 +496,13 @@ body > main {
   color: color-mix(in oklch, var(--color-base-content) 60%, transparent);
 }
 
-/* Компактный вариант — для плиток-альтернатив в правом верхнем углу хаба/кластера */
+/* Компактный вариант — для плиток-альтернатив в правом верхнем углу хаба/кластера.
+   НЕ квадратные: высота по контенту (меньше высота → меньше сдвигают калькулятор),
+   ширину держим для подписей. */
 .product-tile--compact {
-  gap: 0.2rem;
-  padding: 0.35rem 0.25rem;
+  aspect-ratio: auto;
+  gap: 0.1rem;
+  padding: 0.25rem 0.35rem;
 }
 .product-tile--compact .product-tile__icon {
   width: 1.4rem;
