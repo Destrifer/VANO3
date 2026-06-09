@@ -50,6 +50,15 @@ const FISH_FAQ: ServiceFaq[] = [
   },
 ];
 
+// TODO(temp): рыба intro_text для визиток (поле пока пусто в Directus). Вхождения
+// головы + ключевые числа (форматы/тираж/плотность/срок) + контекстные ссылки
+// (часть на плитки Tier-1 ведёт в никуда до Фазы 5).
+const FISH_INTRO = `
+<p>Печатаем <strong>визитки в Москве</strong> на собственном цифровом оборудовании — от стандартных до премиальных, без посредников и типографий-перекупщиков. Рассчитать стоимость и заказать визитки можно прямо в конфигураторе выше: цена обновляется мгновенно, без заявки и ожидания менеджера. Стандартный размер — 90×50 мм, делаем и евро-формат 85×55 мм, и нестандартные форматы с вырубкой. Минимальный тираж — от 100 штук, печать односторонняя и двусторонняя, с доставкой по Москве и России.</p>
+<p>Под задачу подберём материал и отделку. Нужно срочно — сделаем <a href="/business-cards/srochnye">срочную печать визиток за 1 день</a>, успеваем в день обращения при заказе до 12:00. Хотите, чтобы визитка выделялась и запоминалась, — посмотрите <a href="/business-cards/foilirovanie">визитки с фольгированием</a> золотом или серебром, либо варианты <a href="/business-cards/dizajnerskie">на дизайнерской бумаге</a> плотностью до 640 г/м² с фактурой льна и софт-тач. Стандартные тиражи печатаем на плотном картоне 300–350 г/м² с ламинацией на выбор.</p>
+<p>Перед заказом советуем заглянуть в <a href="/guides">гайд по подготовке макета</a> — это помогает отправить файл в печать с первого раза, без правок и задержек. Принимаем макеты в PDF и TIFF (CMYK, 300 dpi); если готового дизайна нет — подскажем по требованиям. Работаем с физлицами и по счёту для юрлиц, оплата картой, СБП или наличными. А если кроме визиток нужны <a href="/leaflets">листовки</a> или другая полиграфия — напечатаем в едином стиле одним заказом и одной доставкой.</p>
+`;
+
 // getStaticPaths сообщает Astro, какие страницы сгенерировать (SSG).
 // Возвращаем по записи на каждую категорию и каждый продукт.
 export async function getStaticPaths() {
@@ -140,6 +149,10 @@ const faqItems: ServiceFaq[] =
       ? FISH_FAQ
       : [];
 
+// Интро-текст: Directus, иначе временная рыба на визитках.
+const introHtml =
+  content?.introText ?? (slug === "business-cards" ? FISH_INTRO : null);
+
 // H1 / мета / JSON-LD страницы.
 const h1 = (props.type === "product" && content?.h1) || props.name;
 let pageTitle: string;
@@ -214,20 +227,28 @@ if (props.type === "product") {
         {/* Плитки видов/опций → кластерные страницы (наполнятся в Фазе 5) */}
         <SegmentTiles items={[]} />
 
-        {/* Характеристики текстом — главный SEO-актив (05 §24), из Directus с фолбэком */}
-        <section class="my-10 max-w-prose">
-          <h2 class="mb-3 text-xl font-bold">{props.name} в Москве</h2>
-          {content?.characteristics ? (
-            <div set:html={content.characteristics} />
-          ) : content?.introText ? (
-            <div set:html={content.introText} />
-          ) : (
+        {/* Интро-текст: вхождения головы + контекстные внутренние ссылки с анкорами
+            (05: вхождения хаба). Компактный блок (≤~1000 знаков), не простыня. */}
+        {introHtml ? (
+          <section class="my-10">
+            <h2 class="mb-3 text-xl font-bold">{props.name} в Москве</h2>
+            {/* Текст в 2 колонки на всю ширину (как блоки ниже); абзацы не рвём
+                между колонками. На мобильных — одна колонка. */}
+            <div
+              class="text-content gap-8 md:columns-2 [&_p]:break-inside-avoid"
+              set:html={introHtml}
+            />
+          </section>
+        ) : (
+          <section class="my-10 max-w-prose">
+            <h2 class="mb-3 text-xl font-bold">{props.name} в Москве</h2>
             <p class="text-base-content/80">
               {props.name} — печать на заказ в Москве. Расчёт стоимости — мгновенно
               в конфигураторе выше. Срок от 1 рабочего дня. Доставка по Москве и РФ.
             </p>
-          )}
-        </section>
+          </section>
+        )}
+
 
         {/* Требования к макету + скачиваемый шаблон */}
         {content?.templateUrl && (
@@ -275,3 +296,24 @@ if (props.type === "product") {
     )
   }
 </BaseLayout>
+
+<style is:global>
+  /* Стили для rich-HTML из Directus (set:html не получает scoped-классы). */
+  .text-content a {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .text-content a:hover {
+    color: var(--color-primary);
+  }
+  .text-content ul {
+    list-style: disc;
+    padding-left: 1.25rem;
+  }
+  .text-content li {
+    margin-block: 0.3rem;
+  }
+  .text-content p + p {
+    margin-top: 0.75rem;
+  }
+</style>
