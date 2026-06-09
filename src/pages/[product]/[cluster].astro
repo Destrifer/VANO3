@@ -1,0 +1,155 @@
+---
+// Кластерная страница (pSEO, Tier-1). URL: /<product>/<cluster>.
+// Та же анатомия, что у услуги, но контент — из promoted_pages, конфигуратор
+// открыт с пресетом, canonical — на саму себя (НЕ на родителя; 05 §60).
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { getCategories } from "../../lib/categories";
+import { getProducts } from "../../lib/products";
+import { getProductPricing, getPricingData, minPrice } from "../../lib/pricing/data";
+import { getWorks, type Work } from "../../lib/works";
+import { getPromotedPages } from "../../lib/promotedPages";
+import { productOffer, faqPage } from "../../lib/seo/jsonld";
+import ProductConfigurator from "../../components/ProductConfigurator.vue";
+import Gallery from "../../components/Gallery.astro";
+import Breadcrumbs from "../../components/Breadcrumbs.astro";
+import OptionsInfo from "../../components/OptionsInfo.astro";
+import Faq from "../../components/Faq.astro";
+
+export async function getStaticPaths() {
+  const [pages, products, categories] = await Promise.all([
+    getPromotedPages(),
+    getProducts(),
+    getCategories(),
+  ]);
+  const productBySlug = new Map(products.map((p) => [p.slug, p]));
+  const categoryById = new Map(categories.map((c) => [c.id, c]));
+  const pricing = await getPricingData();
+
+  const paths = [];
+  for (const page of pages) {
+    const product = productBySlug.get(page.productSlug);
+    if (!product) continue; // продукт удалён/не опубликован — страницы нет
+    const parent = categoryById.get(product.category) ?? null;
+    const productPricing = await getProductPricing(page.productSlug);
+    const works = await getWorks({ product: page.productSlug });
+    paths.push({
+      params: { product: page.productSlug, cluster: page.slug },
+      props: {
+        page,
+        productName: product.name,
+        parentName: parent?.name ?? null,
+        parentSlug: parent?.slug ?? null,
+        productPricing,
+        pricing,
+        works,
+      },
+    });
+  }
+  return paths;
+}
+
+const { page, productName, parentName, parentSlug, productPricing, pricing, works } =
+  Astro.props as {
+    page: import("../../lib/promotedPages").PromotedPage;
+    productName: string;
+    parentName: string | null;
+    parentSlug: string | null;
+    productPricing: Awaited<ReturnType<typeof getProductPricing>>;
+    pricing: Awaited<ReturnType<typeof getPricingData>> | null;
+    works: Work[];
+  };
+
+const siteUrl = Astro.site?.toString() ?? "https://printmos.ru";
+const pageUrl = new URL(Astro.url.pathname, siteUrl).toString();
+const money = (n: number) => n.toLocaleString("ru-RU", { maximumFractionDigits: 0 });
+
+const hasCalc =
+  !!productPricing &&
+  (productPricing.papers.length > 0 ||
+    (productPricing.strategy === "multipage" && productPricing.bindings.length > 0) ||
+    (productPricing.strategy === "fixed" && productPricing.fixedPrice.length > 0));
+const lowPrice =
+  productPricing && pricing ? minPrice(productPricing, pricing) : null;
+
+const h1 = page.h1 ?? productName;
+const introHtml = page.introText;
+
+// Крошки: Главная → категория → продукт → кластер (иерархия + анти-каннибализация).
+const crumbs = [
+  { name: "Главная", href: "/" },
+  ...(parentSlug ? [{ name: parentName!, href: `/${parentSlug}` }] : []),
+  { name: productName, href: `/${page.productSlug}` },
+  { name: h1, href: Astro.url.pathname },
+];
+
+const pageTitle =
+  page.metaTitle ??
+  `${h1} в Москве${lowPrice != null ? ` — от ${money(lowPrice)} ₽` : ""} | Printmos`;
+const pageDescription =
+  page.metaDescription ??
+  `${h1} на заказ в Москве. Расчёт цены онлайн, срок от 1 дня. Доставка по Москве и РФ.`;
+
+const jsonLd: Record<string, unknown>[] = [
+  productOffer({ name: h1, url: pageUrl, lowPrice, description: pageDescription }),
+];
+if (page.faq.length > 0) jsonLd.push(faqPage(page.faq));
+---
+
+<BaseLayout title={pageTitle} description={pageDescription} jsonLd={jsonLd}>
+  <Breadcrumbs items={crumbs} />
+  <p class="stub-kicker">Услуга</p>
+  <h1 class="stub-title">{h1}</h1>
+
+  {/* Первый экран: конфигуратор с пресетом */}
+  {
+    hasCalc && pricing ? (
+      <ProductConfigurator
+        client:load
+        product={productPricing}
+        pricing={pricing}
+        name={h1}
+        slug={page.productSlug}
+        preset={page.preset ?? undefined}
+      >
+        <Gallery slot="gallery" works={works} />
+      </ProductConfigurator>
+    ) : (
+      <Gallery works={works} />
+    )
+  }
+
+  {/* Интро (2 колонки на всю ширину; на мобильных — одна) */}
+  {
+    introHtml && (
+      <section class="my-10">
+        <h2 class="mb-3 text-xl font-bold">{h1}</h2>
+        <div
+          class="text-content gap-8 md:columns-2 [&_p]:break-inside-avoid"
+          set:html={introHtml}
+        />
+      </section>
+    )
+  }
+
+  {/* «Материалы и технологии» (слева) + FAQ (справа) */}
+  <div class="my-10 flex flex-col gap-8 lg:flex-row lg:items-start">
+    {
+      productPricing && (
+        <OptionsInfo
+          papers={productPricing.papers}
+          finishing={productPricing.finishing}
+          foldTypes={productPricing.foldTypes}
+          allowContourCut={productPricing.allowContourCut}
+          class="lg:min-w-0 lg:flex-1"
+        />
+      )
+    }
+    <Faq items={page.faq} class="lg:min-w-0 lg:flex-1" />
+  </div>
+
+  {/* Вверх по иерархии — к родительской услуге (анти-каннибализация, 04 §97) */}
+  <p class="my-6 text-base-content/60">
+    Все варианты:{" "}
+    <a class="link link-hover" href={`/${page.productSlug}`}>{productName}</a>
+  </p>
+</BaseLayout>

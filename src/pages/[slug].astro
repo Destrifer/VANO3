@@ -6,6 +6,7 @@ import { getProducts } from "../lib/products";
 import { getProductPricing, getPricingData, minPrice } from "../lib/pricing/data";
 import { getWorks, type Work } from "../lib/works";
 import { getServiceContent, type ServiceContent } from "../lib/services";
+import { getPromotedPages } from "../lib/promotedPages";
 import { productOffer, faqPage } from "../lib/seo/jsonld";
 import ProductConfigurator from "../components/ProductConfigurator.vue";
 import Gallery from "../components/Gallery.astro";
@@ -97,6 +98,15 @@ if (props.type === "product") {
   if (productPricing && pricing) lowPrice = minPrice(productPricing, pricing);
 }
 
+// Плитки хаба → кластерные страницы (Tier-1) этого продукта.
+let tiles: { name: string; href: string }[] = [];
+if (props.type === "product") {
+  const promoted = await getPromotedPages();
+  tiles = promoted
+    .filter((p) => p.productSlug === slug)
+    .map((p) => ({ name: p.h1 ?? p.slug, href: `/${slug}/${p.slug}` }));
+}
+
 // FAQ и интро-текст — из Directus (поля `faq` / `intro_text` на продукте).
 const faqItems: ServiceFaq[] = content?.faq ?? [];
 const introHtml = content?.introText ?? null;
@@ -172,8 +182,8 @@ if (props.type === "product") {
           </>
         )}
 
-        {/* Плитки видов/опций → кластерные страницы (наполнятся в Фазе 5) */}
-        <SegmentTiles items={[]} />
+        {/* Плитки видов/опций → кластерные страницы (Tier-1) этого продукта */}
+        <SegmentTiles items={tiles} />
 
         {/* Интро-текст: вхождения головы + контекстные внутренние ссылки с анкорами
             (05: вхождения хаба). Компактный блок (≤~1000 знаков), не простыня. */}
@@ -244,24 +254,3 @@ if (props.type === "product") {
     )
   }
 </BaseLayout>
-
-<style is:global>
-  /* Стили для rich-HTML из Directus (set:html не получает scoped-классы). */
-  .text-content a {
-    text-decoration: underline;
-    text-underline-offset: 2px;
-  }
-  .text-content a:hover {
-    color: var(--color-primary);
-  }
-  .text-content ul {
-    list-style: disc;
-    padding-left: 1.25rem;
-  }
-  .text-content li {
-    margin-block: 0.3rem;
-  }
-  .text-content p + p {
-    margin-top: 0.75rem;
-  }
-</style>

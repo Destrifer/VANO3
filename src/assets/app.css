@@ -702,3 +702,23 @@ body > main {
   /* base-content с пониженной непрозрачностью — приём daisyUI для «тихого» текста */
   color: color-mix(in oklch, var(--color-base-content) 60%, transparent);
 }
+
+/* Rich-HTML из Directus (intro_text и т.п.): set:html не получает scoped-классы,
+   поэтому стили — глобальные, под обёрткой .text-content. */
+.text-content a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.text-content a:hover {
+  color: var(--color-primary);
+}
+.text-content ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+}
+.text-content li {
+  margin-block: 0.3rem;
+}
+.text-content p + p {
+  margin-top: 0.75rem;
+}
