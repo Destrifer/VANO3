@@ -1,8 +1,8 @@
-// Пресет + синхронизация состояния листового калькулятора с URL.
-// Зачем: (1) pSEO/кластерная страница открывает конфигуратор с предвыбранной
-// опцией (`предустановка_опций`), (2) расшаривание расчёта по ссылке (02 §92).
-// Вынесено из useCalculator, чтобы не раздувать саму реактивную логику.
-import { watch } from "vue";
+// Пресет листового калькулятора + расшаривание расчёта ссылкой.
+// Зачем: (1) кластерная/pSEO-страница открывает конфигуратор с предвыбранной
+// опцией (серверный пресет, чистый URL); (2) пользователь может ПО КНОПКЕ
+// получить ссылку на свой расчёт (02 §92). URL НЕ синхронизируется автоматически —
+// чтобы в обычном обходе не плодились параметрические URL (чистый индекс).
 import type { CalculatorState } from "./useCalculator";
 
 // Семантический пресет (приходит со страницы или из URL). Все поля опциональны —
@@ -67,7 +67,7 @@ export function presetFromSearch(search: string): CalcPreset {
 }
 
 // Состояние → query-параметры (пишем только «небанальные» значения, чтобы URL был чистым).
-function searchFromCalc(calc: CalculatorState): string {
+export function searchFromCalc(calc: CalculatorState): string {
   const q = new URLSearchParams();
   if (calc.shape !== "rectangular") q.set("shape", calc.shape);
   if (!calc.singleSided && !calc.doubleSided && calc.sides === "4+4") q.set("sides", "2");
@@ -82,25 +82,17 @@ function searchFromCalc(calc: CalculatorState): string {
   return s ? `?${s}` : "";
 }
 
-// Клиентская инициализация: прочитать URL (перекрывает серверный пресет —
-// «ссылка победила»), затем писать изменения в URL без перезагрузки.
+// Клиентская инициализация: один раз прочитать пресет из URL (перекрывает
+// серверный пресет — «расшаренная ссылка победила»). БЕЗ обратной записи в URL.
 // Вызывать ТОЛЬКО на клиенте (onMounted).
-export function initUrlSync(calc: CalculatorState): void {
+export function applyPresetFromUrl(calc: CalculatorState): void {
   if (typeof window === "undefined") return;
   applyPreset(calc, presetFromSearch(window.location.search));
-  watch(
-    () => [
-      calc.shape,
-      calc.sides,
-      calc.quantity,
-      calc.paperIndex,
-      calc.foilOn,
-      calc.foilColorIndex,
-      calc.laminationIndex,
-    ],
-    () => {
-      const url = window.location.pathname + searchFromCalc(calc) + window.location.hash;
-      window.history.replaceState(window.history.state, "", url);
-    },
-  );
+}
+
+// Абсолютная ссылка на текущий расчёт (для кнопки «Получить ссылку»).
+export function buildShareUrl(calc: CalculatorState): string {
+  if (typeof window === "undefined") return "";
+  const { origin, pathname } = window.location;
+  return origin + pathname + searchFromCalc(calc);
 }
