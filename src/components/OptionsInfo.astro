@@ -26,45 +26,16 @@ const {
 type Item = { name: string; description: string | null };
 const groupsRaw: { title: string; items: Item[] }[] = [];
 
-// ВРЕМЕННО: тип материала выводим из названия (Directus `group` пока хранит
-// «Стандартные/Дизайнерские»). Позже заменим на поле Directus (material_type/group).
-const TYPE_ORDER = [
-  "Офсетная бумага",
-  "Мелованная бумага",
-  "Картон",
-  "Пластик",
-  "Дизайнерская бумага",
-  "Прочее",
-];
-function materialType(name: string): string {
-  const n = name.toLowerCase();
-  if (n.includes("офсет")) return "Офсетная бумага";
-  if (n.includes("мелован")) return "Мелованная бумага";
-  if (n.includes("картон")) return "Картон";
-  if (n.includes("пластик") || n.includes("пвх")) return "Пластик";
-  if (
-    n.includes("дизайн") ||
-    n.includes("лён") ||
-    n.includes("лен") ||
-    n.includes("majestic") ||
-    n.includes("металлик") ||
-    n.includes("touche") ||
-    n.includes("крафт")
-  )
-    return "Дизайнерская бумага";
-  return "Прочее";
-}
-
+// Тип материала — из Directus (papers.material_type). Группируем по нему; порядок
+// групп = порядок первого появления бумаги (задаётся в админке сортировкой бумаг),
+// без хардкода. Map сохраняет порядок вставки.
 const paperGroups = new Map<string, Item[]>();
 for (const p of papers) {
-  const g = materialType(p.name);
+  const g = p.materialType || "Прочее";
   if (!paperGroups.has(g)) paperGroups.set(g, []);
   paperGroups.get(g)!.push({ name: p.name, description: p.description });
 }
-for (const title of TYPE_ORDER) {
-  const items = paperGroups.get(title);
-  if (items) groupsRaw.push({ title, items });
-}
+for (const [title, items] of paperGroups) groupsRaw.push({ title, items });
 
 // Постпечать: концепты из групп отделки + признаков продукта (у кого есть текст).
 const concepts: string[] = [

@@ -43,6 +43,7 @@ export type PaperOption = {
   name: string;
   price: number;
   group: string;
+  materialType: string; // тип материала (Directus papers.material_type) — для блока «Материалы»
   description: string | null;
   colors: PaperColor[];
   // спецматериал с фикс-ценой за лист (световозвращающая плёнка, пластик 3M)
@@ -276,6 +277,7 @@ export async function getProductPricing(
     `${rel}.papers_id.name`,
     `${rel}.papers_id.price`,
     `${rel}.papers_id.group`,
+    `${rel}.papers_id.material_type`,
     `${rel}.papers_id.description`,
     `${rel}.papers_id.fixed_price`,
     `${rel}.papers_id.fixed_sheet_width`,
@@ -348,6 +350,7 @@ export async function getProductPricing(
       name: pp.name,
       price: num(pp.price),
       group: pp.group ?? "Стандартные",
+      materialType: pp.material_type ?? "Прочее",
       description: pp.description ?? null,
       colors: (pp.colors ?? [])
         .slice()
