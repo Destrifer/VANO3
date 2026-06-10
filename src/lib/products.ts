@@ -28,6 +28,7 @@ export type HomeProduct = {
   name: string;
   slug: string;
   icon: string | null;
+  lead_days: number | null;
 };
 
 // Продукты для сетки на главной (флаг show_on_home), сгруппированы по категории.
@@ -36,7 +37,7 @@ export async function getHomeProducts(): Promise<HomeProduct[]> {
     "/items/products" +
       "?filter[status][_eq]=published" +
       "&filter[show_on_home][_eq]=true" +
-      "&fields=name,slug,icon" +
+      "&fields=name,slug,icon,lead_days" +
       "&sort=category,name" +
       "&limit=-1",
   );

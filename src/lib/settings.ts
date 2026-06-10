@@ -11,6 +11,7 @@ export type Settings = {
   map_lat: number | null;
   map_lng: number | null;
   map_zoom: number | null;
+  cutoff_hour: number | null; // час отсечки приёма в работу (для «срока готовности»)
 };
 
 // Синглтон: /items/settings возвращает ОДИН объект (не массив).

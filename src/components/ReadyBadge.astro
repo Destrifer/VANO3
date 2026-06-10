@@ -1,0 +1,17 @@
+---
+// Бейдж срока готовности: иконка + краткий текст. SSG рендерит фолбэк, клиентский
+// скрипт (в BaseLayout) заполняет реальную фразу из leadtime.ts и обновляет её
+// в реальном времени (отсечка/полночь). data-ready-lead = lead_days продукта.
+import { Icon } from "astro-icon/components";
+
+interface Props {
+  leadDays: number;
+  class?: string;
+}
+const { leadDays, class: className = "" } = Astro.props;
+---
+
+<span class={`ready-badge ${className}`} data-ready-lead={leadDays}>
+  <Icon name="tabler:clock-hour-4" class="ready-badge__icon" />
+  <span class="ready-badge__text">от {Math.max(1, leadDays)} дн.</span>
+</span>

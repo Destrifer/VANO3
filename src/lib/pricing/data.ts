@@ -61,6 +61,7 @@ export type FinishingOption = Finishing & {
 export type ProductPricing = {
   strategy: Strategy; // листовая / многостраничная / площадь / поштучно
   production: "sheet" | "plotter";
+  leadDays: number; // срок изготовления, рабочих дней (база) — для «срока готовности»
   previewKind: string | null; // какой макет превью рисовать (null → "card")
   allowRound: boolean;
   allowComplex: boolean;
@@ -297,6 +298,7 @@ export async function getProductPricing(
     "preview_kind",
     "single_sided",
     "double_sided",
+    "lead_days",
     "allow_contour_cut",
     "fold_types",
     "fixed_price",
@@ -374,6 +376,7 @@ export async function getProductPricing(
   return {
     strategy: (p.strategy ?? "sheet") as Strategy,
     production: p.production ?? "sheet",
+    leadDays: p.lead_days != null ? num(p.lead_days) : 2,
     previewKind: p.preview_kind ?? null,
     allowRound: !!p.allow_round,
     allowComplex: !!p.allow_complex,

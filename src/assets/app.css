@@ -496,6 +496,20 @@ body > main {
   color: color-mix(in oklch, var(--color-base-content) 60%, transparent);
 }
 
+/* Бейдж срока готовности (иконка + краткий текст), напр. на плитках главной */
+.ready-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  color: color-mix(in oklch, var(--color-base-content) 70%, transparent);
+}
+.ready-badge__icon {
+  width: 0.9rem;
+  height: 0.9rem;
+  flex: none;
+}
+
 /* Компактный вариант — для плиток-альтернатив в правом верхнем углу хаба/кластера.
    НЕ квадратные: высота по контенту (меньше высота → меньше сдвигают калькулятор),
    ширину держим для подписей. */

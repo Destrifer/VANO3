@@ -61,6 +61,7 @@ const businessLd = localBusiness(settings, siteUrl);
     <meta name="viewport" content="width=device-width" />
     <meta name="generator" content={Astro.generator} />
     <meta name="description" content={description} />
+    <meta name="lead-cutoff" content={String(settings.cutoff_hour ?? 14)} />
     <title>{title}</title>
 
     <link rel="canonical" href={canonical} />
@@ -355,6 +356,32 @@ const businessLd = localBusiness(settings, siteUrl);
         <button class="channel-sheet__close" value="cancel">Закрыть</button>
       </form>
     </dialog>
+
+    <script>
+      // Срок готовности: заполняем все .ready-badge живой фразой и обновляем в
+      // реальном времени (в отсечку/полночь фраза сама перещёлкивается).
+      import { formatLead, msToNextLeadBoundary } from "../lib/leadtime";
+      const cutoff =
+        Number(document.querySelector('meta[name="lead-cutoff"]')?.getAttribute("content")) || 14;
+      const renderBadges = () => {
+        const now = new Date();
+        document.querySelectorAll<HTMLElement>(".ready-badge[data-ready-lead]").forEach((el) => {
+          const lead = Number(el.dataset.readyLead) || 1;
+          const { text, title } = formatLead(now, lead, cutoff);
+          const t = el.querySelector<HTMLElement>(".ready-badge__text");
+          if (t) t.textContent = text;
+          el.title = title;
+        });
+      };
+      const scheduleBadges = () => {
+        setTimeout(() => {
+          renderBadges();
+          scheduleBadges();
+        }, msToNextLeadBoundary(new Date(), cutoff));
+      };
+      renderBadges();
+      scheduleBadges();
+    </script>
 
     <script>
       // Ленивый фасад карты. Грузим iframe ДО нажатия — по наведению (hover),

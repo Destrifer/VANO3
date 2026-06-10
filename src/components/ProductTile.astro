@@ -1,26 +1,34 @@
 ---
-// Карточка-плитка: иконка + название + мета («от X ₽», опционально срок).
-// Общая для сетки на главной и для плиток кластеров на хабе (единый вид, без дублей).
+// Карточка-плитка: иконка + название + цена «от» + (опц.) срок готовности.
+// Общая для сетки на главной и для плиток кластеров на хабе (единый вид).
 import { Icon } from "astro-icon/components";
+import ReadyBadge from "./ReadyBadge.astro";
 
 interface Props {
   href: string;
   name: string;
   icon?: string | null;
   priceFrom?: number | null;
-  lead?: string | null; // срок («1–3 дня»); если null — не показываем (кластеры)
+  leadDays?: number | null; // если задан — показываем бейдж срока готовности
   compact?: boolean; // компактная плитка (правый верхний блок альтернатив)
 }
-const { href, name, icon = null, priceFrom = null, lead = null, compact = false } = Astro.props;
+const {
+  href,
+  name,
+  icon = null,
+  priceFrom = null,
+  leadDays = null,
+  compact = false,
+} = Astro.props;
 const money = (n: number) => n.toLocaleString("ru-RU", { maximumFractionDigits: 0 });
 const priceLabel = priceFrom != null ? `от ${money(priceFrom)} ₽` : "Рассчитать";
-const meta = lead ? `${priceLabel} · ${lead}` : priceLabel;
 ---
 
 <li>
   <a class={`product-tile${compact ? " product-tile--compact" : ""}`} href={href}>
     {icon && <Icon name={icon} class="product-tile__icon" />}
     <span class="product-tile__name">{name}</span>
-    <span class="product-tile__meta">{meta}</span>
+    <span class="product-tile__meta">{priceLabel}</span>
+    {leadDays != null && <ReadyBadge leadDays={leadDays} />}
   </a>
 </li>
