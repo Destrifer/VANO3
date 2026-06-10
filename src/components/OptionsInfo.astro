@@ -3,7 +3,7 @@
 // Слева: сгруппированный список всех материалов и технологий (daisyUI menu).
 // Справа: превью + описание выбранного пункта. Один активный элемент на весь блок.
 // Все панели в HTML (краулится, П6); лёгкий прогрессивный JS переключает видимость.
-// Картинка пока единый плейсхолдер; реальные — позже из papers.image / finishing.image.
+// Материалы берут реальные картинки из papers.image; постпечать пока падает в общий плейсхолдер.
 import { Picture } from "astro:assets";
 import placeholder from "../assets/materials/placeholder.jpg";
 import type { ProductPricing } from "../lib/pricing/data";
@@ -23,7 +23,7 @@ const {
   class?: string;
 };
 
-type Item = { name: string; description: string | null };
+type Item = { name: string; description: string | null; image: string | null };
 const groupsRaw: { title: string; items: Item[] }[] = [];
 
 // Тип материала — из Directus (papers.material_type). Группируем по нему; порядок
@@ -33,7 +33,7 @@ const paperGroups = new Map<string, Item[]>();
 for (const p of papers) {
   const g = p.materialType || "Прочее";
   if (!paperGroups.has(g)) paperGroups.set(g, []);
-  paperGroups.get(g)!.push({ name: p.name, description: p.description });
+  paperGroups.get(g)!.push({ name: p.name, description: p.description, image: p.image });
 }
 for (const [title, items] of paperGroups) groupsRaw.push({ title, items });
 
@@ -44,7 +44,7 @@ const concepts: string[] = [
 if (foldTypes.length) concepts.push("Фальцовка");
 if (allowContourCut) concepts.push("Контурная резка");
 const postpress = concepts
-  .map((c) => ({ name: c, description: optionInfo(c) }))
+  .map((c) => ({ name: c, description: optionInfo(c), image: null }))
   .filter((x) => x.description);
 if (postpress.length) groupsRaw.push({ title: "Постпечать и отделка", items: postpress });
 
@@ -91,17 +91,33 @@ const flat = groups.flatMap((g) => g.items);
             {flat.map((it) => (
               <div class={`opt-panel ${it.idx === 0 ? "" : "hidden"}`} data-idx={it.idx}>
                 <div class="overflow-hidden rounded-box">
-                  <Picture
-                    src={placeholder}
-                    width={640}
-                    height={360}
-                    fit="cover"
-                    position="center"
-                    formats={["avif", "webp"]}
-                    quality={50}
-                    alt={it.name}
-                    class="aspect-video w-full object-cover"
-                  />
+                  {it.image ? (
+                    <Picture
+                      src={it.image}
+                      width={480}
+                      height={270}
+                      fit="cover"
+                      position="center"
+                      densities={[1, 2]}
+                      formats={["avif", "webp"]}
+                      quality={60}
+                      alt={it.name}
+                      loading={it.idx === 0 ? "eager" : "lazy"}
+                      class="aspect-video w-full object-cover"
+                    />
+                  ) : (
+                    <Picture
+                      src={placeholder}
+                      width={640}
+                      height={360}
+                      fit="cover"
+                      position="center"
+                      formats={["avif", "webp"]}
+                      quality={50}
+                      alt={it.name}
+                      class="aspect-video w-full object-cover"
+                    />
+                  )}
                 </div>
                 <p class="mt-4 text-lg font-semibold">{it.name}</p>
                 <p class="mt-1 leading-relaxed text-base-content/70">
