@@ -26,16 +26,25 @@ const {
 type Item = { name: string; description: string | null; image: string | null };
 const groupsRaw: { title: string; items: Item[] }[] = [];
 
-// Тип материала — из Directus (papers.material_type). Группируем по нему; порядок
-// групп = порядок первого появления бумаги (задаётся в админке сортировкой бумаг),
-// без хардкода. Map сохраняет порядок вставки.
-const paperGroups = new Map<string, Item[]>();
+// Showcase, а не выбор: схлопываем до ОДНОЙ карточки на тип материала
+// (papers.material_type) — грамовки выбираются в калькуляторе, тут они шум.
+// Фото/описание — представительные (первое непустое в типе). Порядок типов —
+// по первому появлению бумаги (сортировка в админке), без хардкода.
+const typeOrder: string[] = [];
+const typeRep = new Map<string, Item>();
 for (const p of papers) {
-  const g = p.materialType || "Прочее";
-  if (!paperGroups.has(g)) paperGroups.set(g, []);
-  paperGroups.get(g)!.push({ name: p.name, description: p.description, image: p.image });
+  const t = p.materialType || "Прочее";
+  if (!typeRep.has(t)) {
+    typeRep.set(t, { name: t, description: p.description, image: p.image });
+    typeOrder.push(t);
+  } else {
+    const r = typeRep.get(t)!;
+    if (!r.description && p.description) r.description = p.description;
+    if (!r.image && p.image) r.image = p.image;
+  }
 }
-for (const [title, items] of paperGroups) groupsRaw.push({ title, items });
+const materialItems = typeOrder.map((t) => typeRep.get(t)!);
+if (materialItems.length) groupsRaw.push({ title: "Материалы", items: materialItems });
 
 // Постпечать: концепты из групп отделки + признаков продукта (у кого есть текст).
 // Фото берём из finishing_options своей группы (первое с картинкой); концепты-флаги
