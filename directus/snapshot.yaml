@@ -2308,6 +2308,47 @@ fields:
       validation: null
       validation_message: null
       width: full
+  - collection: finishing_options
+    field: image
+    type: uuid
+    meta:
+      collection: finishing_options
+      conditions: null
+      display: null
+      display_options: null
+      field: image
+      group: null
+      hidden: false
+      interface: file-image
+      note: Фото отделки (для блока «Материалы и технологии»)
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 13
+      special:
+        - file
+      translations: null
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: image
+      table: finishing_options
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: directus_files
+      foreign_key_column: id
   - collection: finishing_tiers
     field: id
     type: integer
@@ -10131,6 +10172,27 @@ relations:
       constraint_name: finishing_colors_finishing_foreign
       on_update: NO ACTION
       on_delete: CASCADE
+  - collection: finishing_options
+    field: image
+    related_collection: directus_files
+    meta:
+      junction_field: null
+      many_collection: finishing_options
+      many_field: image
+      one_allowed_collections: null
+      one_collection: directus_files
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: finishing_options
+      column: image
+      foreign_key_table: directus_files
+      foreign_key_column: id
+      constraint_name: finishing_options_image_foreign
+      on_update: NO ACTION
+      on_delete: SET NULL
   - collection: finishing_tiers
     field: option
     related_collection: finishing_options

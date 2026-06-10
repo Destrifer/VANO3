@@ -56,6 +56,7 @@ export type PaperOption = {
 export type FinishingOption = Finishing & {
   id: number;
   group: string | null;
+  image: string | null; // фото отделки (finishing_options.image)
   colors: PaperColor[];
 };
 
@@ -326,6 +327,7 @@ export async function getProductPricing(
     "finishing.finishing_id.id",
     "finishing.finishing_id.name",
     "finishing.finishing_id.group",
+    "finishing.finishing_id.image",
     "finishing.finishing_id.unit",
     "finishing.finishing_id.unit_price",
     "finishing.finishing_id.setup_price",
@@ -428,6 +430,7 @@ export async function getProductPricing(
         id: num(f.id),
         name: f.name,
         group: f.group ?? null,
+        image: assetUrl(f.image),
         unit: f.unit,
         unitPrice: f.unit_price == null ? null : num(f.unit_price),
         setupPrice: num(f.setup_price),

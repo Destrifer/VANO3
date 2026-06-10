@@ -38,13 +38,19 @@ for (const p of papers) {
 for (const [title, items] of paperGroups) groupsRaw.push({ title, items });
 
 // Постпечать: концепты из групп отделки + признаков продукта (у кого есть текст).
+// Фото берём из finishing_options своей группы (первое с картинкой); концепты-флаги
+// (Фальцовка, Контурная резка) своего finishing-ряда не имеют → плейсхолдер.
+const groupImage = new Map<string, string>();
+for (const f of finishing) {
+  if (f.group && f.image && !groupImage.has(f.group)) groupImage.set(f.group, f.image);
+}
 const concepts: string[] = [
   ...new Set(finishing.map((f) => f.group).filter((g): g is string => !!g)),
 ];
 if (foldTypes.length) concepts.push("Фальцовка");
 if (allowContourCut) concepts.push("Контурная резка");
 const postpress = concepts
-  .map((c) => ({ name: c, description: optionInfo(c), image: null }))
+  .map((c) => ({ name: c, description: optionInfo(c), image: groupImage.get(c) ?? null }))
   .filter((x) => x.description);
 if (postpress.length) groupsRaw.push({ title: "Постпечать и отделка", items: postpress });
 
