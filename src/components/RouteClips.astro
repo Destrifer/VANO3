@@ -1,0 +1,219 @@
+---
+// Ролики-ориентиры «путь от остановки»: каждый короткий «бросок» маршрута.
+// Играют сами, без звука и кнопок; стартуют по видимости (IntersectionObserver),
+// паузятся за экраном. Для prefers-reduced-motion — статичный первый кадр.
+interface Clip {
+  label: string;
+  mp4: string;
+  webm: string;
+}
+interface Props {
+  clips?: Clip[];
+  /** Нумеровать ролики как шаги маршрута (1, 2, …). */
+  steps?: boolean;
+}
+
+const {
+  clips = [
+    {
+      label: "Маршрут от остановки «Улица Садовники»",
+      mp4: "/route/road.mp4",
+      webm: "/route/road.webm",
+    },
+  ],
+  steps = false,
+} = Astro.props;
+---
+
+<ol class="route-strip" class:list={{ "route-strip--steps": steps }}>
+  {
+    clips.map((clip, i) => (
+      <li class="route-clip" aria-label={clip.label}>
+        <figure class="route-clip__fig">
+          <div class="route-clip__frame">
+            <video
+              class="route-clip__video"
+              loop
+              muted
+              playsinline
+              preload="none"
+              disablepictureinpicture
+              aria-label={clip.label}
+              data-mp4={clip.mp4}
+              data-webm={clip.webm}
+            />
+            <button type="button" class="route-clip__toggle" aria-label="Воспроизвести ролик">
+              <span class="route-clip__hint" aria-hidden="true">⏵</span>
+            </button>
+          </div>
+          <figcaption class="route-clip__cap">
+            {steps && <span class="route-clip__step">{i + 1}</span>}
+            {clip.label}
+          </figcaption>
+        </figure>
+      </li>
+    ))
+  }
+</ol>
+
+<style>
+  .route-strip {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: var(--grid-gap, 1rem);
+  }
+  /* Несколько роликов-шагов рядом на широких экранах */
+  .route-strip--steps {
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  }
+
+  .route-clip {
+    border: var(--border, 1px) solid var(--color-base-300);
+    border-radius: var(--radius-box, 0.5rem);
+    overflow: hidden;
+    background: var(--color-base-200);
+  }
+  .route-clip__fig {
+    margin: 0;
+  }
+  .route-clip__frame {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    background: #000;
+  }
+  .route-clip__video {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  /* Кнопка play/pause поверх кадра — клавиатуро-доступная */
+  .route-clip__toggle {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.85);
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+  .route-clip__toggle:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: -4px;
+  }
+  /* Затемнение + иконка ⏵ — видны, только пока видео на паузе */
+  .route-clip.is-paused .route-clip__toggle {
+    background: rgba(0, 0, 0, 0.25);
+  }
+  .route-clip__hint {
+    display: none;
+    font-size: 2.4rem;
+    line-height: 1;
+  }
+  .route-clip.is-paused .route-clip__hint {
+    display: block;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .route-clip__toggle {
+      transition: none;
+    }
+  }
+  .route-clip__cap {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 0.8rem;
+    font-size: 0.92rem;
+    font-weight: 600;
+  }
+  /* Кружок с номером шага */
+  .route-clip__step {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 999px;
+    background: var(--color-base-content);
+    color: var(--color-base-100);
+    font-size: 0.82rem;
+    font-weight: 700;
+  }
+</style>
+
+<script>
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  document.querySelectorAll<HTMLVideoElement>(".route-clip__video").forEach((v) => {
+    const fig = v.closest(".route-clip");
+
+    const load = () => {
+      if (v.dataset.loaded) return;
+      v.dataset.loaded = "1";
+      const webm = document.createElement("source");
+      webm.src = v.dataset.webm!;
+      webm.type = "video/webm";
+      const mp4 = document.createElement("source");
+      mp4.src = v.dataset.mp4!;
+      mp4.type = "video/mp4";
+      v.append(webm, mp4);
+      v.load();
+    };
+
+    const toggleBtn = fig?.querySelector<HTMLButtonElement>(".route-clip__toggle");
+    const sync = () => {
+      fig?.classList.toggle("is-paused", v.paused);
+      if (toggleBtn) {
+        toggleBtn.setAttribute(
+          "aria-label",
+          v.paused ? "Воспроизвести ролик" : "Поставить ролик на паузу",
+        );
+      }
+    };
+    v.addEventListener("play", sync);
+    v.addEventListener("pause", sync);
+
+    // Управление с кнопки — работает и мышью, и с клавиатуры (Enter/Пробел).
+    toggleBtn?.addEventListener("click", () => {
+      load();
+      v.paused ? v.play().catch(() => {}) : v.pause();
+    });
+
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => {
+          if (e.isIntersecting) {
+            load();
+            if (reduce) {
+              v.addEventListener(
+                "loadeddata",
+                () => {
+                  try {
+                    v.currentTime = 0.05;
+                  } catch {}
+                },
+                { once: true },
+              );
+              sync();
+            } else {
+              v.play().catch(() => {});
+            }
+          } else if (!reduce) {
+            v.pause();
+          }
+        });
+      },
+      { threshold: 0.3 },
+    );
+    io.observe(v);
+  });
+</script>
