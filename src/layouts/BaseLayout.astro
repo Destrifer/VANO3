@@ -58,7 +58,8 @@ const businessLd = localBusiness(settings, siteUrl);
     <meta charset="utf-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" href="/favicon.ico" />
-    <meta name="viewport" content="width=device-width" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#ffffff" />
     <meta name="generator" content={Astro.generator} />
     <meta name="description" content={description} />
     <meta name="lead-cutoff" content={String(settings.cutoff_hour ?? 14)} />
@@ -148,6 +149,7 @@ const businessLd = localBusiness(settings, siteUrl);
               fill="none"
               stroke="currentColor"
               stroke-width="2"
+              aria-hidden="true"
             >
               <line x1="3" y1="6" x2="21" y2="6" />
               <line x1="3" y1="12" x2="21" y2="12" />
@@ -160,6 +162,7 @@ const businessLd = localBusiness(settings, siteUrl);
               fill="none"
               stroke="currentColor"
               stroke-width="2"
+              aria-hidden="true"
             >
               <line x1="5" y1="5" x2="19" y2="19" />
               <line x1="19" y1="5" x2="5" y2="19" />
@@ -228,7 +231,7 @@ const businessLd = localBusiness(settings, siteUrl);
           height={450}
           loading="lazy"
         />
-        <Icon name="tabler:map-pin-filled" class="map-marker" />
+        <Icon name="tabler:map-pin-filled" class="map-marker" aria-hidden="true" />
         <span class="map-bubble">{settings.address ?? "Москва"}</span>
       </div>
 

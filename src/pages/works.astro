@@ -40,7 +40,7 @@ const description =
           {products.length > 1 && (
             <div class="flex flex-wrap items-center gap-2">
               <span class="text-sm font-semibold text-base-content/60">Продукт:</span>
-              <form class="filter" id="pm-flt-product">
+              <form class="filter" id="pm-flt-product" role="group" aria-label="Фильтр по продукту">
                 <input class="btn btn-sm" type="reset" value="Все" />
                 {products.map((p) => (
                   <input
@@ -58,7 +58,7 @@ const description =
           {tags.length > 0 && (
             <div class="flex flex-wrap items-center gap-2">
               <span class="text-sm font-semibold text-base-content/60">Отделка:</span>
-              <form class="filter" id="pm-flt-tag">
+              <form class="filter" id="pm-flt-tag" role="group" aria-label="Фильтр по виду отделки">
                 <input class="btn btn-sm" type="reset" value="Все" />
                 {tags.map((t) => (
                   <input
