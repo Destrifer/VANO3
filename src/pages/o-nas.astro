@@ -1,0 +1,496 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { Icon } from "astro-icon/components";
+import { getSettings } from "../lib/settings";
+
+// Страница «О нас». Контент — служебный и меняется редко, поэтому захардкожен
+// прямо здесь (правки вносятся в коде, без админки). Реквизиты — из Directus
+// (settings), чтобы не дублировать их по страницам.
+//
+// ВАЖНО (аффилированность с centralprint.ru): тексты здесь НЕ копируются с того
+// сайта дословно — формулировки свои. Список моделей оборудования — факт, его
+// дублировать не страшно; страшно дублировать описания и реквизиты.
+const settings = await getSettings();
+const company = settings.company_name ?? "Printmos";
+const siteUrl = Astro.site?.toString() ?? "https://printmos.ru";
+const pageUrl = new URL("/o-nas", siteUrl).toString();
+
+// Год основания — один источник правды. Возраст считаем динамически, чтобы не
+// править вручную каждый год.
+const FOUNDED = 2007;
+const years = new Date().getFullYear() - FOUNDED;
+// Русское склонение: 1 год, 2 года, 5 лет.
+const plural = (n: number, forms: [string, string, string]) => {
+  const a = Math.abs(n) % 100;
+  const b = a % 10;
+  if (a > 10 && a < 20) return forms[2];
+  if (b > 1 && b < 5) return forms[1];
+  if (b === 1) return forms[0];
+  return forms[2];
+};
+
+// — Короткие факты (только честные, выводимые из реальных данных) —
+const facts = [
+  { value: `${years}`, label: `${plural(years, ["год", "года", "лет"])} на рынке` },
+  { value: "3", label: "вида печати" },
+  { value: "20+", label: "единиц финишного оборудования" },
+  { value: "Своё", label: "производство в Москве" },
+];
+
+// — Услуги (единая категоризация). Иконка + название + строка пояснения.
+//   РЕДАКТИРУЙ под реальный набор: добавь/убери карточки. —
+const services = [
+  { icon: "tabler:printer", title: "Цифровая печать", desc: "Малые и средние тиражи, быстрый старт." },
+  { icon: "tabler:stack-2", title: "Офсетная печать", desc: "Большие тиражи с низкой себестоимостью." },
+  { icon: "tabler:copy", title: "Ризография", desc: "Массовое тиражирование чёрно-белых бланков." },
+  { icon: "tabler:scissors", title: "Постпечатная обработка", desc: "Резка, биговка, фальцовка, скругление углов." },
+  { icon: "tabler:layers-subtract", title: "Ламинация", desc: "Глянец или мат — защита и вид изделия." },
+  { icon: "tabler:sparkles", title: "Фольгирование", desc: "Горячее тиснение фольгой: золото, серебро." },
+  { icon: "tabler:book", title: "Переплёт и брошюровка", desc: "Пружина, термоклей, скрепка внакидку." },
+  { icon: "tabler:pencil", title: "Разработка макетов", desc: "Дизайн и подготовка файла к печати." },
+];
+
+// — Как проходит заказ (6 шагов; бухгалтерия идёт параллельно, отдельной плашкой) —
+const steps = [
+  { title: "Приём и расчёт", desc: "Уточняем тираж, материалы и сроки, считаем стоимость." },
+  { title: "Согласование макета", desc: "Проверяем файл (preflight), правим и утверждаем." },
+  { title: "Пробный оттиск", desc: "Контрольный экземпляр и цветопроба до тиража." },
+  { title: "Печать", desc: "Цифра или офсет — в зависимости от тиража." },
+  { title: "Постпечать и контроль", desc: "Отделка и проверка готового тиража." },
+  { title: "Выдача или доставка", desc: "Самовывоз в Москве или доставка по Москве и РФ." },
+];
+
+// — Парк оборудования (доказательство «своё производство»). Группы по функции.
+//   Модели — реальные; описания свои. —
+const equipment = [
+  {
+    group: "Печать",
+    items: ["Цифровые ЦПМ Xerox", "Офсетная машина", "Ризограф RISO 3500 EP"],
+  },
+  {
+    group: "Резка и раскрой",
+    items: [
+      "Гильотина IDEAL 6550-95 EP",
+      "Плоттер Graphtec CE6000",
+      "Скругление углов Marchetti Vicking",
+    ],
+  },
+  {
+    group: "Скрепление и переплёт",
+    items: [
+      "Брошюровщик Duplo DBM-120",
+      "Термоклей Aurora W6500A",
+      "Буклетмейкер Nagel Foldnak M2",
+      "Пружина Office Kit",
+    ],
+  },
+  {
+    group: "Фальцовка и биговка",
+    items: ["Биговщик-перфоратор Cyklos GPM 315", "Fastbind C400", "Мини Перфо 500"],
+  },
+  {
+    group: "Финиш",
+    items: [
+      "Ламинаторы GMP Excelam-655 Q / Surelam PRO 500D",
+      "Тиснение фольгой TaeChang TIC-800TM",
+      "Люверсовщик Piccolo",
+    ],
+  },
+];
+
+// — Команда. Стилизованные иллюстрации (НЕ реальные фото): закрывают вопрос
+//   «кто вы», но без хантинга и согласий. Кладите 4 портрета в /public/team/
+//   в едином арт-стиле. РЕДАКТИРУЙ роли под реальные. —
+const team = [
+  { role: "Директор", img: "/team/director.webp" },
+  { role: "Производство", img: "/team/production.webp" },
+  { role: "Бухгалтерия", img: "/team/accountant.webp" },
+  { role: "Дизайн и препресс", img: "/team/designer.webp" },
+  { role: "Разработка", img: "/team/developer.webp" },
+];
+
+const title = `О компании — ${company}`;
+const description = `Типография в Москве с ${FOUNDED} года. Своё производство: цифровая и офсетная печать, постпечатная обработка. Расчёт онлайн, самовывоз и доставка.`;
+
+// JSON-LD: AboutPage, связанная с организацией (узел #org объявлен в BaseLayout).
+const aboutLd = {
+  "@context": "https://schema.org",
+  "@type": "AboutPage",
+  name: title,
+  url: pageUrl,
+  description,
+  mainEntity: { "@id": new URL("#org", siteUrl).toString() },
+};
+---
+
+<BaseLayout title={title} description={description} jsonLd={[aboutLd]}>
+  <p class="stub-kicker">О компании</p>
+  <h1 class="stub-title">Типография в Москве с {FOUNDED} года</h1>
+  <p class="about-lead">
+    {company} — собственное производство полного цикла в Москве. Печатаем визитки,
+    листовки, буклеты и многое другое: считаете цену онлайн, забираете на
+    самовывозе или получаете доставкой. Без посредников — печать, отделка и
+    контроль качества проходят у нас.
+  </p>
+
+  <!-- Факты -->
+  <ul class="facts">
+    {facts.map((f) => (
+      <li class="fact">
+        <span class="fact__value">{f.value}</span>
+        <span class="fact__label">{f.label}</span>
+      </li>
+    ))}
+  </ul>
+
+  <!-- Услуги -->
+  <section class="about-section">
+    <h2 class="section-title">Что мы умеем</h2>
+    <p class="section-sub">Полный цикл — от макета до готового тиража с отделкой.</p>
+    <ul class="svc-grid">
+      {services.map((s) => (
+        <li class="svc">
+          <Icon name={s.icon} class="svc__icon" aria-hidden="true" />
+          <span class="svc__title">{s.title}</span>
+          <span class="svc__desc">{s.desc}</span>
+        </li>
+      ))}
+    </ul>
+  </section>
+
+  <!-- Как проходит заказ -->
+  <section class="about-section">
+    <h2 class="section-title">Как проходит заказ</h2>
+    <p class="section-sub">Прозрачный путь от заявки до выдачи — без сюрпризов.</p>
+    <ol class="steps">
+      {steps.map((s, i) => (
+        <li class="step">
+          <span class="step__num">{i + 1}</span>
+          <div class="step__body">
+            <span class="step__title">{s.title}</span>
+            <span class="step__desc">{s.desc}</span>
+          </div>
+        </li>
+      ))}
+    </ol>
+    <p class="about-note">
+      <Icon name="tabler:file-invoice" aria-hidden="true" />
+      Для юрлиц — работа по договору и закрывающие документы. Способы оплаты и
+      безнал — на странице <a class="link" href="/dostavka-oplata">оплаты и доставки</a>.
+    </p>
+  </section>
+
+  <!-- Производство -->
+  <section class="about-section">
+    <h2 class="section-title">Производство и оборудование</h2>
+    <p class="section-sub">
+      Свой парк печати и постпечати — поэтому сроки короткие, а качество стабильное.
+    </p>
+    <div class="prod">
+      <img
+        class="prod__photo"
+        src="/team/production.webp"
+        alt="Производство типографии"
+        width="320"
+        height="320"
+        loading="lazy"
+      />
+      <ul class="equip">
+        {equipment.map((g) => (
+          <li class="equip__group">
+            <span class="equip__head">{g.group}</span>
+            <ul class="equip__list">
+              {g.items.map((it) => <li>{it}</li>)}
+            </ul>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </section>
+
+  <!-- Команда -->
+  <section class="about-section">
+    <h2 class="section-title">Команда</h2>
+    <p class="section-sub team-sub">
+      Небольшая команда, на которой держится вся типография. Короткая цепочка
+      решений и низкие издержки — поэтому цену не приходится накручивать на
+      содержание штата менеджеров.
+    </p>
+    <ul class="team-grid">
+      {team.map((m) => (
+        <li class="member">
+          <img
+            class="member__avatar"
+            src={m.img}
+            alt={m.role}
+            width="240"
+            height="240"
+            loading="lazy"
+          />
+          <span class="member__role">{m.role}</span>
+        </li>
+      ))}
+    </ul>
+  </section>
+
+  <!-- CTA -->
+  <section class="about-cta">
+    <div>
+      <h2 class="about-cta__title">Нужна печать?</h2>
+      <p class="about-cta__sub">Рассчитайте стоимость онлайн или напишите нам — поможем с макетом.</p>
+    </div>
+    <div class="about-cta__actions">
+      <a class="btn btn-primary" href="/">Выбрать продукцию</a>
+      <a class="btn" href="/contacts">Связаться</a>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .about-lead {
+    max-width: 64ch;
+    margin: 0 0 2.25rem;
+    font-size: 1.05rem;
+    color: color-mix(in oklch, var(--color-base-content) 75%, transparent);
+  }
+
+  /* Общие заголовки секций (как на /contacts) */
+  .section-title {
+    font-size: clamp(1.35rem, 1.1rem + 0.8vw, 1.75rem);
+    font-weight: 700;
+    line-height: 1.15;
+  }
+  .section-sub {
+    margin: 0.35rem 0 1.25rem;
+    color: color-mix(in oklch, var(--color-base-content) 70%, transparent);
+  }
+  .about-section {
+    margin-top: 3rem;
+  }
+
+  /* — Факты — */
+  .facts {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+  @media (min-width: 720px) {
+    .facts { grid-template-columns: repeat(4, 1fr); }
+  }
+  .fact {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding: 1.1rem 1.25rem;
+    border: var(--border, 1px) solid var(--color-base-300);
+    border-radius: var(--radius-box, 0.5rem);
+  }
+  .fact__value {
+    font-size: clamp(1.6rem, 1.2rem + 1.4vw, 2.25rem);
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+  .fact__label {
+    font-size: 0.9rem;
+    color: color-mix(in oklch, var(--color-base-content) 70%, transparent);
+  }
+
+  /* — Услуги — */
+  .svc-grid {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  @media (min-width: 560px) {
+    .svc-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (min-width: 960px) {
+    .svc-grid { grid-template-columns: repeat(4, 1fr); }
+  }
+  .svc {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 1.25rem;
+    border: var(--border, 1px) solid var(--color-base-300);
+    border-radius: var(--radius-box, 0.5rem);
+  }
+  .svc__icon {
+    width: 1.75rem;
+    height: 1.75rem;
+    color: var(--color-primary, currentColor);
+  }
+  .svc__title { font-weight: 700; }
+  .svc__desc {
+    font-size: 0.9rem;
+    color: color-mix(in oklch, var(--color-base-content) 70%, transparent);
+  }
+
+  /* — Шаги заказа — */
+  .steps {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.85rem;
+    counter-reset: none;
+  }
+  @media (min-width: 720px) {
+    .steps { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (min-width: 1080px) {
+    .steps { grid-template-columns: repeat(3, 1fr); }
+  }
+  .step {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.85rem;
+    padding: 1.1rem 1.25rem;
+    border: var(--border, 1px) solid var(--color-base-300);
+    border-radius: var(--radius-box, 0.5rem);
+  }
+  .step__num {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 999px;
+    font-weight: 800;
+    background: var(--color-base-200);
+  }
+  .step__body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+  .step__title { font-weight: 700; }
+  .step__desc {
+    font-size: 0.9rem;
+    color: color-mix(in oklch, var(--color-base-content) 70%, transparent);
+  }
+  .about-note {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 1.1rem;
+    font-size: 0.95rem;
+    color: color-mix(in oklch, var(--color-base-content) 78%, transparent);
+  }
+  .about-note svg { width: 1.2rem; height: 1.2rem; flex: none; }
+
+  /* — Производство — */
+  .prod {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    align-items: start;
+  }
+  @media (min-width: 800px) {
+    .prod { grid-template-columns: 320px 1fr; }
+  }
+  .prod__photo {
+    width: 100%;
+    max-width: 320px;
+    height: auto;
+    border-radius: var(--radius-box, 0.5rem);
+    border: var(--border, 1px) solid var(--color-base-300);
+    background: var(--color-base-200);
+  }
+  .equip {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  @media (min-width: 600px) {
+    .equip { grid-template-columns: repeat(2, 1fr); }
+  }
+  .equip__head {
+    display: block;
+    margin-bottom: 0.35rem;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: color-mix(in oklch, var(--color-base-content) 65%, transparent);
+  }
+  .equip__list {
+    margin: 0;
+    padding-left: 1.1rem;
+    font-size: 0.92rem;
+    line-height: 1.5;
+  }
+
+  /* — Команда — */
+  .team-sub { max-width: 60ch; }
+  .team-grid {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    /* Авто-раскладка: ровно ложится при любом числе участников (4, 5, …) */
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.25rem;
+  }
+  @media (min-width: 720px) {
+    .team-grid {
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    }
+  }
+  .member {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+  .member__avatar {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    border-radius: var(--radius-box, 0.5rem);
+    background: var(--color-base-200);
+    border: var(--border, 1px) solid var(--color-base-300);
+  }
+  .member__role {
+    font-weight: 700;
+    text-align: center;
+  }
+
+  /* — CTA — */
+  .about-cta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.25rem;
+    margin-top: 3.5rem;
+    padding: 1.75rem 2rem;
+    border: var(--border, 1px) solid var(--color-base-300);
+    border-radius: var(--radius-box, 0.5rem);
+    background: var(--color-base-200);
+  }
+  .about-cta__title {
+    font-size: clamp(1.35rem, 1.1rem + 0.8vw, 1.75rem);
+    font-weight: 800;
+    line-height: 1.15;
+  }
+  .about-cta__sub {
+    margin-top: 0.3rem;
+    color: color-mix(in oklch, var(--color-base-content) 72%, transparent);
+  }
+  .about-cta__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+</style>
