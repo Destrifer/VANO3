@@ -1,0 +1,378 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { Icon } from "astro-icon/components";
+import { getSettings } from "../lib/settings";
+import { DELIVERY_METHODS, PVZ_NETWORKS } from "../lib/checkout";
+import { faqPage } from "../lib/seo/jsonld";
+
+// Страница «Доставка и оплата». Условия строго синхронны с корзиной
+// (src/lib/checkout.ts): способы, стоимость курьера и т.п. берём оттуда, чтобы
+// не разойтись с тем, что человек видит при оформлении. Реквизиты — из settings.
+const settings = await getSettings();
+const siteUrl = Astro.site?.toString() ?? "https://printmos.ru";
+const pageUrl = new URL("/dostavka-oplata", siteUrl).toString();
+
+const address = settings.address ?? "Москва";
+const hours = settings.hours ?? null;
+const cutoff = settings.cutoff_hour ?? 14;
+const courierMsk = DELIVERY_METHODS.find((m) => m.id === "courier_msk");
+const courierCost = courierMsk?.cost ?? 400;
+const money = (n: number) => n.toLocaleString("ru-RU");
+const pvzList = PVZ_NETWORKS.map((n) => n.label).join(", ");
+
+// — Доставка — (описания свои; числа/способы — из checkout) —
+const delivery = [
+  {
+    icon: "tabler:building-store",
+    title: "Самовывоз",
+    price: "Бесплатно",
+    desc: `Заберите заказ у нас: ${address}.${hours ? ` Часы работы: ${hours}.` : ""}`,
+    link: { href: "/contacts", label: "Как добраться" },
+  },
+  {
+    icon: "tabler:truck-delivery",
+    title: "Курьер по Москве",
+    price: `${money(courierCost)} ₽`,
+    desc: "Привезём по адресу в день готовности заказа или на следующий день.",
+  },
+  {
+    icon: "tabler:package",
+    title: "ПВЗ и доставка по России",
+    price: "По тарифу перевозчика",
+    desc: `Отправляем через ${pvzList} и другие службы. Стоимость и срок рассчитает менеджер.`,
+  },
+];
+
+// — Оплата — (синхронно с PAYMENT_METHODS в checkout.ts: online пока «скоро») —
+const payment = [
+  {
+    icon: "tabler:cash",
+    title: "При получении",
+    desc: "Наличными или картой — на самовывозе либо курьеру. Для частных лиц предоплата не нужна.",
+    soon: false,
+  },
+  {
+    icon: "tabler:file-invoice",
+    title: "Счёт для юрлица",
+    desc: "Безналичный перевод по счёту, работаем по договору, выдаём закрывающие документы.",
+    soon: false,
+  },
+  {
+    icon: "tabler:credit-card",
+    title: "Онлайн картой / СБП",
+    desc: "Оплата на сайте — подключаем в ближайшее время.",
+    soon: true,
+  },
+];
+
+// — FAQ (ловит вопросный хвост; FAQPage JSON-LD) —
+const faqItems = [
+  {
+    question: "Нужна ли предоплата?",
+    answer:
+      "Частные лица оплачивают при получении — наличными или картой. Юрлица — по счёту согласно договору.",
+  },
+  {
+    question: "Доставляете в другие города?",
+    answer: `Да, по всей России. Отправляем через ${pvzList} и другие службы — стоимость по тарифу перевозчика, рассчитает менеджер.`,
+  },
+  {
+    question: "Сколько стоит курьер по Москве?",
+    answer: `${money(courierCost)} ₽ фиксированно, в пределах города.`,
+  },
+  {
+    question: "Дадите документы для бухгалтерии?",
+    answer: "Да: договор и закрывающие документы (акт или УПД). Работаем с юрлицами по безналу.",
+  },
+  {
+    question: "Когда заказ будет готов?",
+    answer: `Срок изготовления — от 1 рабочего дня и зависит от тиража и отделки. Заказы, оформленные до ${cutoff}:00, уходят в работу в тот же день.`,
+  },
+];
+
+const title = `Доставка и оплата — ${settings.company_name ?? "Printmos"}`;
+const description =
+  "Самовывоз бесплатно, курьер по Москве и доставка по России. Оплата при получении наличными или картой, безналичный счёт и закрывающие для юрлиц.";
+
+const faqLd = faqPage(faqItems);
+---
+
+<BaseLayout title={title} description={description} jsonLd={[faqLd]}>
+  <p class="stub-kicker">Оплата и доставка</p>
+  <h1 class="stub-title">Доставка и оплата</h1>
+  <p class="dp-lead">
+    Заберите заказ сами бесплатно, закажите курьера по Москве или доставку по
+    России. Оплатить можно при получении или по счёту — для юрлиц с договором и
+    закрывающими документами.
+  </p>
+
+  <!-- Доставка -->
+  <section class="dp-section">
+    <h2 class="section-title">Способы доставки</h2>
+    <p class="section-sub">Доставку подбирает и оформляет менеджер — поможем выбрать удобный вариант.</p>
+    <ul class="dp-cards">
+      {delivery.map((d) => (
+        <li class="dp-card">
+          <Icon name={d.icon} class="dp-card__icon" aria-hidden="true" />
+          <span class="dp-card__title">{d.title}</span>
+          <span class="dp-card__price">{d.price}</span>
+          <p class="dp-card__desc">{d.desc}</p>
+          {d.link && (
+            <a class="dp-card__link" href={d.link.href}>
+              {d.link.label}
+              <Icon name="tabler:arrow-right" aria-hidden="true" />
+            </a>
+          )}
+        </li>
+      ))}
+    </ul>
+  </section>
+
+  <!-- Сроки -->
+  <section class="dp-section">
+    <h2 class="section-title">Сроки</h2>
+    <ul class="dp-terms">
+      <li>
+        <Icon name="tabler:clock" aria-hidden="true" />
+        <span><strong>Изготовление — от 1 рабочего дня.</strong> Зависит от тиража и отделки.</span>
+      </li>
+      <li>
+        <Icon name="tabler:clock-hour-4" aria-hidden="true" />
+        <span>Заказы до <strong>{cutoff}:00</strong> уходят в работу в тот же день.</span>
+      </li>
+      <li>
+        <Icon name="tabler:truck" aria-hidden="true" />
+        <span>Курьер по Москве — в день готовности или на следующий; по России — по срокам перевозчика.</span>
+      </li>
+    </ul>
+  </section>
+
+  <!-- Оплата -->
+  <section class="dp-section">
+    <h2 class="section-title">Способы оплаты</h2>
+    <ul class="dp-cards">
+      {payment.map((p) => (
+        <li class="dp-card">
+          <Icon name={p.icon} class="dp-card__icon" aria-hidden="true" />
+          <span class="dp-card__title">
+            {p.title}
+            {p.soon && <span class="dp-badge">скоро</span>}
+          </span>
+          <p class="dp-card__desc">{p.desc}</p>
+        </li>
+      ))}
+    </ul>
+  </section>
+
+  <!-- Для юрлиц -->
+  <section class="dp-section">
+    <h2 class="section-title">Юридическим лицам</h2>
+    <div class="dp-legal">
+      <Icon name="tabler:building" class="dp-legal__icon" aria-hidden="true" />
+      <div>
+        <p class="dp-legal__text">
+          Работаем по договору и безналичному расчёту. Выставляем счёт, после
+          выполнения заказа передаём закрывающие документы — акт или УПД.
+        </p>
+        <p class="dp-legal__muted">Реквизиты и договор пришлём при оформлении заказа.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="dp-section">
+    <h2 class="section-title">Частые вопросы</h2>
+    <div class="dp-faq">
+      {faqItems.map((f, i) => (
+        <details class="collapse collapse-arrow rounded-box border border-base-content/20 bg-base-100" open={i === 0}>
+          <summary class="collapse-title pr-12 text-base font-semibold sm:text-lg">{f.question}</summary>
+          <div class="collapse-content">
+            <p class="leading-relaxed text-base-content/80">{f.answer}</p>
+          </div>
+        </details>
+      ))}
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="dp-cta">
+    <div>
+      <h2 class="dp-cta__title">Готовы заказать?</h2>
+      <p class="dp-cta__sub">Рассчитайте стоимость онлайн или задайте вопрос — поможем оформить.</p>
+    </div>
+    <div class="dp-cta__actions">
+      <a class="btn btn-primary" href="/">Выбрать продукцию</a>
+      <a class="btn" href="/contacts">Связаться</a>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .dp-lead {
+    max-width: 64ch;
+    margin: 0 0 2.25rem;
+    font-size: 1.05rem;
+    color: color-mix(in oklch, var(--color-base-content) 75%, transparent);
+  }
+  .section-title {
+    font-size: clamp(1.35rem, 1.1rem + 0.8vw, 1.75rem);
+    font-weight: 700;
+    line-height: 1.15;
+  }
+  .section-sub {
+    margin: 0.35rem 0 1.25rem;
+    color: color-mix(in oklch, var(--color-base-content) 70%, transparent);
+  }
+  .dp-section { margin-top: 3rem; }
+
+  /* — Карточки доставки/оплаты — */
+  .dp-cards {
+    list-style: none;
+    margin: 1.25rem 0 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  @media (min-width: 600px) {
+    .dp-cards { grid-template-columns: repeat(3, 1fr); }
+  }
+  .dp-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    padding: 1.4rem;
+    border: var(--border, 1px) solid var(--color-base-300);
+    border-radius: var(--radius-box, 0.5rem);
+  }
+  .dp-card__icon {
+    width: 1.9rem;
+    height: 1.9rem;
+    margin-bottom: 0.35rem;
+    color: var(--color-primary, currentColor);
+  }
+  .dp-card__title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+  .dp-card__price {
+    font-weight: 700;
+    color: var(--color-primary, currentColor);
+  }
+  .dp-card__desc {
+    margin: 0.1rem 0 0;
+    font-size: 0.92rem;
+    line-height: 1.45;
+    color: color-mix(in oklch, var(--color-base-content) 72%, transparent);
+  }
+  .dp-card__link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-top: 0.5rem;
+    width: fit-content;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--color-primary, currentColor);
+    text-decoration: none;
+  }
+  .dp-card__link:hover { text-decoration: underline; }
+  .dp-card__link svg { width: 1rem; height: 1rem; }
+
+  .dp-badge {
+    padding: 0.1rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    background: var(--color-base-200);
+    color: color-mix(in oklch, var(--color-base-content) 60%, transparent);
+  }
+
+  /* — Сроки — */
+  .dp-terms {
+    list-style: none;
+    margin: 1rem 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+  }
+  .dp-terms li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    line-height: 1.45;
+  }
+  .dp-terms svg {
+    width: 1.3rem;
+    height: 1.3rem;
+    flex: none;
+    margin-top: 0.1rem;
+    color: var(--color-primary, currentColor);
+  }
+
+  /* — Юрлицам — */
+  .dp-legal {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-top: 1.25rem;
+    padding: 1.5rem;
+    border: var(--border, 1px) solid var(--color-base-300);
+    border-radius: var(--radius-box, 0.5rem);
+    background: var(--color-base-200);
+  }
+  .dp-legal__icon {
+    width: 2rem;
+    height: 2rem;
+    flex: none;
+    color: var(--color-primary, currentColor);
+  }
+  .dp-legal__text { margin: 0; line-height: 1.5; }
+  .dp-legal__muted {
+    margin: 0.4rem 0 0;
+    font-size: 0.9rem;
+    color: color-mix(in oklch, var(--color-base-content) 65%, transparent);
+  }
+
+  /* — FAQ — */
+  .dp-faq {
+    margin-top: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  /* — CTA — */
+  .dp-cta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.25rem;
+    margin-top: 3.5rem;
+    padding: 1.75rem 2rem;
+    border: var(--border, 1px) solid var(--color-base-300);
+    border-radius: var(--radius-box, 0.5rem);
+    background: var(--color-base-200);
+  }
+  .dp-cta__title {
+    font-size: clamp(1.35rem, 1.1rem + 0.8vw, 1.75rem);
+    font-weight: 800;
+    line-height: 1.15;
+  }
+  .dp-cta__sub {
+    margin-top: 0.3rem;
+    color: color-mix(in oklch, var(--color-base-content) 72%, transparent);
+  }
+  .dp-cta__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+</style>

@@ -156,6 +156,19 @@ body > main {
   flex: none;
 }
 
+.footer-pay__more {
+  display: inline-block;
+  margin-top: 0.85rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.footer-pay__more:hover {
+  text-decoration: none;
+}
+
 /* блок «Карта» — ч/б плейсхолдер (позже заменим на статичную картинку карты в фоне) */
 .map-block {
   position: relative;

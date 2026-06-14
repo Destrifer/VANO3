@@ -17,7 +17,7 @@ export type DeliveryMethod = {
 };
 
 export const DELIVERY_METHODS: DeliveryMethod[] = [
-  { id: "pickup", type: "pickup", label: "Самовывоз", needsAddress: false, costType: "free", cost: 0, note: "Москва, м. Бауманская" },
+  { id: "pickup", type: "pickup", label: "Самовывоз", needsAddress: false, costType: "free", cost: 0, note: "Москва, ул. Садовники" },
   { id: "courier_msk", type: "courier", label: "Курьер по Москве", needsAddress: true, costType: "fixed", cost: 400 },
   { id: "pvz", type: "pvz", label: "ПВЗ или постамат", needsAddress: true, costType: "manual", cost: 0, note: "стоимость уточнит менеджер" },
 ];
