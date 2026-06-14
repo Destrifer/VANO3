@@ -14,6 +14,7 @@ import Gallery from "../../components/Gallery.astro";
 import Breadcrumbs from "../../components/Breadcrumbs.astro";
 import OptionsInfo from "../../components/OptionsInfo.astro";
 import SegmentTiles from "../../components/SegmentTiles.astro";
+import RelatedLinks from "../../components/RelatedLinks.astro";
 import Faq from "../../components/Faq.astro";
 
 export async function getStaticPaths() {
@@ -34,9 +35,13 @@ export async function getStaticPaths() {
     const productPricing = await getProductPricing(page.productSlug);
     const works = await getWorks({ product: page.productSlug });
     // Сиблинги: другие кластеры того же продукта (без самого себя) — латеральная
-    // перелинковка (тематическая сетка, 06 §43). Цена «от» по их пресету.
-    const siblings = pages
-      .filter((o) => o.productSlug === page.productSlug && o.slug !== page.slug)
+    // перелинковка (тематическая сетка, 06 §43). Делятся как на хабе:
+    // Tier-1 → плитки (цена «от» по пресету), Tier-2 → ссылки «Смотрите также».
+    const others = pages.filter(
+      (o) => o.productSlug === page.productSlug && o.slug !== page.slug,
+    );
+    const siblings = others
+      .filter((o) => o.showAsTile)
       .map((o) => ({
         name: o.tileLabel ?? o.h1 ?? o.slug,
         href: `/${o.productSlug}/${o.slug}`,
@@ -44,6 +49,9 @@ export async function getStaticPaths() {
         priceFrom:
           productPricing && pricing ? presetPrice(productPricing, pricing, o.preset) : null,
       }));
+    const relatedLinks = others
+      .filter((o) => !o.showAsTile)
+      .map((o) => ({ name: o.tileLabel ?? o.h1 ?? o.slug, href: `/${o.productSlug}/${o.slug}` }));
     paths.push({
       params: { product: page.productSlug, cluster: page.slug },
       props: {
@@ -55,23 +63,34 @@ export async function getStaticPaths() {
         pricing,
         works,
         siblings,
+        relatedLinks,
       },
     });
   }
   return paths;
 }
 
-const { page, productName, parentName, parentSlug, productPricing, pricing, works, siblings } =
-  Astro.props as {
-    page: import("../../lib/promotedPages").PromotedPage;
-    productName: string;
-    parentName: string | null;
-    parentSlug: string | null;
-    productPricing: Awaited<ReturnType<typeof getProductPricing>>;
-    pricing: Awaited<ReturnType<typeof getPricingData>> | null;
-    works: Work[];
-    siblings: { name: string; href: string; icon: string | null; priceFrom: number | null }[];
-  };
+const {
+  page,
+  productName,
+  parentName,
+  parentSlug,
+  productPricing,
+  pricing,
+  works,
+  siblings,
+  relatedLinks,
+} = Astro.props as {
+  page: import("../../lib/promotedPages").PromotedPage;
+  productName: string;
+  parentName: string | null;
+  parentSlug: string | null;
+  productPricing: Awaited<ReturnType<typeof getProductPricing>>;
+  pricing: Awaited<ReturnType<typeof getPricingData>> | null;
+  works: Work[];
+  siblings: { name: string; href: string; icon: string | null; priceFrom: number | null }[];
+  relatedLinks: { name: string; href: string }[];
+};
 
 const siteUrl = Astro.site?.toString() ?? "https://printmos.ru";
 const pageUrl = new URL(Astro.url.pathname, siteUrl).toString();
@@ -166,6 +185,9 @@ if (page.faq.length > 0) jsonLd.push(faqPage(page.faq));
     }
     <Faq items={page.faq} class="lg:min-w-0 lg:flex-1" />
   </div>
+
+  {/* Tier-2: хвостовые посадочные без плитки (перелинковка + sitemap) */}
+  <RelatedLinks items={relatedLinks} />
 
   {/* Вверх по иерархии — к родительской услуге (анти-каннибализация, 04 §97) */}
   <p class="my-6 text-base-content/60">

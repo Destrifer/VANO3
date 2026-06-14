@@ -1,0 +1,31 @@
+---
+// Tier-2 страницы (без плитки на хабе): текстовые ссылки «Смотрите также».
+// Хвостовые НЧ-посадочные — в sitemap и доступны перелинковкой, но не занимают
+// плитку первого экрана (SEO-архитектура, site-architecture-vizitki.md §3).
+// Пусто → ничего не рендерим.
+interface LinkItem {
+  name: string;
+  href: string;
+}
+const { items = [], heading = "Смотрите также" } = Astro.props as {
+  items?: LinkItem[];
+  heading?: string;
+};
+---
+
+{
+  items.length > 0 && (
+    <nav class="my-6" aria-label={heading}>
+      <h2 class="mb-2 text-base font-semibold text-base-content/80">{heading}</h2>
+      <ul class="flex flex-wrap gap-x-5 gap-y-1">
+        {items.map((it) => (
+          <li>
+            <a class="link link-hover" href={it.href}>
+              {it.name}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  )
+}

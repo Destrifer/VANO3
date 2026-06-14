@@ -12,6 +12,7 @@ import ProductConfigurator from "../components/ProductConfigurator.vue";
 import Gallery from "../components/Gallery.astro";
 import Breadcrumbs from "../components/Breadcrumbs.astro";
 import SegmentTiles from "../components/SegmentTiles.astro";
+import RelatedLinks from "../components/RelatedLinks.astro";
 import OptionsInfo from "../components/OptionsInfo.astro";
 import Faq from "../components/Faq.astro";
 import type { ServiceFaq } from "../lib/services";
@@ -98,18 +99,20 @@ if (props.type === "product") {
   if (productPricing && pricing) lowPrice = minPrice(productPricing, pricing);
 }
 
-// Плитки хаба → кластерные страницы (Tier-1) этого продукта. Цена «от» — по
-// пресету кластера (тот же движок, что в конфигураторе), без срока.
+// Кластерные страницы продукта делятся на два уровня:
+// — Tier-1 (`show_as_tile`) → плитки на хабе (карточка + цена «от» по пресету);
+// — Tier-2 → текстовые ссылки «Смотрите также» (в sitemap, без плитки, хвост НЧ).
 let tiles: {
   name: string;
   href: string;
   icon: string | null;
   priceFrom: number | null;
 }[] = [];
+let relatedLinks: { name: string; href: string }[] = [];
 if (props.type === "product") {
-  const promoted = await getPromotedPages();
+  const promoted = (await getPromotedPages()).filter((p) => p.productSlug === slug);
   tiles = promoted
-    .filter((p) => p.productSlug === slug)
+    .filter((p) => p.showAsTile)
     .map((p) => ({
       name: p.tileLabel ?? p.h1 ?? p.slug,
       href: `/${slug}/${p.slug}`,
@@ -117,6 +120,9 @@ if (props.type === "product") {
       priceFrom:
         productPricing && pricing ? presetPrice(productPricing, pricing, p.preset) : null,
     }));
+  relatedLinks = promoted
+    .filter((p) => !p.showAsTile)
+    .map((p) => ({ name: p.tileLabel ?? p.h1 ?? p.slug, href: `/${slug}/${p.slug}` }));
 }
 
 // FAQ и интро-текст — из Directus (поля `faq` / `intro_text` на продукте).
@@ -256,6 +262,9 @@ if (props.type === "product") {
           {/* FAQ (FAQPage JSON-LD уже в <head>) */}
           <Faq items={faqItems} class="lg:min-w-0 lg:flex-1" />
         </div>
+
+        {/* Tier-2: хвостовые посадочные без плитки (перелинковка + sitemap) */}
+        <RelatedLinks items={relatedLinks} />
 
         {/* Вверх по иерархии */}
         {props.parentSlug && (

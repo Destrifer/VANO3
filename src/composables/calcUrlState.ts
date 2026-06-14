@@ -15,6 +15,9 @@ export type CalcPreset = {
   foil?: boolean;
   foilColorIndex?: number;
   laminationIndex?: number;
+  // Доп. отделка без группы (УФ-лак, конгрев…): подстроки имён, которые включить.
+  // Сопоставление по имени (не по индексу) → не ломается при правке каталога.
+  finishing?: string[];
 };
 
 const clampIndex = (i: number, len: number) =>
@@ -42,6 +45,18 @@ export function applyPreset(calc: CalculatorState, p: CalcPreset): void {
   if (p.laminationIndex != null) {
     const i = clampIndex(p.laminationIndex, calc.laminationOptions.length);
     if (i != null) calc.laminationIndex = i;
+  }
+  // Доп. отделка (УФ-лак, конгрев…): включаем чекбоксы по совпадению имени.
+  // `fin` индексируется позицией в product.finishing; группированные (ламинация/
+  // фольга) ведутся выше, здесь — только опции без группы.
+  if (Array.isArray(p.finishing)) {
+    for (const want of p.finishing) {
+      const needle = want.toLowerCase();
+      const i = calc.product.finishing.findIndex(
+        (o) => !o.group && o.name.toLowerCase().includes(needle),
+      );
+      if (i >= 0 && calc.fin[i]) calc.fin[i].checked = true;
+    }
   }
 }
 

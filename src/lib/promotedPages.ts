@@ -14,6 +14,7 @@ export type PromotedPage = {
   metaDescription: string | null;
   introText: string | null; // rich HTML
   preset: CalcPreset | null; // предустановка конфигуратора
+  showAsTile: boolean; // Tier-1 (плитка на хабе) vs Tier-2 (только ссылка/sitemap)
   faq: ServiceFaq[];
 };
 
@@ -26,6 +27,7 @@ const FIELDS = [
   "meta_description",
   "intro_text",
   "preset",
+  "show_as_tile",
   "product.slug",
   "faq.faq_items_id.question",
   "faq.faq_items_id.answer",
@@ -47,6 +49,8 @@ function mapPage(p: any): PromotedPage {
     metaDescription: trim(p.meta_description),
     introText: trim(p.intro_text),
     preset: p.preset && typeof p.preset === "object" ? (p.preset as CalcPreset) : null,
+    // Tier-1 только при явном true; null/false/отсутствие поля → Tier-2 (без плитки).
+    showAsTile: p.show_as_tile === true,
     faq,
   };
 }
