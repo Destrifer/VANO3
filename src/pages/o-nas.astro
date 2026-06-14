@@ -112,11 +112,36 @@ const equipment = [
 //   «кто вы», но без хантинга и согласий. Кладите 4 портрета в /public/team/
 //   в едином арт-стиле. РЕДАКТИРУЙ роли под реальные. —
 const team = [
-  { role: "Директор", img: "/team/director.webp" },
-  { role: "Производство", img: "/team/production.webp" },
-  { role: "Бухгалтерия", img: "/team/accountant.webp" },
-  { role: "Дизайн и препресс", img: "/team/designer.webp" },
-  { role: "Разработка", img: "/team/developer.webp" },
+  {
+    name: "Аркадий",
+    role: "Директор",
+    note: "Уверен, что без него тут всё развалится. И, в общем-то, прав.",
+    img: "/team/director.webp",
+  },
+  {
+    name: "Сергей",
+    role: "Печатник",
+    note: "Помнит профиль каждой бумаги, но забывает пообедать.",
+    img: "/team/production.webp",
+  },
+  {
+    name: "Нина Павловна",
+    role: "Главный бухгалтер",
+    note: "Знает, где каждая копейка. Договор подпишете у неё.",
+    img: "/team/accountant.webp",
+  },
+  {
+    name: "Максим",
+    role: "Дизайнер-верстальщик",
+    note: "Сделает «логотип побольше» и вернёт макет в чувство.",
+    img: "/team/designer.webp",
+  },
+  {
+    name: "Денис",
+    role: "Разработчик",
+    note: "Тот, благодаря кому этот сайт считает цену сам.",
+    img: "/team/developer.webp",
+  },
 ];
 
 const title = `О компании — ${company}`;
@@ -232,12 +257,16 @@ const aboutLd = {
           <img
             class="member__avatar"
             src={m.img}
-            alt={m.role}
+            alt={`${m.name} — ${m.role}`}
             width="240"
             height="240"
             loading="lazy"
           />
-          <span class="member__role">{m.role}</span>
+          <div class="member__body">
+            <span class="member__name">{m.name}</span>
+            <span class="member__role">{m.role}</span>
+            <p class="member__note">{m.note}</p>
+          </div>
         </li>
       ))}
     </ul>
@@ -459,7 +488,7 @@ const aboutLd = {
   .member {
     display: flex;
     flex-direction: column;
-    gap: 0.6rem;
+    gap: 0.55rem;
   }
   .member__avatar {
     width: 100%;
@@ -470,9 +499,27 @@ const aboutLd = {
     background: var(--color-base-200);
     border: var(--border, 1px) solid var(--color-base-300);
   }
-  .member__role {
+  .member__body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+  .member__name {
     font-weight: 700;
-    text-align: center;
+    font-size: 1.05rem;
+    line-height: 1.2;
+  }
+  .member__role {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: color-mix(in oklch, var(--color-base-content) 62%, transparent);
+  }
+  .member__note {
+    margin: 0.25rem 0 0;
+    font-size: 0.88rem;
+    line-height: 1.4;
+    color: color-mix(in oklch, var(--color-base-content) 72%, transparent);
   }
 
   /* — CTA — */
