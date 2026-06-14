@@ -61,39 +61,49 @@ const steps = [
 ];
 
 // — Парк оборудования (доказательство «своё производство»). Группы по функции.
-//   Модели — реальные; описания свои. —
+//   Модели — реальные; описания свои. У каждой единицы — своё фото: пока
+//   плейсхолдеры в /public/equipment/. Чтобы поставить реальное фото — просто
+//   перезапиши файл по тому же пути (или прогони sharp в webp 600×450). —
 const equipment = [
   {
     group: "Печать",
-    items: ["Цифровые ЦПМ Xerox", "Офсетная машина", "Ризограф RISO 3500 EP"],
+    items: [
+      { name: "Цифровые ЦПМ Xerox", img: "/equipment/xerox.webp" },
+      { name: "Офсетная машина", img: "/equipment/offset.webp" },
+      { name: "Ризограф RISO 3500 EP", img: "/equipment/riso-3500.webp" },
+    ],
   },
   {
     group: "Резка и раскрой",
     items: [
-      "Гильотина IDEAL 6550-95 EP",
-      "Плоттер Graphtec CE6000",
-      "Скругление углов Marchetti Vicking",
+      { name: "Гильотина IDEAL 6550-95 EP", img: "/equipment/ideal-6550.webp" },
+      { name: "Плоттер Graphtec CE6000", img: "/equipment/graphtec-ce6000.webp" },
+      { name: "Скругление углов Marchetti Vicking", img: "/equipment/marchetti-vicking.webp" },
     ],
   },
   {
     group: "Скрепление и переплёт",
     items: [
-      "Брошюровщик Duplo DBM-120",
-      "Термоклей Aurora W6500A",
-      "Буклетмейкер Nagel Foldnak M2",
-      "Пружина Office Kit",
+      { name: "Брошюровщик Duplo DBM-120", img: "/equipment/duplo-dbm120.webp" },
+      { name: "Термоклей Aurora W6500A", img: "/equipment/aurora-w6500a.webp" },
+      { name: "Буклетмейкер Nagel Foldnak M2", img: "/equipment/nagel-foldnak-m2.webp" },
+      { name: "Пружина Office Kit", img: "/equipment/office-kit.webp" },
     ],
   },
   {
     group: "Фальцовка и биговка",
-    items: ["Биговщик-перфоратор Cyklos GPM 315", "Fastbind C400", "Мини Перфо 500"],
+    items: [
+      { name: "Биговщик-перфоратор Cyklos GPM 315", img: "/equipment/cyklos-gpm315.webp" },
+      { name: "Fastbind C400", img: "/equipment/fastbind-c400.webp" },
+      { name: "Мини Перфо 500", img: "/equipment/mini-perfo-500.webp" },
+    ],
   },
   {
     group: "Финиш",
     items: [
-      "Ламинаторы GMP Excelam-655 Q / Surelam PRO 500D",
-      "Тиснение фольгой TaeChang TIC-800TM",
-      "Люверсовщик Piccolo",
+      { name: "Ламинаторы GMP Excelam-655 Q / Surelam PRO 500D", img: "/equipment/gmp-laminators.webp" },
+      { name: "Тиснение фольгой TaeChang TIC-800TM", img: "/equipment/taechang-tic800.webp" },
+      { name: "Люверсовщик Piccolo", img: "/equipment/piccolo.webp" },
     ],
   },
 ];
@@ -186,26 +196,26 @@ const aboutLd = {
     <p class="section-sub">
       Свой парк печати и постпечати — поэтому сроки короткие, а качество стабильное.
     </p>
-    <div class="prod">
-      <img
-        class="prod__photo"
-        src="/team/production.webp"
-        alt="Производство типографии"
-        width="320"
-        height="320"
-        loading="lazy"
-      />
-      <ul class="equip">
-        {equipment.map((g) => (
-          <li class="equip__group">
-            <span class="equip__head">{g.group}</span>
-            <ul class="equip__list">
-              {g.items.map((it) => <li>{it}</li>)}
-            </ul>
-          </li>
-        ))}
-      </ul>
-    </div>
+    {equipment.map((g) => (
+      <div class="equip-group">
+        <h3 class="equip-group__head">{g.group}</h3>
+        <ul class="equip-cards">
+          {g.items.map((it) => (
+            <li class="equip-card">
+              <img
+                class="equip-card__img"
+                src={it.img}
+                alt={it.name}
+                width="300"
+                height="225"
+                loading="lazy"
+              />
+              <span class="equip-card__name">{it.name}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    ))}
   </section>
 
   <!-- Команда -->
@@ -387,48 +397,52 @@ const aboutLd = {
   }
   .about-note svg { width: 1.2rem; height: 1.2rem; flex: none; }
 
-  /* — Производство — */
-  .prod {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 1.5rem;
-    align-items: start;
+  /* — Производство: карточки с фото на каждую единицу — */
+  .equip-group {
+    margin-top: 1.75rem;
   }
-  @media (min-width: 800px) {
-    .prod { grid-template-columns: 320px 1fr; }
-  }
-  .prod__photo {
-    width: 100%;
-    max-width: 320px;
-    height: auto;
-    border-radius: var(--radius-box, 0.5rem);
-    border: var(--border, 1px) solid var(--color-base-300);
-    background: var(--color-base-200);
-  }
-  .equip {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 1rem;
-  }
-  @media (min-width: 600px) {
-    .equip { grid-template-columns: repeat(2, 1fr); }
-  }
-  .equip__head {
-    display: block;
-    margin-bottom: 0.35rem;
-    font-size: 0.78rem;
+  .equip-group__head {
+    margin: 0 0 0.85rem;
+    font-size: 0.82rem;
+    font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.06em;
     color: color-mix(in oklch, var(--color-base-content) 65%, transparent);
   }
-  .equip__list {
+  .equip-cards {
+    list-style: none;
     margin: 0;
-    padding-left: 1.1rem;
-    font-size: 0.92rem;
-    line-height: 1.5;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+  @media (min-width: 600px) {
+    .equip-cards { grid-template-columns: repeat(3, 1fr); }
+  }
+  @media (min-width: 960px) {
+    .equip-cards { grid-template-columns: repeat(4, 1fr); }
+  }
+  .equip-card {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: var(--border, 1px) solid var(--color-base-300);
+    border-radius: var(--radius-box, 0.5rem);
+  }
+  .equip-card__img {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    background: var(--color-base-200);
+    border-bottom: var(--border, 1px) solid var(--color-base-200);
+  }
+  .equip-card__name {
+    padding: 0.7rem 0.85rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    line-height: 1.35;
   }
 
   /* — Команда — */
