@@ -272,8 +272,9 @@ export function useCalculator(props: {
     for (const { o, i } of otherOptions.value) {
       if (fin[i].checked) finishing.push({ option: o, count: fin[i].count });
     }
-    // фальцовка буклета: выбранный тип → per_fold по числу сгибов
-    if (foldTypes.length && foldFinishing && selectedFold.value) {
+    // фальцовка буклета: выбранный тип → per_fold по числу сгибов.
+    // folds === 0 («Без сложения» → листовка/флаер) — биговку не добавляем.
+    if (foldTypes.length && foldFinishing && selectedFold.value && selectedFold.value.folds > 0) {
       finishing.push({ option: foldFinishing, count: selectedFold.value.folds });
     }
     return {
@@ -382,7 +383,7 @@ export function useCalculator(props: {
       ...otherOptions.value
         .filter((x) => fin[x.i].checked)
         .map((x) => ({ id: x.o.id, count: fin[x.i].count })),
-      ...(foldTypes.length && foldFinishing && selectedFold.value
+      ...(foldTypes.length && foldFinishing && selectedFold.value && selectedFold.value.folds > 0
         ? [{ id: foldFinishing.id, count: selectedFold.value.folds }]
         : []),
     ],

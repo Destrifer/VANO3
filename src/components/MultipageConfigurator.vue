@@ -7,6 +7,7 @@ import type { PricingData } from "../lib/pricing/engine";
 import type { ProductPricing } from "../lib/pricing/data";
 import { useMultipageCalculator, mpCalcKey } from "../composables/useMultipageCalculator";
 import { sharedKey } from "../composables/calcShared";
+import { applyMultipagePreset, type CalcPreset } from "../composables/calcUrlState";
 import MultipageCalculator from "./MultipageCalculator.vue";
 import BookletPreview from "./calculator/BookletPreview.vue";
 import OrderPlate from "./calculator/OrderPlate.vue";
@@ -16,10 +17,14 @@ const props = defineProps<{
   pricing: PricingData;
   name: string;
   slug: string;
+  preset?: CalcPreset; // предустановка для кластерной/pSEO-страницы (формат/переплёт)
 }>();
 const calc = useMultipageCalculator(props);
 provide(mpCalcKey, calc);
 provide(sharedKey, calc);
+
+// Серверный пресет применяем в setup (работает и в SSR-рендере острова).
+if (props.preset) applyMultipagePreset(calc, props.preset);
 </script>
 
 <template>

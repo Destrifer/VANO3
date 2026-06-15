@@ -4,6 +4,7 @@
 // получить ссылку на свой расчёт (02 §92). URL НЕ синхронизируется автоматически —
 // чтобы в обычном обходе не плодились параметрические URL (чистый индекс).
 import type { CalculatorState } from "./useCalculator";
+import type { MultipageCalcState } from "./useMultipageCalculator";
 
 // Семантический пресет (приходит со страницы или из URL). Все поля опциональны —
 // применяем только то, что задано.
@@ -11,6 +12,8 @@ export type CalcPreset = {
   shape?: "rectangular" | "round" | "complex";
   sides?: "4+0" | "4+4";
   quantity?: number;
+  sizeIndex?: number; // индекс размера (product.sizes) — листовой
+  foldTypeIndex?: number; // индекс типа фальцовки (product.foldTypes) — буклеты/листовки
   paperIndex?: number;
   foil?: boolean;
   foilColorIndex?: number;
@@ -18,6 +21,10 @@ export type CalcPreset = {
   // Доп. отделка без группы (УФ-лак, конгрев…): подстроки имён, которые включить.
   // Сопоставление по имени (не по индексу) → не ломается при правке каталога.
   finishing?: string[];
+  // — Многостраничные продукты (брошюры/каталоги): отдельная ветка пресета —
+  formatIndex?: number; // индекс размера (product.sizes)
+  bindingId?: number; // id переплёта (стабильнее индекса)
+  pages?: number; // число полос (кратно PAGE_STEP, клампится)
 };
 
 const clampIndex = (i: number, len: number) =>
@@ -33,6 +40,14 @@ export function applyPreset(calc: CalculatorState, p: CalcPreset): void {
     calc.sides = p.sides;
   }
   if (p.quantity != null && p.quantity > 0) calc.quantity = Math.floor(p.quantity);
+  if (p.sizeIndex != null) {
+    const i = clampIndex(p.sizeIndex, calc.product.sizes.length);
+    if (i != null) calc.sizeIndex = i;
+  }
+  if (p.foldTypeIndex != null) {
+    const i = clampIndex(p.foldTypeIndex, calc.foldTypes.length);
+    if (i != null) calc.foldTypeIndex = i;
+  }
   if (p.paperIndex != null) {
     const i = clampIndex(p.paperIndex, calc.product.papers.length);
     if (i != null) calc.paperIndex = i;
@@ -58,6 +73,29 @@ export function applyPreset(calc: CalculatorState, p: CalcPreset): void {
       if (i >= 0 && calc.fin[i]) calc.fin[i].checked = true;
     }
   }
+}
+
+// Пресет для МНОГОСТРАНИЧНОГО конфигуратора (брошюры/каталоги). Поля sheet-ветки
+// игнорируются; читаем только formatIndex/bindingId/pages (+общие quantity/foil/
+// laminationIndex). Серверный пресет с чистого URL — как у листового.
+export function applyMultipagePreset(calc: MultipageCalcState, p: CalcPreset): void {
+  if (!p) return;
+  if (p.formatIndex != null && calc.product.sizes[p.formatIndex]) {
+    calc.formatIndex = p.formatIndex;
+  }
+  // Полосы раньше переплёта: setPages триггерит авто-подбор переплёта, затем
+  // явный bindingId перекрывает (если совместим с числом полос).
+  if (p.pages != null && p.pages > 0) calc.setPages(p.pages);
+  if (p.bindingId != null) {
+    const i = calc.product.bindings.findIndex((b) => b.id === p.bindingId);
+    if (i >= 0) calc.bindingIndex = i;
+  }
+  if (p.quantity != null && p.quantity > 0) calc.quantity = Math.floor(p.quantity);
+  if (p.laminationIndex != null) {
+    const i = clampIndex(p.laminationIndex, calc.laminationOptions.length);
+    if (i != null) calc.laminationIndex = i;
+  }
+  if (p.foil != null && calc.foilOption) calc.foilOn = p.foil;
 }
 
 // URL → пресет (короткие читаемые параметры).

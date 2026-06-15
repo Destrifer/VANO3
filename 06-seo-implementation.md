@@ -220,10 +220,38 @@
 | Ф3 Хаб визиток | ✅ сделано: анатомия + контент + интро(2 кол.) + материалы + FAQ + **плитки** (`SegmentTiles` из кластеров продукта) |
 | Ф4 Конфигуратор: пресет+URL | ✅ сделано (`calcUrlState.ts`; пресет с сервера, ссылка по кнопке; листовой конфигуратор, multipage — нет) |
 | Ф5 Кластеры Tier-1 | ✅ сделано: коллекция `promoted_pages` (+M2M `faq`) в Directus; `src/lib/promotedPages.ts`; **отдельный роут `src/pages/[product]/[cluster].astro`** (вложенный URL `/business-cards/foil`, self-canonical, пресет в конфигуратор, крошки 4 уровня). **Засеяно 7 кластеров:** `urgent, foil, plastic, designer, magnetic, metal, round`. Осталость: пресеты urgent, цена «от» на плитках, VIP/премиум. |
-| Ф5b Уровень Tier-2 (страница без плитки) | ✅ механизм построен: поле `promoted_pages.show_as_tile` (boolean, default false; 7 действующих кластеров = true). Хаб и сиблинги делят кластеры: `show_as_tile` → плитки, иначе → блок ссылок «Смотрите также» (`src/components/RelatedLinks.astro`). Контент Tier-2 (ламинация/УФ-лак/шелкография) — не засеян. |
+| Ф5b Уровень Tier-2 (страница без плитки) | ✅ механизм + контент: поле `promoted_pages.show_as_tile` (boolean, default false). Хаб/сиблинги делят: `show_as_tile` → плитки, иначе → «Смотрите также» (`RelatedLinks.astro`). Визитки: засеяны **VIP** (Tier-1), **ламинация** и **УФ-лак** (Tier-2); под лак расширен `CalcPreset.finishing`. Шелкография выкинута (нет в каталоге). |
 | Ф6 Фишки, Ф7 Хвост/хабы доверия | ❌ нет |
 
 > **Решение по URL кластеров:** выбран **вложенный** путь `/<product>/<cluster>` (отдельный роут `[product]/[cluster].astro`), а не плоский слаг — иерархия читается в адресе, совпадает с внутренними ссылками. Это пересматривает раннее «оставляем плоские слаги» из §51.
+
+### Разделы на единой кластерной системе (на 2026-06-15)
+
+Модель визиток (хаб‑продукт + `promoted_pages`‑кластеры с пресетом) раскатана на ключевые разделы. Ядра и Tier‑разметка — `van2/seo/SEO-ядро_<раздел>_Tier.xlsx`; ТЗ — `seo/site-architecture-*.md`.
+
+| Раздел | Хаб | Кластеры (Tier‑1 / Tier‑2) | Тип калькулятора | Заметки |
+|---|---|---|---|---|
+| Визитки | `business-cards` | 8 / 2 (ламинация, УФ‑лак) | sheet | VIP, фольга, пластик, designer… |
+| Наклейки | `stickers` | 8 / 10 | sheet (plotter) | +3 материала (void/переводная/скретч); 3D → `volume-stickers` (**fixed**); мигрированы 13 продуктов‑дублей |
+| Брошюры | `brochures` | 7 / 0 | **multipage** | формат A4/A5/**A6** + переплёт скрепка/пружина/КБС + срочные |
+| Буклеты | `booklets` | 6 / 0 | sheet + фальц | листовка/флаер = кластеры с **«Без сложения»**; мигрированы `leaflets`,`flyers` |
+| Каталоги | `catalogs` | 1 / 0 | **multipage** | продукт перенастроен sheet→multipage (зеркало брошюр) |
+| Меню | `menus` | 1 / 0 | sheet | +размеры/ламинация; кластер «меню в папке» |
+| Этикетки | `labels` | 7 / 6 | sheet (plotter) | свой хаб (не вложен в наклейки) + кросс‑ссылки; рулон/флексо/термо — EXCLUDE |
+
+Цены новых материалов/3D и часть размеров — **черновые**, на выверку владельцем. Контент — в Directus (рыбка‑плейсхолдер в галереях). Миграции — без редиректов (сайт не в индексе).
+
+### Механизмы пресета конфигуратора (для кластеров)
+
+Кластер открывает конфигуратор с предустановкой. Поля пресета (`promoted_pages.preset`, JSON) по типам:
+
+- **sheet** (`applyPreset`, `calcUrlState.ts`): `shape, sides, sizeIndex, foldTypeIndex, paperIndex, foil, foilColorIndex, laminationIndex, finishing[]` (доп.отделка по имени), `quantity`.
+- **multipage** (`applyMultipagePreset`): `formatIndex, bindingId, pages` (+ `quantity, foil, laminationIndex`). Пробрасывается в `MultipageConfigurator`.
+- **fixed** (3D/смола): своего пресета пока нет; `fixed_price` (₽/лист по числу листов) + `fixed_sheet_*`.
+
+> **Урок миграции:** модификаторы, заведённые отдельными продуктами, переводим в `promoted_pages`‑кластеры; старые продукты снимаем с публикации (`status=draft`). Редиректы — только если URL были в индексе.
+
+> 🐛 **Баг гидрации (исправлен 2026-06-15):** `PaperSelect.vue` биндил `<select :value>+@change` — Vue **терял выбор бумаги при гидрации** острова, из‑за чего серверный пресет `paperIndex` сбрасывался в 0 во всех разделах. Перевели на `v-model` (computed‑прокси). Урок: **новые `<select>` в островах — только через `v-model`**, иначе SSR‑значение не доживает до клиента.
 
 ---
 
@@ -238,7 +266,12 @@
 | `src/components/Breadcrumbs.astro` *(новый)* | крошки + BreadcrumbList |
 | `src/components/SegmentTiles.astro` *(новый)* | блок плиток хаба (карточки кластеров Tier-1 «от X ₽») |
 | `src/components/RelatedLinks.astro` *(новый)* | блок текстовых ссылок «Смотрите также» (кластеры Tier-2, без плитки) |
-| `src/composables/useCalculator.ts` | пресет (`initialConfig`) + sync с URL — блокер кластеров |
+| `src/composables/calcUrlState.ts` | `CalcPreset` + `applyPreset` (sheet) + `applyMultipagePreset` (брошюры/каталоги) |
+| `src/composables/useCalculator.ts` | листовой расчёт; гард «биговка только при folds>0» (листовка/флаер) |
+| `src/composables/useMultipageCalculator.ts` | многостраничный расчёт (брошюры/каталоги) |
+| `src/components/ProductConfigurator.vue` | роутинг sheet/multipage + проброс `preset` в оба |
+| `src/components/MultipageConfigurator.vue` | принимает `preset` → `applyMultipagePreset` в setup |
+| `src/components/calculator/PaperSelect.vue` | выбор бумаги — **`v-model`** (фикс гидрации пресета `paperIndex`) |
 | `src/lib/promotedPages.ts` *(новый)* | чтение `promoted_pages` (кластерные страницы Tier-1) |
 | `src/lib/products.ts`, `src/lib/services.ts` *(новый/расширить data.ts)* | чтение новых полей |
 | `src/lib/works.ts`, `src/components/Gallery.astro` | переиспользуются как есть |

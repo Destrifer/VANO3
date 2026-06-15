@@ -26,6 +26,7 @@ const isMultipage = props.product.strategy === "multipage";
     :pricing="props.pricing"
     :name="props.name"
     :slug="props.slug"
+    :preset="props.preset"
   >
     <template #gallery><slot name="gallery" /></template>
   </MultipageConfigurator>
