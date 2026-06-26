@@ -85,7 +85,12 @@
   - Доступ к серверу — по ssh-ключу `~/.ssh/printmos_deploy` (deploy-key добавлен в `authorized_keys` root). Креды/IP — вне гита.
   - ⚠️ Хостер блокирует SMTP-порты (25/465/587) → почтовые уведомления через SMTP недоступны (написан запрос на открытие); пока канал уведомлений — Telegram.
   - ⚠️ 1.9 GB RAM — сборку Astro-образа делать в CI и пушить в registry, а не на сервере (риск OOM при build + Directus + PG).
-- ⏳ **Шаг 4** — сид прод-Directus (schema apply + прогон `seo/_*_directus.py` против `https://admin.printmos.ru`).
+- ✅ **Шаг 4** — прод-Directus засижен и работает (`https://admin.printmos.ru`):
+  - Метод сида — **полная реплика БД** (`pg_dump` локалки → restore в прод-Postgres), т.к. миграц-скрипты только ПАТЧАТ существующий каталог, а базовые данные (69 продуктов-скелетов, papers 1-35, finishing, categories, navigation, works) ими не создаются. Восстановлено без ошибок: products 70, promoted_pages 137, papers 35. Аплоады (галерея) перенесены (24 файла). Прод-`KEY/SECRET`/пароль БД — свежие; шифрованных KEY-полей у нас нет.
+  - Образ Directus запинен `directus/directus:11.17.4` (= локальная версия, для совместимости дампа). Баг: postgres:18 требует монт `/var/lib/postgresql` (не `/data`) — поправлено в compose.
+  - Проверено: health ok, публичный API отдаёт продукты, ассеты 200, apex — заглушка.
+  - ⏳ **Хардненинг админа — вручную в UI** (мой тулинг не вправе минтить/держать прод-секреты): зайти на `https://admin.printmos.ru` как `admin@printmos.local` (пароль = локальный `.env` DIRECTUS_ADMIN_PASSWORD) → сменить email на `admin@printmos.ru`, поставить новый пароль, перевыпустить/удалить статичный токен. Создать роль «Order Service» + токен для Astro `/api` (значение в `.env.production` DIRECTUS_TOKEN).
+- Миграц-скрипты `seo/_*_directus.py` теперь применимы к проду (DIRECTUS_URL=https://admin.printmos.ru + прод-токен) как механизм БУДУЩИХ правок контента.
 - ⏳ **Шаг 5** — CI/CD (GitHub Actions: build образа → push registry → SSH deploy).
 - ⏳ **Шаг 6** — триггер пересборки on-publish. **Шаг 7** — CWV/полировка/бэкапы.
 
