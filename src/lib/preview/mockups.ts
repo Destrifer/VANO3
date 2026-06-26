@@ -141,7 +141,67 @@ const leaflet: Mockup = {
   },
 };
 
-export const mockups: Record<string, Mockup> = { card, sticker, leaflet };
+// Макет «фирменный бланк/документ»: лого + реквизиты в шапке, разделитель,
+// строки текста письма. Шрифты масштабируются от ШИРИНЫ (не высоты) — иначе на
+// портретном A4 буквы вылезают за край (баг макета `card` на бланках).
+const letterhead: Mockup = {
+  content(ctx, r, env) {
+    const { x, y, w, h } = r;
+    const p = w * 0.1;
+    const ink = env.ink;
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+
+    // лого PM (если не фольга — её рисует foil-слой)
+    if (!env.foilOn) {
+      ctx.fillStyle = ink;
+      ctx.font = `700 ${Math.round(w * 0.11)}px Georgia, serif`;
+      ctx.fillText("PM", x + p, y + p);
+    }
+
+    // название + реквизиты справа в шапке
+    ctx.textAlign = "right";
+    ctx.fillStyle = ink;
+    ctx.globalAlpha = 0.78;
+    ctx.font = `700 ${Math.round(w * 0.045)}px system-ui, sans-serif`;
+    ctx.fillText("PRINTMOS", x + w - p, y + p);
+    ctx.globalAlpha = 0.5;
+    ctx.font = `400 ${Math.round(w * 0.032)}px system-ui, sans-serif`;
+    ["ООО «Принтмос»", "ИНН 7700000000", "+7 495 000-00-00"].forEach((t, i) =>
+      ctx.fillText(t, x + w - p, y + p + w * 0.08 + i * w * 0.045),
+    );
+    ctx.globalAlpha = 1;
+
+    // разделитель под шапкой
+    const hy = y + p + w * 0.24;
+    ctx.strokeStyle = ink;
+    ctx.globalAlpha = 0.3;
+    ctx.lineWidth = Math.max(1, w * 0.006);
+    ctx.beginPath();
+    ctx.moveTo(x + p, hy);
+    ctx.lineTo(x + w - p, hy);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    // строки текста письма (нечитаемо, обозначают документ)
+    ctx.fillStyle = ink;
+    ctx.globalAlpha = 0.22;
+    const lh = h * 0.04;
+    const startY = hy + h * 0.05;
+    const rows = Math.max(0, Math.min(14, Math.floor((y + h - p - startY) / lh)));
+    for (let i = 0; i < rows; i++) {
+      const ww = i % 4 === 3 ? 0.45 : 0.92;
+      ctx.fillRect(x + p, startY + i * lh, (w - 2 * p) * ww, Math.max(1, h * 0.011));
+    }
+    ctx.globalAlpha = 1;
+  },
+  foil(ctx, r, env) {
+    const { x, y, w } = r;
+    drawFoilText(ctx, "PM", x + w * 0.1, y + w * 0.1, Math.round(w * 0.11), "left", env.foilHex);
+  },
+};
+
+export const mockups: Record<string, Mockup> = { card, sticker, leaflet, letterhead };
 
 export function getMockup(kind?: string | null): Mockup {
   return (kind && mockups[kind]) || card;

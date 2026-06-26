@@ -1,6 +1,6 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
-import ProductTile from "../components/ProductTile.astro";
+import { Icon } from "astro-icon/components";
 import { getHomeProducts } from "../lib/products";
 import { getPricingData, getProductPricing, defaultPrice } from "../lib/pricing/data";
 
@@ -23,6 +23,8 @@ const pageTitle = "Printmos — цифровая типография в Мос�
 const pageDescription =
   "Printmos — цифровая типография в Москве: визитки, листовки, буклеты, каталоги, наклейки, баннеры и срочная печать для бизнеса.";
 
+const lead = "1–3 дня";
+const money = (n: number) => n.toLocaleString("ru-RU", { maximumFractionDigits: 0 });
 ---
 
 <BaseLayout title={pageTitle} description={pageDescription}>
@@ -31,13 +33,22 @@ const pageDescription =
   <ul class="product-grid">
     {
       products.map((product) => (
-        <ProductTile
-          href={`/${product.slug}`}
-          name={product.name}
-          icon={product.icon}
-          priceFrom={product.price}
-          leadDays={product.lead_days}
-        />
+        <li>
+          <a class="product-tile" href={`/${product.slug}`}>
+            <span class="product-tile__media">
+              {product.icon && (
+                <Icon name={product.icon} class="product-tile__icon" />
+              )}
+            </span>
+            <span class="product-tile__body">
+              <span class="product-tile__name">{product.name}</span>
+              <span class="product-tile__price">
+                {product.price != null ? `от ${money(product.price)} ₽` : "Рассчитать"}
+              </span>
+              <span class="product-tile__lead">{lead}</span>
+            </span>
+          </a>
+        </li>
       ))
     }
   </ul>

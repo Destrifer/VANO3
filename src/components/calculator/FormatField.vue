@@ -2,7 +2,8 @@
 // Презентационный выбор размера/формата: пресеты (select) ↔ «свой размер» НА МЕСТЕ
 // (ввод Ш×В + кнопка «из списка»), фикс-ширина слота → без сдвига контента.
 // Тот же паттерн, что у SizeField визиток. index = -1 → режим «свой размер».
-defineProps<{
+import { computed } from "vue";
+const props = defineProps<{
   label?: string;
   sizes: { label: string }[];
   allowCustom: boolean;
@@ -19,6 +20,14 @@ const emit = defineEmits<{
   "update:customH": [v: number];
   back: [];
 }>();
+
+// v-model-прокси: биндинг select через :value+@change терял серверный пресет
+// (formatIndex) при гидрации острова — тот же баг, что чинили в PaperSelect.
+// computed get/set сохраняет SSR-значение до клиента (см. gotcha в PLAYBOOK).
+const indexProxy = computed({
+  get: () => props.index,
+  set: (v: number) => emit("update:index", v),
+});
 </script>
 
 <template>
@@ -39,10 +48,7 @@ const emit = defineEmits<{
         <span class="text-sm opacity-70">мм</span>
         <button type="button" class="btn btn-ghost btn-sm" @click="emit('back')">из списка</button>
       </div>
-      <select
-        v-else class="select w-full" :value="index"
-        @change="emit('update:index', +($event.target as HTMLSelectElement).value)"
-      >
+      <select v-else class="select w-full" v-model.number="indexProxy">
         <option v-for="(s, i) in sizes" :key="i" :value="i">{{ s.label }}</option>
         <option v-if="allowCustom" :value="-1">Свой размер…</option>
       </select>

@@ -1,0 +1,20 @@
+[albums] ВСЕГО 1478 запросов, спрос 81613
+
+КАТЕГОРИЯ                                    n    спрос      %
+Tier-3                                     310    21284   26.1
+/graduation-albums/kindergarten            302    17212   21.1
+/graduation-albums/grade-4                 243    13759   16.9
+/graduation-albums/grade-9                 183     9948   12.2
+/graduation-albums/grade-11                144     8798   10.8
+STANDALONE                                   3        7    0.0
+EXCLUDE                                    293    10605   13.0
+
+-- EXCLUDE --
+  инфо/цитаты/виньетки                     n= 113 d=4085
+  фотосъёмка (не наша услуга)              n= 109 d=3416
+  гео не-Москва                            n=  25 d=1356
+  AR/живой альбом                          n=  27 d=988
+  бренд-конкурент                          n=  19 d=760
+
+-- STANDALONE --
+  фотокниги (→/photobooks)                 n=   3 d=7

@@ -1,0 +1,8 @@
+ВСЕГО 48 запросов, спрос 1258
+
+КАТЕГОРИЯ                     n   спрос      %
+Tier-3                       26     885   70.3
+/copybooks/logo               7     300   23.8
+/copybooks/rings              7      53    4.2
+STANDALONE                    1       1    0.1
+EXCLUDE                       7      19    1.5

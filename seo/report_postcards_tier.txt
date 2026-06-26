@@ -1,0 +1,23 @@
+ВСЕГО 804 запросов, спрос 38169
+
+КАТЕГОРИЯ                          n    спрос      %
+Tier-3                           415    30205   79.1
+/postcards/photo                   6     1210    3.2
+/postcards/logo                   12      603    1.6
+/postcards/postal                  7      432    1.1
+/postcards/urgent                  7      459    1.2
+/postcards/designer                5      351    0.9
+/postcards/new-year                7      112    0.3
+STANDALONE                         4      582    1.5
+EXCLUDE                          341     4215   11.0
+
+-- EXCLUDE --
+  DIY/шаблон/скачать             n=  51 d=2364
+  бренд-конкурент                n= 258 d=1708
+  оборудование/принтер           n=  14 d=54
+  картинки/«день печати»         n=  11 d=44
+  capability (офсет)             n=   4 d=40
+  гео не-Москва                  n=   3 d=5
+
+-- STANDALONE --
+  приглашения (→/invites)        n=   4 d=582

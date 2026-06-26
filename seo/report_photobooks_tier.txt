@@ -1,0 +1,25 @@
+[photobooks] ВСЕГО 1509 запросов, спрос 80437
+
+КАТЕГОРИЯ                                    n    спрос      %
+Tier-3                                     530    40827   50.8
+/photobooks/wedding                         50     5101    6.3
+/photobooks/premium                          9     1659    2.1
+/photobooks/baby                            29     2170    2.7
+/photobooks/family                           5      823    1.0
+/photobooks/urgent                          13     1432    1.8
+/photobooks/travel                           3      331    0.4
+/photobooks/corporate                        2      307    0.4
+STANDALONE                                 330    12891   16.0
+EXCLUDE                                    538    14896   18.5
+
+-- EXCLUDE --
+  бренд-конкурент                          n= 375 d=8839
+  фотосъёмка (не наша услуга)              n=  69 d=2375
+  онлайн-редактор/DIY                      n=  16 d=2169
+  инфо/нерелевант                          n=  61 d=981
+  гео не-Москва                            n=  12 d=319
+  AR/живой альбом                          n=   5 d=213
+
+-- STANDALONE --
+  выпускные альбомы (→/graduation-albums)  n= 314 d=12801
+  книги (→/books)                          n=  16 d=90

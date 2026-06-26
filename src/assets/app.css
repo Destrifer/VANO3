@@ -43,14 +43,15 @@
     system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
     "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
 
-  /* Семантика «выгоды» для таблицы цен — единственный осознанный цветной
-     акцент в монохромной теме (как цветное превью). Tailwind генерит
-     утилиты text-gain / text-loss. Контраст под текст на белом. */
+  /* Семантика «выгоды» для таблицы цен — осознанный цветной акцент в монохромной
+     теме. Tailwind генерит утилиты text-gain / bg-gain / text-loss / bg-loss. */
   --color-gain: oklch(52% 0.15 150);
   --color-loss: oklch(55% 0.2 27);
 }
 
 :root {
+  /* единственный акцент в монохроме — «печатная» киноварь */
+  --color-accent-ink: oklch(60% 0.20 27);
   --page-padding: clamp(16px, 4vw, 72px);
   --grid-gap: clamp(16px, 2vw, 32px);
   --text-readable: 68ch;
@@ -482,38 +483,62 @@ body > main {
 .product-tile {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  aspect-ratio: 1; /* квадратные карточки */
-  padding: 1rem;
-  text-align: center;
+  height: 100%;
   text-decoration: none;
   color: inherit;
   border: var(--border) solid var(--color-base-content);
   border-radius: var(--radius-box, 0.5rem);
+  overflow: hidden; /* медиа-зона уважает скругление */
 }
 
-.product-tile:hover {
+.product-tile__media {
+  flex: 1; /* забирает высоту ряда → нет пустых карманов */
+  display: grid;
+  place-items: center;
+  min-height: 7rem;
   background: var(--color-base-200);
+  border-bottom: var(--border) solid var(--color-base-content);
 }
 
 .product-tile__icon {
-  width: 2.4rem;
-  height: 2.4rem;
+  width: 3.25rem; /* было 2.4rem — иконка-герой */
+  height: 3.25rem;
+}
+
+.product-tile__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.85rem 0.9rem 0.95rem;
+  text-align: left;
 }
 
 .product-tile__name {
   font-weight: 600;
-  line-height: 1.15;
 }
 
+.product-tile__price {
+  font-weight: 600;
+  color: var(--color-accent-ink); /* единственное цветное пятно */
+}
+
+.product-tile__lead {
+  font-size: 0.8rem;
+  color: color-mix(in oklch, var(--color-base-content) 55%, transparent);
+}
+
+.product-tile:hover {
+  box-shadow: inset 0 3px 0 0 var(--color-accent-ink); /* акцентная полоса, без заливки */
+}
+
+/* Цена «от …» в плитках, рендерящихся старой разметкой ProductTile.astro
+   (компактные альтернативы кластеров). Главная использует .product-tile__price. */
 .product-tile__meta {
   font-size: 0.85rem;
   color: color-mix(in oklch, var(--color-base-content) 60%, transparent);
 }
 
-/* Бейдж срока готовности (иконка + краткий текст), напр. на плитках главной */
+/* Бейдж срока готовности (иконка + краткий текст), напр. на плитках. */
 .ready-badge {
   display: inline-flex;
   align-items: center;
@@ -527,13 +552,16 @@ body > main {
   flex: none;
 }
 
-/* Компактный вариант — для плиток-альтернатив в правом верхнем углу хаба/кластера.
-   НЕ квадратные: высота по контенту (меньше высота → меньше сдвигают калькулятор),
-   ширину держим для подписей. */
+/* Компактная плитка-альтернатива (правый верхний угол хаба/кластера). НЕ герой-
+   карточка: иконка+название+цена по центру, высота по контенту. Самодостаточна —
+   не зависит от медиа/боди новой главной разметки (ProductTile.astro даёт старую). */
 .product-tile--compact {
-  aspect-ratio: auto;
+  height: auto;
+  align-items: center;
+  justify-content: center;
   gap: 0.1rem;
   padding: 0.25rem 0.35rem;
+  text-align: center;
 }
 .product-tile--compact .product-tile__icon {
   width: 1.4rem;
@@ -679,7 +707,7 @@ body > main {
 
 /* --- Заглушки страниц --- */
 .stub-kicker {
-  margin-bottom: 0.35rem;
+  margin-bottom: 0;
   font-size: 0.85rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;

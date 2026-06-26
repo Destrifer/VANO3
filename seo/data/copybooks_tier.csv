@@ -1,0 +1,49 @@
+﻿Запрос,Спрос,Tier,Целевая страница,Флаг,ИсхКатегория
+тетради на заказ,419,Tier-3,/copybooks (хаб),,PRINT
+заказать тетрадь с индивидуальной обложкой,84,Tier-1,/copybooks/logo,,PRINT
+печать тетрадей,78,Tier-3,/copybooks (хаб),,PRINT
+тетрадь с принтом на заказ,75,Tier-1,/copybooks/logo,,PRINT
+тетради с принтом,69,Tier-1,/copybooks/logo,,PRINT
+печать тетрадей на заказ,66,Tier-3,/copybooks (хаб),,PRINT
+заказать печать тетрадей,52,Tier-3,/copybooks (хаб),,PRINT
+тетради с логотипом на заказ,51,Tier-1,/copybooks/logo,,PRINT
+изготовление тетрадей на заказ,47,Tier-3,/copybooks (хаб),,PRINT
+типография печать тетрадей,40,Tier-3,/copybooks (хаб),,PRINT
+производство тетрадей на заказ оптом,26,Tier-3,/copybooks (хаб),,PRINT
+тетрадь на заказ,22,Tier-3,/copybooks (хаб),,PRINT
+печать рабочей тетради,22,Tier-3,/copybooks (хаб),,PRINT
+печать тетрадей оптом,17,Tier-3,/copybooks (хаб),,PRINT
+тетрадь на кольцах на заказ,16,Tier-1,/copybooks/rings,,PRINT
+печать рабочих тетрадей на заказ,15,Tier-3,/copybooks (хаб),,PRINT
+типография тетради,15,Tier-3,/copybooks (хаб),,PRINT
+15,15,Tier-3,/copybooks (хаб),,PRINT
+тетрадь а5 на кольцах на заказ,10,Tier-1,/copybooks/rings,,PRINT
+тетрадь на заказ москва,9,Tier-3,/copybooks (хаб),,PRINT
+типография тетради на заказ,9,Tier-3,/copybooks (хаб),,PRINT
+принт на тетрадь заказать,9,Tier-3,/copybooks (хаб),,PRINT
+тетради с обложкой на заказ,9,Tier-1,/copybooks/logo,,PRINT
+блочная тетрадь на заказ,9,Tier-1,/copybooks/rings,,PRINT
+печать тетради на кольцах,9,Tier-1,/copybooks/rings,,PRINT
+тетрадь с принтом на заказ pmg,9,EXCLUDE,,бренд-конкурент,BRANDED
+блокноты на кольцах с логотипом на заказ,8,Tier-1,/copybooks/rings,,PRINT
+печать тетрадей с логотипом,7,Tier-1,/copybooks/logo,,PRINT
+6,6,Tier-3,/copybooks (хаб),,PRINT
+цена тетрадей с логотипом на заказ,5,Tier-1,/copybooks/logo,,PRINT
+блочная тетрадь на заказ pmg,5,EXCLUDE,,бренд-конкурент,BRANDED
+тетради на заказ москва,4,Tier-3,/copybooks (хаб),,PRINT
+изготовление тетрадей москва,4,Tier-3,/copybooks (хаб),,PRINT
+3,3,Tier-3,/copybooks (хаб),,PRINT
+производство тетрадей,3,Tier-3,/copybooks (хаб),,PRINT
+2,2,Tier-3,/copybooks (хаб),,PRINT
+тетрадь а5 на кольцах на заказ pmg,2,EXCLUDE,,бренд-конкурент,BRANDED
+тетрадь на кольцах на заказ с логотипом,1,Tier-1,/copybooks/rings,,PRINT
+блочные тетради на заказ,1,Tier-3,/copybooks (хаб),,PRINT
+1,1,Tier-3,/copybooks (хаб),,PRINT
+тетрадь на заказ pmg,1,EXCLUDE,,бренд-конкурент,BRANDED
+печать тетрадей на заказ pmg,1,EXCLUDE,,бренд-конкурент,BRANDED
+тетради с обложкой на заказ pmg,1,EXCLUDE,,бренд-конкурент,BRANDED
+заказать блокноты спб,1,STANDALONE,,блокноты (→/notebooks),PRINT
+печать рабочих тетрадей,0,Tier-3,/copybooks (хаб),,PRINT
+тетрадь на скобе на заказ,0,Tier-3,/copybooks (хаб),,PRINT
+блокнот на кольцах с логотипом,0,Tier-1,/copybooks/rings,,PRINT
+"— 26 июля 1976. в тетрадь записать. пришел с работы папа и стал рассказывать, что их завод получил заказ на изготовление новых машин для куйбышевского гидроузла, и я снова не мог делать уроки, потому что мне интересно было послушать. мой папа работает на сталелитейном заводе модельщиком. он делает модели. что такое модель, наверно, никто не знает, а я знаю. чтоб отлить какую-нибудь деталь для маш",0,EXCLUDE,,мусор/нерелевант,INFO
