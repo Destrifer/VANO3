@@ -56,6 +56,8 @@ For learning and infrastructure tasks:
 
 ## Infrastructure Direction
 
+> Конкретный пошаговый план вывода на боевой сервер: **`docs/deployment-plan.md`** (3-синк-модель код/схема/контент, миграц-скрипты как контент-синк, asset-URL gotcha, последовательность шагов).
+
 The project should be developed locally and deployed automatically to a VPS through Git-based CI/CD.
 
 Target flow:
