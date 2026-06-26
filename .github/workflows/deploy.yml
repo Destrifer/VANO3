@@ -1,0 +1,79 @@
+name: Build & Deploy
+
+# Шаг 5 деплой-плана: CI собирает Astro-образ (не на 2 ГБ-сервере), пушит в ghcr,
+# затем по SSH сервер тянет образ и перезапускает сайт.
+on:
+  push:
+    branches: [infra/deployment]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+env:
+  IMAGE: ghcr.io/destrifer/printmos-astro
+  # На СБОРКЕ Astro читает контент из прод-Directus (prerender) -> публичный URL.
+  DIRECTUS_PUBLIC_URL: https://admin.printmos.ru
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Login to ghcr
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:latest
+            ${{ env.IMAGE }}:${{ github.sha }}
+          build-args: |
+            DIRECTUS_URL=${{ env.DIRECTUS_PUBLIC_URL }}
+            DIRECTUS_PUBLIC_URL=${{ env.DIRECTUS_PUBLIC_URL }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Синхронизируем compose + боевой Caddyfile (apex -> astro) на сервер.
+      - name: Copy compose & Caddyfile to server
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "docker-compose.prod.yml,Caddyfile"
+          target: "/opt/printmos"
+
+      - name: Pull image & restart on server
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            cd /opt/printmos
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            C="docker compose -p printmos -f docker-compose.prod.yml --env-file .env.production"
+            $C pull astro
+            $C up -d --no-deps astro
+            # боевой Caddyfile (apex -> astro:4321) — применяем после того как astro поднят
+            $C up -d --no-deps caddy
+            docker image prune -f
+            docker logout ghcr.io || true

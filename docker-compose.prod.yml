@@ -51,6 +51,9 @@ services:
     # Порт наружу НЕ публикуем — наружу Directus отдаёт Caddy (admin.printmos.ru).
 
   astro:
+    # На сервере тянем готовый образ из ghcr (собран в CI — см. .github/workflows/deploy.yml).
+    # `build` оставлен для локальной/ручной сборки; на сервере используется только `pull`.
+    image: ${ASTRO_IMAGE:-ghcr.io/destrifer/printmos-astro:latest}
     build:
       context: .
       dockerfile: Dockerfile
