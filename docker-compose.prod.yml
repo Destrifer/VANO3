@@ -1,0 +1,104 @@
+# Боевой стек printmos.ru: Caddy (HTTPS) -> Astro (Node) + Directus (CMS/API) + Postgres.
+# Запуск с прод-переменными:  docker compose -f docker-compose.prod.yml --env-file .env.production up -d
+#
+# ПОРЯДОК ПЕРВОГО ЗАПУСКА (важно — сборка Astro читает контент из Directus):
+#   1) docker compose -f docker-compose.prod.yml --env-file .env.production up -d database directus
+#   2) засидить Directus (schema apply + прогон seo/_*_directus.py против DIRECTUS_PUBLIC_URL)
+#   3) docker compose -f docker-compose.prod.yml --env-file .env.production build astro
+#   4) docker compose -f docker-compose.prod.yml --env-file .env.production up -d
+services:
+  database:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - directus_database:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # Порт наружу НЕ публикуем — БД доступна только во внутренней сети.
+
+  directus:
+    image: ${DIRECTUS_IMAGE}
+    restart: unless-stopped
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      KEY: ${DIRECTUS_KEY}
+      SECRET: ${DIRECTUS_SECRET}
+      ADMIN_EMAIL: ${DIRECTUS_ADMIN_EMAIL}
+      ADMIN_PASSWORD: ${DIRECTUS_ADMIN_PASSWORD}
+      DB_CLIENT: pg
+      DB_HOST: database
+      DB_PORT: 5432
+      DB_DATABASE: ${POSTGRES_DB}
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      # Публичный URL Directus (для ассет-ссылок, OAuth, админки).
+      PUBLIC_URL: ${DIRECTUS_PUBLIC_URL}
+      CORS_ENABLED: "true"
+      CORS_ORIGIN: ${SITE_ORIGIN}
+    volumes:
+      - directus_uploads:/directus/uploads
+      - directus_extensions:/directus/extensions
+    # Порт наружу НЕ публикуем — наружу Directus отдаёт Caddy (admin.printmos.ru).
+
+  astro:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # СБОРКА: builder читает контент по публичному URL (рантайм-сеть на build недоступна).
+        DIRECTUS_URL: ${DIRECTUS_PUBLIC_URL}
+        DIRECTUS_PUBLIC_URL: ${DIRECTUS_PUBLIC_URL}
+    restart: unless-stopped
+    depends_on:
+      - directus
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 4321
+      # РАНТАЙМ: /api ходят в Directus по внутренней сети; картинки в HTML — публичный URL.
+      DIRECTUS_URL: http://directus:8055
+      DIRECTUS_PUBLIC_URL: ${DIRECTUS_PUBLIC_URL}
+      DIRECTUS_TOKEN: ${DIRECTUS_TOKEN}
+      DADATA_TOKEN: ${DADATA_TOKEN}
+      DADATA_SECRET: ${DADATA_SECRET}
+      PUBLIC_YANDEX_MAPS_KEY: ${PUBLIC_YANDEX_MAPS_KEY}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASS: ${SMTP_PASS}
+      SMTP_FROM: ${SMTP_FROM}
+      REQUEST_NOTIFY_EMAIL: ${REQUEST_NOTIFY_EMAIL}
+      FORM_SIGNING_SECRET: ${FORM_SIGNING_SECRET}
+    # Порт наружу НЕ публикуем — наружу сайт отдаёт Caddy (printmos.ru).
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - astro
+      - directus
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  directus_database:
+  directus_uploads:
+  directus_extensions:
+  caddy_data:
+  caddy_config:

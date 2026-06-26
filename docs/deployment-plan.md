@@ -54,7 +54,7 @@
 1. **Env-driven Directus URL** *(маленькая правка кода, делаем первой — укусит первым)*
    - Убрать `localhost:8055` из `astro.config.mjs` `image.remotePatterns` → из env (`DIRECTUS_PUBLIC_URL`).
    - Аудит базового URL ассетов в островах/`Gallery.astro`; абсолютные URL картинок строить из env.
-2. **`docker-compose.prod.yml` + `Caddyfile`** — сервисы `caddy` / `astro` / `directus` / `database`; healthchecks; volume для Directus uploads и PG data.
+2. **`docker-compose.prod.yml` + `Caddyfile` + `Dockerfile`** ✅ *(созданы)* — сервисы `caddy` / `astro` / `directus` / `database`; healthcheck БД; volumes для uploads/PG/caddy; наружу торчит только Caddy (80/443). Шаблон прод-секретов — `.env.production.example`. **Порядок первого запуска** (сборка Astro читает контент из Directus, а `compose build` изолирован от рантайм-сети, поэтому билд ходит в Directus по ПУБЛИЧНОМУ URL): (1) поднять `database`+`directus` → (2) засидить → (3) `build astro` → (4) `up -d` весь стек.
 3. **VPS + DNS** — `printmos.ru` → сайт, `admin.printmos.ru` → Directus. Caddy выдаёт HTTPS. Сначала «hello world», замерить TTFB.
 4. **Сид прода (одноразово):**
    - `directus schema apply` из snapshot’а локалки (схема в git).
@@ -64,6 +64,18 @@
 5. **CI/CD (GitHub Actions):** typecheck + `astro build` → сборка Docker-образа → SSH-деплой → `docker compose up -d` → `compose pull/restart`. Rollback = предыдущий тег образа.
 6. **Пересборка по контенту:** страницы пререндерятся → изменение контента требует rebuild. Вебхук/flow Directus on-publish → триггер CI rebuild+redeploy. На старте допустимо ручной «деплой»/по расписанию.
 7. **Прод-полировка:** замер CWV (LCP/INP/CLS), кэш-заголовки Caddy, мониторинг логов/uptime, бэкапы PG + uploads, проверка восстановления.
+
+## 4a. Когда понадобятся доступы (сервер / домен / секреты)
+
+| Этап | Что нужно | Зачем |
+|---|---|---|
+| Шаги 1–2 (код, compose, Caddyfile) | **ничего** | пишется локально, сервер пустой — ок |
+| Шаг 3: поднять сервер | **IP + SSH-доступ** к VPS; Docker установлен | поставить стек, «hello world», замер TTFB |
+| Шаг 3: HTTPS | **доступ к DNS-панели домена** + IP сервера | A-записи `printmos.ru`, `www`, `admin.printmos.ru` → IP; иначе Caddy не выдаст сертификат Let's Encrypt (нужны открытые 80/443) |
+| Шаг 4: сид | **прод-секреты** (KEY/SECRET/пароли БД и admin, токены DaData/Yandex/SMTP/Telegram, `FORM_SIGNING_SECRET`, сервис-токен Order Service) | заполнить `.env.production` на сервере |
+| Шаг 5: CI/CD | **SSH-ключ деплоя** в секретах GitHub + IP/пользователь сервера | GitHub Actions заходит по SSH и деплоит |
+
+**Порядок-ловушка:** Directus должен быть поднят, доступен по `https://admin.printmos.ru` (DNS+HTTPS) **и засижен ДО сборки Astro-образа** — билд тянет из него контент. То есть домен/DNS нужны уже на шаге 3, до первой полноценной сборки сайта.
 
 ## 5. Открытые вопросы
 

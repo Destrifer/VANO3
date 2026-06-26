@@ -1,0 +1,24 @@
+# Caddy — публичный reverse-proxy + авто-HTTPS (Let's Encrypt).
+# Требует: A-записи printmos.ru / www / admin.printmos.ru -> IP сервера, открытые порты 80/443.
+
+{
+	# Email для ACME (уведомления Let's Encrypt). Заменить на реальный.
+	email admin@printmos.ru
+}
+
+# Публичный сайт (Astro Node).
+printmos.ru {
+	encode zstd gzip
+	reverse_proxy astro:4321
+}
+
+# www -> apex.
+www.printmos.ru {
+	redir https://printmos.ru{uri} permanent
+}
+
+# Directus (CMS/admin/API + отдача ассетов /assets/*).
+admin.printmos.ru {
+	encode zstd gzip
+	reverse_proxy directus:8055
+}

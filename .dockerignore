@@ -1,0 +1,17 @@
+.git
+node_modules
+dist
+.astro
+# SEO-инструменты и артефакты ядра — в образе не нужны
+seo
+# секреты и логи
+.env
+.env.*
+!.env.production.example
+*.log
+# доки/память
+*.md
+docs
+AGENTS.md
+.idea
+.DS_Store
