@@ -9,6 +9,10 @@
 # Публичный сайт (Astro Node).
 printmos.ru {
 	encode zstd gzip
+	# ⛔ ПРЕД-ЗАПУСК: закрыто от индексации. Google крулит, видит noindex и не индексирует.
+	# robots.txt при этом ОСТАЁТСЯ разрешающим (иначе краулер не зайдёт и не увидит noindex).
+	# СНЯТЬ эту строку при запуске сайта.
+	header X-Robots-Tag "noindex, nofollow"
 	reverse_proxy astro:4321
 }
 
@@ -20,5 +24,7 @@ www.printmos.ru {
 # Directus (CMS/admin/API + отдача ассетов /assets/*).
 admin.printmos.ru {
 	encode zstd gzip
+	# Админку/API не индексируем (постоянно, не только на пред-запуске).
+	header X-Robots-Tag "noindex, nofollow"
 	reverse_proxy directus:8055
 }

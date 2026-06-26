@@ -94,6 +94,15 @@
 - ✅ **Шаг 5** — CI/CD работает (`.github/workflows/deploy.yml`): push в `infra/deployment` → GitHub Actions собирает Astro-образ (build-args → `https://admin.printmos.ru`) → push в `ghcr.io/destrifer/printmos-astro` → scp compose+Caddyfile → SSH `pull astro` + `up -d astro` + reload Caddy. **Сайт живой: `https://printmos.ru` отдаёт реальную главную и страницы продуктов (200).** Секреты репо: SSH_HOST/SSH_USER/SSH_PRIVATE_KEY (deploy-key), GITHUB_TOKEN — авто. Урок: на изменение bind-mount Caddyfile `compose up` не реагирует — нужен `caddy reload`/restart (зашито в workflow).
 - ⏳ **Шаг 6** — триггер пересборки on-publish. **Шаг 7** — CWV/полировка/бэкапы.
 
+## 4c. Чек-лист запуска (когда сайт готов)
+
+- [ ] **Снять `X-Robots-Tag "noindex, nofollow"`** из блока `printmos.ru` в `Caddyfile` (пред-запуск закрыт от индексации; на `admin.printmos.ru` noindex оставить навсегда).
+- [ ] Хардненинг админа выполнен (пароль/токен).
+- [ ] Order Service токен в `.env.production` (✅ сделано), уведомления (Telegram/SMTP) настроены.
+- [ ] Почистить дев-заказы из реплики (5 шт.).
+- [ ] Влить `infra/deployment` → `master`, переключить триггер workflow на `master`.
+- [ ] Прогнать CWV (LCP/INP/CLS) на боевом домене.
+
 ## 5. Открытые вопросы
 
 - Хостинг Directus: контейнер на том же VPS vs Directus Cloud / managed PG.

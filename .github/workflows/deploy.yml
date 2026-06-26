@@ -73,9 +73,10 @@ jobs:
             C="docker compose -p printmos -f docker-compose.prod.yml --env-file .env.production"
             $C pull astro
             $C up -d --no-deps astro
-            # Caddy: создаём контейнер при первом деплое; на изменения bind-mount Caddyfile
-            # `up` не реагирует, поэтому перечитываем конфиг (zero-downtime), иначе рестарт.
+            # Caddy: создаём контейнер при первом деплое; для применения нового Caddyfile —
+            # ТОЛЬКО restart: bind-mount одного файла привязан к inode, scp заменяет файл
+            # (новый inode), и `caddy reload`/`up` читают старый. restart переразрешает монт.
             $C up -d --no-deps caddy
-            $C exec -T caddy caddy reload --config /etc/caddy/Caddyfile --force 2>/dev/null || docker restart printmos-caddy-1
+            docker restart printmos-caddy-1
             docker image prune -f
             docker logout ghcr.io || true
