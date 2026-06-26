@@ -91,7 +91,7 @@
   - Проверено: health ok, публичный API отдаёт продукты, ассеты 200, apex — заглушка.
   - ⏳ **Хардненинг админа — вручную в UI** (мой тулинг не вправе минтить/держать прод-секреты): зайти на `https://admin.printmos.ru` как `admin@printmos.local` (пароль = локальный `.env` DIRECTUS_ADMIN_PASSWORD) → сменить email на `admin@printmos.ru`, поставить новый пароль, перевыпустить/удалить статичный токен. Создать роль «Order Service» + токен для Astro `/api` (значение в `.env.production` DIRECTUS_TOKEN).
 - Миграц-скрипты `seo/_*_directus.py` теперь применимы к проду (DIRECTUS_URL=https://admin.printmos.ru + прод-токен) как механизм БУДУЩИХ правок контента.
-- ⏳ **Шаг 5** — CI/CD (GitHub Actions: build образа → push registry → SSH deploy).
+- ✅ **Шаг 5** — CI/CD работает (`.github/workflows/deploy.yml`): push в `infra/deployment` → GitHub Actions собирает Astro-образ (build-args → `https://admin.printmos.ru`) → push в `ghcr.io/destrifer/printmos-astro` → scp compose+Caddyfile → SSH `pull astro` + `up -d astro` + reload Caddy. **Сайт живой: `https://printmos.ru` отдаёт реальную главную и страницы продуктов (200).** Секреты репо: SSH_HOST/SSH_USER/SSH_PRIVATE_KEY (deploy-key), GITHUB_TOKEN — авто. Урок: на изменение bind-mount Caddyfile `compose up` не реагирует — нужен `caddy reload`/restart (зашито в workflow).
 - ⏳ **Шаг 6** — триггер пересборки on-publish. **Шаг 7** — CWV/полировка/бэкапы.
 
 ## 5. Открытые вопросы

@@ -73,7 +73,9 @@ jobs:
             C="docker compose -p printmos -f docker-compose.prod.yml --env-file .env.production"
             $C pull astro
             $C up -d --no-deps astro
-            # боевой Caddyfile (apex -> astro:4321) — применяем после того как astro поднят
+            # Caddy: создаём контейнер при первом деплое; на изменения bind-mount Caddyfile
+            # `up` не реагирует, поэтому перечитываем конфиг (zero-downtime), иначе рестарт.
             $C up -d --no-deps caddy
+            $C exec -T caddy caddy reload --config /etc/caddy/Caddyfile --force 2>/dev/null || docker restart printmos-caddy-1
             docker image prune -f
             docker logout ghcr.io || true
