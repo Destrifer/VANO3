@@ -77,6 +77,18 @@
 
 **Порядок-ловушка:** Directus должен быть поднят, доступен по `https://admin.printmos.ru` (DNS+HTTPS) **и засижен ДО сборки Astro-образа** — билд тянет из него контент. То есть домен/DNS нужны уже на шаге 3, до первой полноценной сборки сайта.
 
+## 4b. Прогресс
+
+- ✅ **Шаг 1** — env-driven Directus URL (commit `df7f6c0`).
+- ✅ **Шаг 2** — прод-стек: Dockerfile / docker-compose.prod.yml / Caddyfile / .dockerignore / .env.production.example (commit `5421c67`).
+- ✅ **Шаг 3** — сервер поднят: Ubuntu 24.04 (2 vCPU / 1.9 GB RAM + 2 GB swap), Docker 29.6 + compose v5.2, ufw 22/80/443; DNS `printmos.ru`/`www`/`admin` → IP; **Caddy hello-world: HTTPS-сертификаты Let's Encrypt выпущены для apex и admin, apex отдаёт 200.**
+  - Доступ к серверу — по ssh-ключу `~/.ssh/printmos_deploy` (deploy-key добавлен в `authorized_keys` root). Креды/IP — вне гита.
+  - ⚠️ Хостер блокирует SMTP-порты (25/465/587) → почтовые уведомления через SMTP недоступны (написан запрос на открытие); пока канал уведомлений — Telegram.
+  - ⚠️ 1.9 GB RAM — сборку Astro-образа делать в CI и пушить в registry, а не на сервере (риск OOM при build + Directus + PG).
+- ⏳ **Шаг 4** — сид прод-Directus (schema apply + прогон `seo/_*_directus.py` против `https://admin.printmos.ru`).
+- ⏳ **Шаг 5** — CI/CD (GitHub Actions: build образа → push registry → SSH deploy).
+- ⏳ **Шаг 6** — триггер пересборки on-publish. **Шаг 7** — CWV/полировка/бэкапы.
+
 ## 5. Открытые вопросы
 
 - Хостинг Directus: контейнер на том же VPS vs Directus Cloud / managed PG.
