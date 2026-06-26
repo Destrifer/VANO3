@@ -5,8 +5,10 @@ import { runPreflight } from "../../lib/preflight";
 // загрузка в Directus files серверным токеном. Возвращает id файла + отчёт.
 export const prerender = false;
 
-const DIRECTUS_URL = import.meta.env.DIRECTUS_URL ?? "http://localhost:8055";
-const DIRECTUS_TOKEN = import.meta.env.DIRECTUS_TOKEN;
+// Рантайм-секреты: process.env (Node-адаптер) с фолбэком на import.meta.env (dev).
+const DIRECTUS_URL =
+  process.env.DIRECTUS_URL ?? import.meta.env.DIRECTUS_URL ?? "http://localhost:8055";
+const DIRECTUS_TOKEN = process.env.DIRECTUS_TOKEN ?? import.meta.env.DIRECTUS_TOKEN;
 
 const MAX_SIZE = 50 * 1024 * 1024; // 50 МБ
 

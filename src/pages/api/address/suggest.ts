@@ -4,7 +4,8 @@ import type { APIRoute } from "astro";
 // Отдаём value + структурные поля (ФИАС/гео) для будущих API доставки.
 export const prerender = false;
 
-const TOKEN = import.meta.env.DADATA_TOKEN;
+// Рантайм-секрет: process.env (Node-адаптер) с фолбэком на import.meta.env (dev).
+const TOKEN = process.env.DADATA_TOKEN ?? import.meta.env.DADATA_TOKEN;
 const DADATA = "https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/address";
 
 function json(body: unknown, status = 200) {

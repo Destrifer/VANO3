@@ -7,8 +7,12 @@ import crypto from "node:crypto";
 //  • защиту от реплея старого токена (TTL).
 // Без состояния на сервере (stateless), только секрет.
 
+// Рантайм-секрет: process.env (Node-адаптер) с фолбэком на import.meta.env (dev).
+// Подпись и проверка идут в API-роутах (рантайм), поэтому источник секрета согласован.
 const SECRET =
-  import.meta.env.FORM_SIGNING_SECRET || "dev-insecure-form-secret-change-me";
+  process.env.FORM_SIGNING_SECRET ||
+  import.meta.env.FORM_SIGNING_SECRET ||
+  "dev-insecure-form-secret-change-me";
 
 export function signToken(issuedAt: number = Date.now()): string {
   const payload = String(issuedAt);

@@ -7,18 +7,21 @@ import { verifyToken } from "../../lib/formToken";
 // в env — он просто пропускается, заявка всё равно сохраняется.
 export const prerender = false;
 
-const DIRECTUS_URL = import.meta.env.DIRECTUS_URL ?? "http://localhost:8055";
-const DIRECTUS_TOKEN = import.meta.env.DIRECTUS_TOKEN;
+// Рантайм-секреты: process.env (Node-адаптер) с фолбэком на import.meta.env (dev).
+// import.meta.env инлайнится на СБОРКЕ и заморозил бы значения, отсутствующие в build.
+const DIRECTUS_URL =
+  process.env.DIRECTUS_URL ?? import.meta.env.DIRECTUS_URL ?? "http://localhost:8055";
+const DIRECTUS_TOKEN = process.env.DIRECTUS_TOKEN ?? import.meta.env.DIRECTUS_TOKEN;
 
-const TG_TOKEN = import.meta.env.TELEGRAM_BOT_TOKEN;
-const TG_CHAT = import.meta.env.TELEGRAM_CHAT_ID;
+const TG_TOKEN = process.env.TELEGRAM_BOT_TOKEN ?? import.meta.env.TELEGRAM_BOT_TOKEN;
+const TG_CHAT = process.env.TELEGRAM_CHAT_ID ?? import.meta.env.TELEGRAM_CHAT_ID;
 
-const SMTP_HOST = import.meta.env.SMTP_HOST;
-const SMTP_PORT = Number(import.meta.env.SMTP_PORT ?? 587);
-const SMTP_USER = import.meta.env.SMTP_USER;
-const SMTP_PASS = import.meta.env.SMTP_PASS;
-const SMTP_FROM = import.meta.env.SMTP_FROM ?? SMTP_USER;
-const NOTIFY_EMAIL = import.meta.env.REQUEST_NOTIFY_EMAIL;
+const SMTP_HOST = process.env.SMTP_HOST ?? import.meta.env.SMTP_HOST;
+const SMTP_PORT = Number(process.env.SMTP_PORT ?? import.meta.env.SMTP_PORT ?? 587);
+const SMTP_USER = process.env.SMTP_USER ?? import.meta.env.SMTP_USER;
+const SMTP_PASS = process.env.SMTP_PASS ?? import.meta.env.SMTP_PASS;
+const SMTP_FROM = process.env.SMTP_FROM ?? import.meta.env.SMTP_FROM ?? SMTP_USER;
+const NOTIFY_EMAIL = process.env.REQUEST_NOTIFY_EMAIL ?? import.meta.env.REQUEST_NOTIFY_EMAIL;
 
 type Body = {
   name?: string;

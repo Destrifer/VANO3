@@ -8,8 +8,12 @@ import { findDelivery, deliveryCost, findPayment } from "../../lib/checkout";
 // вложенно серверным токеном. Оплата отложена — заказ = заявка.
 export const prerender = false;
 
-const DIRECTUS_URL = import.meta.env.DIRECTUS_URL ?? "http://localhost:8055";
-const DIRECTUS_TOKEN = import.meta.env.DIRECTUS_TOKEN;
+// Рантайм-секреты: process.env (живой env контейнера на Node-адаптере) с фолбэком на
+// import.meta.env (локальный dev). import.meta.env инлайнится на СБОРКЕ и заморозил бы
+// значения, отсутствующие в момент build (напр. токен).
+const DIRECTUS_URL =
+  process.env.DIRECTUS_URL ?? import.meta.env.DIRECTUS_URL ?? "http://localhost:8055";
+const DIRECTUS_TOKEN = process.env.DIRECTUS_TOKEN ?? import.meta.env.DIRECTUS_TOKEN;
 
 type IncomingItem = {
   name?: string;

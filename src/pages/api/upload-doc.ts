@@ -4,8 +4,10 @@ import type { APIRoute } from "astro";
 // чем у макета. В Directus files серверным токеном.
 export const prerender = false;
 
-const DIRECTUS_URL = import.meta.env.DIRECTUS_URL ?? "http://localhost:8055";
-const DIRECTUS_TOKEN = import.meta.env.DIRECTUS_TOKEN;
+// Рантайм-секреты: process.env (Node-адаптер) с фолбэком на import.meta.env (dev).
+const DIRECTUS_URL =
+  process.env.DIRECTUS_URL ?? import.meta.env.DIRECTUS_URL ?? "http://localhost:8055";
+const DIRECTUS_TOKEN = process.env.DIRECTUS_TOKEN ?? import.meta.env.DIRECTUS_TOKEN;
 
 const MAX_SIZE = 20 * 1024 * 1024; // 20 МБ
 const ALLOWED_EXT = new Set(["pdf", "jpg", "jpeg", "png", "doc", "docx", "xls", "xlsx", "rtf", "odt"]);
