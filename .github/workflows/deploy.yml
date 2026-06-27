@@ -4,7 +4,7 @@ name: Build & Deploy
 # затем по SSH сервер тянет образ и перезапускает сайт.
 on:
   push:
-    branches: [infra/deployment]
+    branches: [master]
   workflow_dispatch:
   # Внешний триггер: Directus Flow при публикации контента POST-ит в GitHub dispatches
   # (event_type: deploy-site) -> пересборка статики с актуальным контентом.
