@@ -5,6 +5,12 @@ name: Build & Deploy
 on:
   push:
     branches: [master]
+    # Правки доков/SEO-инструментов не меняют сайт — не пересобираем.
+    # (repository_dispatch и workflow_dispatch не зависят от paths-ignore.)
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - "seo/**"
   workflow_dispatch:
   # Внешний триггер: Directus Flow при публикации контента POST-ит в GitHub dispatches
   # (event_type: deploy-site) -> пересборка статики с актуальным контентом.
