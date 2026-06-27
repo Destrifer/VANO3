@@ -6,10 +6,15 @@ on:
   push:
     branches: [infra/deployment]
   workflow_dispatch:
+  # Внешний триггер: Directus Flow при публикации контента POST-ит в GitHub dispatches
+  # (event_type: deploy-site) -> пересборка статики с актуальным контентом.
+  repository_dispatch:
+    types: [deploy-site]
 
 concurrency:
   group: deploy-prod
-  cancel-in-progress: false
+  # Последний триггер выигрывает: частые правки контента схлопываются в одну сборку.
+  cancel-in-progress: true
 
 env:
   IMAGE: ghcr.io/destrifer/printmos-astro
