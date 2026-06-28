@@ -3,7 +3,7 @@
 // компонентов (как визитки) + специфика: полосы и авто-переплёт, обложка/блок.
 import { inject } from "vue";
 import { mpCalcKey } from "../composables/useMultipageCalculator";
-import FormatField from "./calculator/FormatField.vue";
+import SizePicker from "./calculator/SizePicker.vue";
 import PaperSelect from "./calculator/PaperSelect.vue";
 import SidesSelect from "./calculator/SidesSelect.vue";
 import CoatingField from "./calculator/CoatingField.vue";
@@ -17,25 +17,25 @@ const onInput = (e: Event) => calc.setPages(+(e.target as HTMLInputElement).valu
 
 <template>
   <div class="flex flex-col gap-5">
-    <!-- Формат (свой размер на месте, без сдвига) -->
-    <FormatField
+    <!-- Формат (ряд плиток-иконок; «свой» — поповер ввода) -->
+    <SizePicker
       label="Формат"
-      :sizes="calc.product.sizes"
-      :allow-custom="true"
-      v-model:index="calc.formatIndex"
-      :custom-mode="calc.customMode"
+      :tiles="calc.sizeTiles"
+      :active-id="calc.activeTileId"
+      :input="calc.sizeInput"
       v-model:customW="calc.customW"
       v-model:customH="calc.customH"
+      :diameter="0"
       :min="50"
       :max="calc.maxDim"
-      @back="calc.backToList"
+      @select="calc.selectTile"
     >
       <template #hint>
         <span v-if="!calc.formatValid" class="text-xs text-error">
           Размер должен влезать на печатный лист (до {{ calc.maxDim }} мм по большей стороне).
         </span>
       </template>
-    </FormatField>
+    </SizePicker>
 
     <!-- Полосы: слайдер (×4) + степпер/ввод; переплёт подстраивается -->
     <div class="flex flex-col gap-1.5">

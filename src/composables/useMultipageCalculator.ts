@@ -8,6 +8,7 @@ import type { PricingData } from "../lib/pricing/engine";
 import type { ProductPricing, PaperOption } from "../lib/pricing/data";
 import type { SpecInput } from "../lib/pricing/spec";
 import { isLaminationLocked, forcedLaminationIndex } from "../lib/pricing/rules";
+import { glyphFor, splitLabel, type SizeTile } from "../lib/calculator/sizeGlyph";
 
 type Group = { group: string; options: { index: number; name: string }[] };
 function buildGroups(papers: PaperOption[]): Group[] {
@@ -47,6 +48,24 @@ export function useMultipageCalculator(props: {
       : { w: format.value?.width ?? 0, h: format.value?.height ?? 0 },
   );
   const formatValid = computed(() => fits(dims.value.w, dims.value.h));
+
+  // — Плитки-иконки выбора формата (без формы — многостраничное всегда прямоуг.) —
+  const sizeTiles = computed<SizeTile[]>(() => {
+    const tiles: SizeTile[] = product.sizes.map((s, i) => {
+      const { top, sub } = splitLabel(s.label, s.width, s.height, s.shape);
+      return { id: `p${i}`, glyph: glyphFor(s.shape, s.width, s.height), label: top, sub };
+    });
+    tiles.push({
+      id: "custom", glyph: "custom", label: "Свой",
+      sub: customMode.value ? `${customW.value}×${customH.value}` : undefined,
+    });
+    return tiles;
+  });
+  const activeTileId = computed(() => (customMode.value ? "custom" : `p${formatIndex.value}`));
+  const sizeInput = computed<"rect" | "round" | null>(() => (customMode.value ? "rect" : null));
+  function selectTile(id: string) {
+    formatIndex.value = id === "custom" ? -1 : Number(id.slice(1));
+  }
 
   // — Полосы (кратно 4, свободно в общем диапазоне) — переплёт подстраивается —
   const allMin = Math.min(...product.bindings.map((b) => b.minPages), 8);
@@ -207,6 +226,8 @@ export function useMultipageCalculator(props: {
     product, pricing,
     // формат
     formatIndex, customMode, customW, customH, backToList, format, dims, formatValid, maxDim,
+    // плитки-иконки выбора формата
+    sizeTiles, activeTileId, sizeInput, selectTile,
     // полосы / переплёт
     pages, pagesMin, pagesMax, setPages, incPages, decPages,
     bindingIndex, binding, bindingCompatible,
