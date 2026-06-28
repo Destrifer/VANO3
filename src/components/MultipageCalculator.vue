@@ -7,7 +7,7 @@ import SizePicker from "./calculator/SizePicker.vue";
 import PaperSelect from "./calculator/PaperSelect.vue";
 import SidesSelect from "./calculator/SidesSelect.vue";
 import CoatingField from "./calculator/CoatingField.vue";
-import QuantitySelect from "./calculator/QuantitySelect.vue";
+import QuantitySlider from "./calculator/QuantitySlider.vue";
 import ArtworkUpload from "./calculator/ArtworkUpload.vue";
 
 const calc = inject(mpCalcKey)!;
@@ -108,8 +108,14 @@ const onInput = (e: Event) => calc.setPages(+(e.target as HTMLInputElement).valu
 
     <!-- Тираж -->
     <div class="flex flex-col gap-1.5">
-      <span class="text-sm font-semibold">Тираж</span>
-      <QuantitySelect :presets="calc.presets" v-model="calc.quantity" :per-unit="calc.perUnit" />
+      <div class="flex items-baseline justify-between gap-3">
+        <span class="text-sm font-semibold">Тираж</span>
+        <span class="text-sm" v-if="calc.perUnit(calc.quantity) != null">
+          <span class="opacity-70">{{ calc.perUnit(calc.quantity)?.toFixed(2) }} ₽/шт</span>
+          <span class="font-bold" v-if="calc.result"> · {{ calc.money(calc.result.total) }} ₽</span>
+        </span>
+      </div>
+      <QuantitySlider :presets="calc.presets" v-model="calc.quantity" />
     </div>
 
     <ArtworkUpload />
