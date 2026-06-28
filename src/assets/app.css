@@ -552,44 +552,72 @@ body > main {
   flex: none;
 }
 
-/* Компактная плитка-альтернатива (правый верхний угол хаба/кластера). НЕ герой-
-   карточка: иконка+название+цена по центру, высота по контенту. Самодостаточна —
-   не зависит от медиа/боди новой главной разметки (ProductTile.astro даёт старую). */
+/* Сегмент-плитка кластера (ряд под H1): иконка слева + название/цена, высота по
+   контенту. Самодостаточна — не зависит от медиа/боди главной разметки.
+   Активный сегмент (текущий кластер) — тёмная заливка. */
 .product-tile--compact {
   height: auto;
+  flex-direction: row;
   align-items: center;
-  justify-content: center;
-  gap: 0.1rem;
-  padding: 0.25rem 0.35rem;
-  text-align: center;
+  justify-content: flex-start;
+  gap: 0.55rem;
+  padding: 0.5rem 0.7rem;
+  text-align: left;
+  border: var(--border) solid var(--color-base-300);
+  border-radius: 0.75rem;
+  background: var(--color-base-100);
+  transition: border-color 0.12s, background 0.12s, color 0.12s;
 }
 .product-tile--compact .product-tile__icon {
-  width: 1.4rem;
-  height: 1.4rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  flex: none;
+}
+.product-tile--compact .product-tile__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  min-width: 0;
 }
 .product-tile--compact .product-tile__name {
-  font-size: 0.72rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  line-height: 1.1;
+  white-space: nowrap;
 }
 .product-tile--compact .product-tile__meta {
-  font-size: 0.66rem;
+  font-size: 0.72rem;
+  line-height: 1;
+  color: color-mix(in oklch, var(--color-base-content) 55%, transparent);
+}
+.product-tile--compact:hover {
+  border-color: var(--color-base-content);
+  box-shadow: none; /* без inset-полосы базовой карточки */
+}
+.product-tile--compact.product-tile--active {
+  background: var(--color-base-content);
+  border-color: var(--color-base-content);
+  color: var(--color-base-100);
+}
+.product-tile--compact.product-tile--active .product-tile__meta {
+  color: color-mix(in oklch, var(--color-base-100) 75%, transparent);
 }
 
-/* Заголовок хаба/кластера: слева крошки-заголовок, справа плитки-альтернативы */
+/* Заголовок хаба/кластера (крошки-заголовок). Плитки-сегменты — отдельным рядом
+   под ним (.segment-nav), не сбоку. */
 .hub-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem 2rem;
+  min-width: 0;
 }
 .hub-head__title {
   min-width: 0;
 }
 
-/* Сетка плиток-альтернатив: один ряд на десктопе (все помещаются), компактные.
-   На мобильных — перенос. */
+/* Ряд сегментов-кластеров под заголовком: горизонтально во всю ширину, с нижним
+   разделителем. На узких экранах переносится. */
 .segment-nav {
-  margin-left: auto;
+  margin: 0.5rem 0 1.25rem;
+  padding-bottom: 1rem;
+  border-bottom: var(--border) solid var(--color-base-300);
 }
 .segment-nav__grid {
   list-style: none;
@@ -597,16 +625,10 @@ body > main {
   padding: 0;
   display: flex;
   flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 0.4rem;
+  gap: 0.5rem;
 }
 .segment-nav__grid > li {
-  width: 5.25rem;
-}
-@media (min-width: 768px) {
-  .segment-nav__grid {
-    flex-wrap: nowrap; /* один ряд */
-  }
+  display: flex;
 }
 
 /* --- Шапка сайта --- */

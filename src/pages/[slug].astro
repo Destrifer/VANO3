@@ -163,11 +163,9 @@ if (props.type === "product") {
         {h1}
       </h1>
     </div>
-    {/* Плитки-альтернативы (кластеры) — правый верхний угол, первый экран */}
-    {props.type === "product" && tiles.length > 0 && (
-      <SegmentTiles items={tiles} />
-    )}
   </div>
+  {/* Ряд сегментов-кластеров — под заголовком, во всю ширину */}
+  {props.type === "product" && tiles.length > 0 && <SegmentTiles items={tiles} />}
 
   {
     props.type === "category" && (

@@ -10,7 +10,8 @@ interface Props {
   icon?: string | null;
   priceFrom?: number | null;
   leadDays?: number | null; // если задан — показываем бейдж срока готовности
-  compact?: boolean; // компактная плитка (правый верхний блок альтернатив)
+  compact?: boolean; // компактная плитка (ряд сегментов-кластеров под заголовком)
+  active?: boolean; // текущий сегмент (тёмная плитка, aria-current)
 }
 const {
   href,
@@ -19,16 +20,22 @@ const {
   priceFrom = null,
   leadDays = null,
   compact = false,
+  active = false,
 } = Astro.props;
 const money = (n: number) => n.toLocaleString("ru-RU", { maximumFractionDigits: 0 });
 const priceLabel = priceFrom != null ? `от ${money(priceFrom)} ₽` : "Рассчитать";
+const cls = ["product-tile", compact && "product-tile--compact", active && "product-tile--active"]
+  .filter(Boolean)
+  .join(" ");
 ---
 
 <li>
-  <a class={`product-tile${compact ? " product-tile--compact" : ""}`} href={href}>
+  <a class={cls} href={href} aria-current={active ? "page" : undefined}>
     {icon && <Icon name={icon} class="product-tile__icon" />}
-    <span class="product-tile__name">{name}</span>
-    <span class="product-tile__meta">{priceLabel}</span>
+    <span class="product-tile__text">
+      <span class="product-tile__name">{name}</span>
+      <span class="product-tile__meta">{priceLabel}</span>
+    </span>
     {leadDays != null && <ReadyBadge leadDays={leadDays} />}
   </a>
 </li>
