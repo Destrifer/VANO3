@@ -6,7 +6,13 @@ import { computed, ref } from "vue";
 
 type Swatch = { name: string; code: string; hex: string | null; image: string | null };
 
-const props = defineProps<{ colors: Swatch[]; modelValue: number }>();
+// inline=true — рисуем сразу сетку свотчей (без кнопки-дропдауна): для блока
+// материала, где цвет выбирается прямо под плитками. По умолчанию — дропдаун
+// (фольга в «Покрытии»).
+const props = withDefaults(
+  defineProps<{ colors: Swatch[]; modelValue: number; inline?: boolean }>(),
+  { inline: false },
+);
 const emit = defineEmits<{ "update:modelValue": [value: number] }>();
 
 const current = computed(() => props.colors[props.modelValue] ?? props.colors[0]);
@@ -28,7 +34,40 @@ function openLightbox(c: Swatch) {
 </script>
 
 <template>
-  <div class="dropdown">
+  <!-- Сетка свотчей: общая для дропдауна (фольга) и инлайна (материал). -->
+  <div v-if="inline" class="grid max-h-44 grid-cols-6 gap-2 overflow-y-auto">
+    <div
+      v-for="(c, i) in colors"
+      :key="i"
+      role="button"
+      tabindex="0"
+      class="relative aspect-square w-full cursor-pointer rounded-box border"
+      :class="i === modelValue ? 'border-base-content ring-2 ring-base-content' : 'border-base-300'"
+      :style="swatchStyle(c)"
+      :title="c.name + (c.code ? ' · ' + c.code : '')"
+      @click="emit('update:modelValue', i)"
+    >
+      <span
+        v-if="c.image"
+        role="button"
+        tabindex="0"
+        aria-label="Увеличить"
+        class="absolute right-0.5 top-0.5 grid h-5 w-5 place-items-center rounded-full border border-base-content bg-base-100"
+        @click.stop="openLightbox(c)"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+      </span>
+    </div>
+    <dialog ref="lightboxEl" class="modal">
+      <div class="modal-box max-w-lg p-2">
+        <img v-if="lightbox" :src="lightbox.image" :alt="lightbox.name" class="w-full rounded" />
+        <p v-if="lightbox" class="mt-2 text-center text-sm">{{ lightbox.name }}</p>
+      </div>
+      <form method="dialog" class="modal-backdrop"><button>закрыть</button></form>
+    </dialog>
+  </div>
+
+  <div v-else class="dropdown">
     <div tabindex="0" role="button" class="btn btn-outline gap-2">
       <span class="h-5 w-5 rounded border border-base-300" :style="swatchStyle(current)"></span>
       {{ current?.name }}

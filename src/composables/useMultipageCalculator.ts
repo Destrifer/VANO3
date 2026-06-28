@@ -10,13 +10,13 @@ import type { SpecInput } from "../lib/pricing/spec";
 import { isLaminationLocked, forcedLaminationIndex } from "../lib/pricing/rules";
 import { glyphFor, splitLabel, type SizeTile } from "../lib/calculator/sizeGlyph";
 
-type Group = { group: string; options: { index: number; name: string }[] };
+type Group = { group: string; options: { index: number; name: string; image: string | null }[] };
 function buildGroups(papers: PaperOption[]): Group[] {
   const groups: Group[] = [];
   papers.forEach((p, index) => {
     let g = groups.find((x) => x.group === p.group);
     if (!g) { g = { group: p.group, options: [] }; groups.push(g); }
-    g.options.push({ index, name: p.name });
+    g.options.push({ index, name: p.name, image: p.image });
   });
   return groups;
 }
