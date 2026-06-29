@@ -36,14 +36,16 @@ if (props.preset) applyMultipagePreset(calc, props.preset);
       <BookletPreview />
       <ArtworkUpload />
     </div>
-    <OrderPlate class="cfg__plate" :name="name" :slug="slug" />
 
     <div class="cfg__gallery">
       <slot name="gallery" />
     </div>
   </div>
 
-  <!-- Отступ под фикс. нижнюю панель итогов на мобайле -->
+  <!-- Плавающая корзина ПОВЕРХ контента (fixed, см. OrderPlate). Вне сетки. -->
+  <OrderPlate :name="name" :slug="slug" />
+
+  <!-- Отступ под фикс. панели на мобайле -->
   <div class="cfg__bottom-spacer" aria-hidden="true"></div>
 </template>
 
@@ -57,12 +59,10 @@ if (props.preset) applyMultipagePreset(calc, props.preset);
   grid-template-areas:
     "main"
     "controls"
-    "plate"
     "gallery";
 }
 .cfg__main { grid-area: main; display: flex; flex-direction: column; gap: 1rem; }
 .cfg__controls { grid-area: controls; }
-.cfg__plate { grid-area: plate; }
 .cfg__gallery { grid-area: gallery; }
 
 @media (min-width: 768px) {
@@ -71,17 +71,13 @@ if (props.preset) applyMultipagePreset(calc, props.preset);
     grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
     grid-template-areas:
       "controls main"
-      "controls plate"
       "gallery  gallery";
   }
-  .cfg__plate { position: sticky; top: 1rem; }
 }
 @media (min-width: 1280px) {
   .cfg {
-    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) minmax(0, 19rem);
-    grid-template-areas:
-      "controls main    plate"
-      "controls gallery plate";
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas: "controls main gallery";
   }
 }
 

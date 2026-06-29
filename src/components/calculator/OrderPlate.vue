@@ -50,8 +50,9 @@ function add() {
 </script>
 
 <template>
-  <!-- Десктоп: компактная карточка (sticky задаёт раскладка конфигуратора).
-       Мобайл (<768): фиксированная нижняя панель — цена + «В корзину». -->
+  <!-- Плавающая корзина ПОВЕРХ контента: десктоп — карточка в правом нижнем
+       углу (position: fixed); мобайл (<768) — нижняя панель над контакт-баром.
+       Пустую (нет расчёта) не показываем. -->
   <aside class="plate" :class="{ 'plate--empty': !calc.result }">
     <div class="plate__inner">
       <template v-if="calc.result">
@@ -77,6 +78,8 @@ function add() {
           </button>
         </div>
         <p class="plate__note">Предварительный расчёт. Точная цена — после проверки макета.</p>
+        <!-- доп. действие (напр. «Получить ссылку») — только десктоп -->
+        <div class="plate__extra"><slot name="extra" /></div>
       </template>
       <p v-else class="plate__empty">Заполните параметры для расчёта.</p>
     </div>
@@ -84,11 +87,21 @@ function add() {
 </template>
 
 <style scoped>
+/* Десктоп: плавающая карточка в правом нижнем углу ПОВЕРХ контента. */
 .plate {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 30;
+  width: min(22rem, calc(100vw - 2rem));
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
   border: 1px solid var(--color-base-content);
   border-radius: var(--radius-box, 1rem);
   background: var(--color-base-100);
+  box-shadow: 0 10px 30px rgb(0 0 0 / 18%);
 }
+.plate--empty { display: none; } /* нет расчёта — корзину не показываем */
 .plate__inner { display: flex; flex-direction: column; gap: 0.75rem; padding: 1rem; }
 .plate__lead { display: flex; flex-direction: column; gap: 0.75rem; }
 .plate__price { font-size: 1.875rem; font-weight: 700; line-height: 1.1; }
@@ -96,6 +109,7 @@ function add() {
 .plate__btn { width: 100%; }
 .plate__note { font-size: 0.75rem; color: var(--color-base-content); opacity: 0.6; }
 .plate__empty { font-size: 0.875rem; color: var(--color-base-content); opacity: 0.6; }
+.plate__extra:empty { display: none; }
 
 .ready-plate {
   display: inline-flex;
@@ -117,9 +131,11 @@ function add() {
    Идёт ПОСЛЕ базовых правил — иначе override display:none перекрывается. */
 @media (max-width: 767px) {
   .plate {
-    position: fixed;
     left: 0;
     right: 0;
+    width: auto;
+    max-height: none;
+    overflow: visible;
     /* над глобальной контакт-панелью (.mobile-bar), а не поверх неё */
     bottom: var(--mobile-bar-h, 5rem);
     z-index: 40;
@@ -128,12 +144,12 @@ function add() {
     border-radius: 0;
     box-shadow: 0 -4px 16px rgb(0 0 0 / 10%);
   }
-  .plate--empty { display: none; } /* нет расчёта — панель не показываем */
   .plate__inner { padding: 0.6rem 1rem; }
   .plate__lead { flex-direction: row; align-items: center; justify-content: space-between; gap: 1rem; }
   .plate__price { font-size: 1.4rem; }
   .plate__btn { width: auto; flex: none; }
   .ready-plate,
-  .plate__note { display: none; }
+  .plate__note,
+  .plate__extra { display: none; }
 }
 </style>

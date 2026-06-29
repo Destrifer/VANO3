@@ -59,17 +59,6 @@ async function shareLink() {
       <Preview />
       <ArtworkUpload />
     </div>
-    <div class="cfg__plate">
-      <OrderPlate :name="name" :slug="slug" />
-      <button
-        type="button"
-        class="btn btn-outline btn-sm btn-block cfg__share"
-        :class="{ 'btn-success': shared }"
-        @click="shareLink"
-      >
-        {{ shared ? "Ссылка скопирована ✓" : "Получить ссылку на расчёт" }}
-      </button>
-    </div>
 
     <div class="cfg__gallery">
       <slot name="gallery" />
@@ -79,7 +68,21 @@ async function shareLink() {
   <!-- Динамическая таблица цен (делит состояние с калькулятором) -->
   <PriceTable />
 
-  <!-- Отступ под фикс. нижнюю панель итогов на мобайле, чтобы не перекрывала контент -->
+  <!-- Плавающая корзина ПОВЕРХ контента (fixed, см. OrderPlate). Вне сетки. -->
+  <OrderPlate :name="name" :slug="slug">
+    <template #extra>
+      <button
+        type="button"
+        class="btn btn-outline btn-sm btn-block"
+        :class="{ 'btn-success': shared }"
+        @click="shareLink"
+      >
+        {{ shared ? "Ссылка скопирована ✓" : "Получить ссылку на расчёт" }}
+      </button>
+    </template>
+  </OrderPlate>
+
+  <!-- Отступ под фикс. панели на мобайле, чтобы не перекрывали контент -->
   <div class="cfg__bottom-spacer" aria-hidden="true"></div>
 </template>
 
@@ -93,12 +96,10 @@ async function shareLink() {
   grid-template-areas:
     "main"
     "controls"
-    "plate"
     "gallery";
 }
 .cfg__main { grid-area: main; display: flex; flex-direction: column; gap: 1rem; }
 .cfg__controls { grid-area: controls; }
-.cfg__plate { grid-area: plate; display: flex; flex-direction: column; gap: 0.75rem; }
 .cfg__gallery { grid-area: gallery; }
 
 @media (min-width: 768px) {
@@ -107,24 +108,16 @@ async function shareLink() {
     grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
     grid-template-areas:
       "controls main"
-      "controls plate"
       "gallery  gallery";
   }
-  /* Плашка «плавает» — прилипает при скролле длинной колонки полей. */
-  .cfg__plate { position: sticky; top: 1rem; }
 }
 @media (min-width: 1280px) {
   .cfg {
-    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) minmax(0, 19rem);
-    grid-template-areas:
-      "controls main    plate"
-      "controls gallery plate";
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas: "controls main gallery";
   }
 }
 
-/* Мобайл: панель итогов фиксирована снизу (см. OrderPlate) — share-кнопку
-   оставляем в потоке, добавляем нижний отступ страницы под высоту панели. */
-.cfg__share { /* на десктопе обычная кнопка под плашкой */ }
 .cfg__bottom-spacer { display: none; }
 @media (max-width: 767px) {
   /* под контакт-панель + панель итогов над ней */
