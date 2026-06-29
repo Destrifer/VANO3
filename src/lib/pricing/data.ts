@@ -5,6 +5,8 @@ const PAPER_THUMB_W = 160;
 const PAPER_THUMB_H = 120;
 const COLOR_SWATCH = 64; // свотч цвета (квадрат)
 const COLOR_FULL = 1024; // картинка цвета в lightbox (ресайз по ширине)
+const FIN_THUMB_W = 120; // миниатюра ламинации (4:3, под плитку)
+const FIN_THUMB_H = 90;
 
 // Маппинг цвета (бумага/фольга) → UI: hex/URL + адаптивные свотч и lightbox.
 function mapColor(c: any): PaperColor {
@@ -79,6 +81,7 @@ export type FinishingOption = Finishing & {
   id: number;
   group: string | null;
   image: string | null; // фото отделки (finishing_options.image)
+  thumb: ResponsiveImage; // адаптивная миниатюра (avif/webp) для плитки ламинации
   colors: PaperColor[];
 };
 
@@ -448,6 +451,7 @@ export async function getProductPricing(
         name: f.name,
         group: f.group ?? null,
         image: assetUrl(f.image),
+        thumb: responsiveAsset(f.image, FIN_THUMB_W, FIN_THUMB_H),
         unit: f.unit,
         unitPrice: f.unit_price == null ? null : num(f.unit_price),
         setupPrice: num(f.setup_price),
