@@ -7,6 +7,8 @@ const COLOR_SWATCH = 64; // свотч цвета (квадрат)
 const COLOR_FULL = 1024; // картинка цвета в lightbox (ресайз по ширине)
 const FIN_THUMB_W = 120; // миниатюра ламинации (4:3, под плитку)
 const FIN_THUMB_H = 90;
+const FOLD_THUMB_W = 120; // иконка фальцовки (4:3, под плитку)
+const FOLD_THUMB_H = 90;
 
 // Маппинг цвета (бумага/фольга) → UI: hex/URL + адаптивные свотч и lightbox.
 function mapColor(c: any): PaperColor {
@@ -48,7 +50,8 @@ export type SizePreset = {
 
 export type BindingOption = Binding & { id: number };
 
-export type FoldType = { name: string; folds: number; kind: string }; // тип фальцовки; kind: book|accordion|roll
+// тип фальцовки; kind: book|accordion|roll; image/thumb — иконка сложения
+export type FoldType = { name: string; folds: number; kind: string; image: string | null; thumb: ResponsiveImage };
 
 export type PaperColor = {
   id: number;
@@ -413,6 +416,8 @@ export async function getProductPricing(
       name: String(f.name ?? ""),
       folds: num(f.folds),
       kind: String(f.kind ?? "accordion"),
+      image: assetUrl(f.image),
+      thumb: responsiveAsset(f.image, FOLD_THUMB_W, FOLD_THUMB_H),
     })),
     sizes: (p.sizes ?? []).map((s: any) => ({
       label: s.label,
