@@ -3,6 +3,21 @@ import { directusFetch, assetUrl, responsiveAsset, type ResponsiveImage } from "
 // Размер миниатюры материала в блоке «Материал» (4:3, под плитку сетки).
 const PAPER_THUMB_W = 160;
 const PAPER_THUMB_H = 120;
+const COLOR_SWATCH = 64; // свотч цвета (квадрат)
+const COLOR_FULL = 1024; // картинка цвета в lightbox (ресайз по ширине)
+
+// Маппинг цвета (бумага/фольга) → UI: hex/URL + адаптивные свотч и lightbox.
+function mapColor(c: any): PaperColor {
+  return {
+    id: num(c.id),
+    name: c.name,
+    code: c.code,
+    hex: c.hex ?? null,
+    image: assetUrl(c.image),
+    thumb: responsiveAsset(c.image, COLOR_SWATCH, COLOR_SWATCH),
+    full: responsiveAsset(c.image, COLOR_FULL, undefined, [1]),
+  };
+}
 import { computePrice } from "./engine";
 import type {
   PricingData,
@@ -39,6 +54,8 @@ export type PaperColor = {
   code: string;
   hex: string | null;
   image: string | null; // URL картинки-свотча или null
+  thumb: ResponsiveImage; // адаптивный свотч (avif/webp, квадрат)
+  full: ResponsiveImage; // адаптивная картинка для lightbox (ресайз по ширине)
 };
 
 // Материал для UI: цена для движка (name+price) + презентация (group/description/colors).
@@ -368,13 +385,7 @@ export async function getProductPricing(
       colors: (pp.colors ?? [])
         .slice()
         .sort((a: any, b: any) => (a.sort ?? 0) - (b.sort ?? 0))
-        .map((c: any) => ({
-          id: num(c.id),
-          name: c.name,
-          code: c.code,
-          hex: c.hex ?? null,
-          image: assetUrl(c.image),
-        })),
+        .map(mapColor),
       fixedPrice: hasFixed
         ? pp.fixed_price.map((b: any) => ({ to: num(b.to), price: num(b.price) })).sort((a: any, z: any) => a.to - z.to)
         : undefined,
@@ -447,13 +458,7 @@ export async function getProductPricing(
         colors: (f.colors ?? [])
           .slice()
           .sort((a: any, b: any) => (a.sort ?? 0) - (b.sort ?? 0))
-          .map((c: any) => ({
-            id: num(c.id),
-            name: c.name,
-            code: c.code,
-            hex: c.hex ?? null,
-            image: assetUrl(c.image),
-          })),
+          .map(mapColor),
       } as FinishingOption;
     }),
   };

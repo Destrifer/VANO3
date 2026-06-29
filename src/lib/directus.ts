@@ -37,13 +37,11 @@ export type ResponsiveImage = {
 
 const ASSET_QUALITY = 70;
 
-function assetVariant(id: string, w: number, h: number, format?: string): string {
-  const p = new URLSearchParams({
-    width: String(w),
-    height: String(h),
-    fit: "cover",
-    quality: String(ASSET_QUALITY),
-  });
+// height задан → кроп под бокс (fit=cover); опущен → ресайз по ширине с
+// сохранением пропорций (для lightbox, чтобы картинку не обрезало).
+function assetVariant(id: string, w: number, h: number | undefined, format?: string): string {
+  const p = new URLSearchParams({ width: String(w), quality: String(ASSET_QUALITY) });
+  if (h !== undefined) { p.set("height", String(h)); p.set("fit", "cover"); }
   if (format) p.set("format", format);
   return `${DIRECTUS_PUBLIC_URL}/assets/${id}?${p.toString()}`;
 }
@@ -51,17 +49,21 @@ function assetVariant(id: string, w: number, h: number, format?: string): string
 export function responsiveAsset(
   id: string | null | undefined,
   width: number,
-  height: number,
+  height?: number,
   densities: number[] = [1, 2], // 1x + retina
 ): ResponsiveImage {
   if (!id) return null;
   const srcset = (format?: string) =>
     densities
-      .map((d) => `${assetVariant(id, Math.round(width * d), Math.round(height * d), format)} ${d}x`)
+      .map((d) => {
+        const w = Math.round(width * d);
+        const h = height === undefined ? undefined : Math.round(height * d);
+        return `${assetVariant(id, w, h, format)} ${d}x`;
+      })
       .join(", ");
   return {
     width,
-    height,
+    height: height ?? width, // только для атрибута/aspect; при ресайзе по ширине переопределяется CSS
     src: assetVariant(id, width, height),
     sources: [
       { type: "image/avif", srcset: srcset("avif") },

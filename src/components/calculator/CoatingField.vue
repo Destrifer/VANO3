@@ -5,11 +5,12 @@
 import SwatchPalette from "./SwatchPalette.vue";
 import InfoTip from "../InfoTip.vue";
 import { optionInfo } from "../../lib/optionInfo";
+import type { ResponsiveImage } from "../../lib/directus";
 
 const lamInfo = optionInfo("Ламинация");
 const foilInfo = optionInfo("Фольгирование");
 
-type Color = { name: string; code: string; hex: string | null; image: string | null };
+type Color = { name: string; code: string; hex: string | null; image: string | null; thumb: ResponsiveImage; full: ResponsiveImage };
 defineProps<{
   laminationOptions: { name: string }[];
   laminationIndex: number;

@@ -6,7 +6,7 @@ import { computed, ref, watch } from "vue";
 import SwatchPalette from "./SwatchPalette.vue";
 import type { ResponsiveImage } from "../../lib/directus";
 
-type Color = { name: string; code: string; hex: string | null; image: string | null };
+type Color = { name: string; code: string; hex: string | null; image: string | null; thumb: ResponsiveImage; full: ResponsiveImage };
 type Option = { index: number; name: string; thumb: ResponsiveImage };
 type Group = { group: string; options: Option[] };
 const props = defineProps<{
