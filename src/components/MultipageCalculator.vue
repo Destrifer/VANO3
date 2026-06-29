@@ -8,6 +8,7 @@ import PaperSelect from "./calculator/PaperSelect.vue";
 import SidesSelect from "./calculator/SidesSelect.vue";
 import CoatingField from "./calculator/CoatingField.vue";
 import QuantitySlider from "./calculator/QuantitySlider.vue";
+import OptionTile from "./calculator/OptionTile.vue";
 
 const calc = inject(mpCalcKey)!;
 const onRange = (e: Event) => calc.setPages(+(e.target as HTMLInputElement).value);
@@ -77,28 +78,18 @@ function bindGlyph(name: string): string {
     <div class="flex flex-col gap-1.5">
       <span class="text-sm font-semibold">Переплёт</span>
       <div class="flex flex-wrap gap-2" role="radiogroup" aria-label="Переплёт">
-        <button
+        <OptionTile
           v-for="(b, i) in calc.product.bindings"
           :key="i"
-          type="button"
-          role="radio"
-          :aria-checked="calc.bindingIndex === i"
+          :label="b.name"
+          :sub="`${b.minPages}–${b.maxPages} полос`"
+          :thumb="b.thumb"
+          :glyph="bindGlyph(b.name)"
+          :active="calc.bindingIndex === i"
           :disabled="!calc.bindingCompatible(b)"
           :title="calc.bindingCompatible(b) ? b.name : `${b.name} — ${b.minPages}–${b.maxPages} полос`"
-          class="bind-tile"
-          :class="{ 'bind-tile--on': calc.bindingIndex === i, 'bind-tile--off': !calc.bindingCompatible(b) }"
-          @click="calc.bindingCompatible(b) && (calc.bindingIndex = i)"
-        >
-          <span class="bind-tile__thumb">
-            <picture v-if="b.thumb">
-              <source v-for="s in b.thumb.sources" :key="s.type" :type="s.type" :srcset="s.srcset" />
-              <img :src="b.thumb.src" :alt="b.name" class="bind-tile__img" loading="lazy" decoding="async" fetchpriority="low" />
-            </picture>
-            <svg v-else viewBox="0 0 24 24" aria-hidden="true" class="bind-tile__glyph" v-html="bindGlyph(b.name)" />
-          </span>
-          <span class="bind-tile__name">{{ b.name }}</span>
-          <span class="bind-tile__sub">{{ b.minPages }}–{{ b.maxPages }} полос</span>
-        </button>
+          @select="calc.bindingCompatible(b) && (calc.bindingIndex = i)"
+        />
       </div>
       <span class="text-xs opacity-60">подбирается автоматически по числу полос</span>
     </div>
@@ -151,52 +142,3 @@ function bindGlyph(name: string): string {
 
   </div>
 </template>
-
-<style scoped>
-/* Плитки переплёта — единый вид с остальными (.coat-tile/.fold-tile).
-   Несовместимые (по числу полос) — приглушены и некликабельны. */
-.bind-tile {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.3rem;
-  width: 6.5rem;
-  padding: 0.4rem;
-  border: 1px solid var(--color-base-300, #d6d3cd);
-  border-radius: 0.75rem;
-  background: var(--color-base-100, #fff);
-  cursor: pointer;
-  transition: border-color 0.12s, background 0.12s;
-}
-.bind-tile:hover { border-color: var(--color-base-content, #555); }
-.bind-tile--on {
-  border-color: var(--color-primary, #1f1f1f);
-  border-width: 2px;
-  padding: calc(0.4rem - 1px);
-  background: var(--color-base-200, #f3f1ea);
-}
-.bind-tile--off { cursor: not-allowed; opacity: 0.4; }
-.bind-tile--off:hover { border-color: var(--color-base-300, #d6d3cd); }
-.bind-tile__thumb {
-  display: grid;
-  place-items: center;
-  aspect-ratio: 4 / 3;
-  width: 100%;
-  overflow: hidden;
-  border-radius: 0.5rem;
-  background-color: var(--color-base-200, #f3f1ea);
-}
-.bind-tile__thumb picture { display: contents; }
-.bind-tile__img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.bind-tile__glyph { width: 1.7rem; height: 1.7rem; opacity: 0.4; }
-.bind-tile__name {
-  font-size: 0.72rem;
-  line-height: 1.1;
-  text-align: center;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-.bind-tile__sub { font-size: 0.65rem; line-height: 1; opacity: 0.55; white-space: nowrap; }
-</style>

@@ -6,6 +6,7 @@
 // инпутов — через v-model-прокси у родителя (тот же приём, что в FormatField).
 import { ref, watch, nextTick, onMounted, onBeforeUnmount } from "vue";
 import SizeGlyph from "./SizeGlyph.vue";
+import OptionTile from "./OptionTile.vue";
 import type { SizeTile } from "../../lib/calculator/sizeGlyph";
 
 const props = defineProps<{
@@ -70,21 +71,17 @@ onBeforeUnmount(() => {
 
     <div ref="rootRef" class="relative">
       <div class="flex flex-wrap gap-2" role="radiogroup" :aria-label="label ?? 'Размер'">
-        <button
+        <OptionTile
           v-for="t in tiles"
           :key="t.id"
-          type="button"
-          role="radio"
-          :aria-checked="activeId === t.id"
+          :label="t.label"
+          :sub="t.sub || undefined"
+          :active="activeId === t.id"
           :title="t.sub ? `${t.label} · ${t.sub} мм` : t.label"
-          class="size-tile"
-          :class="{ 'size-tile--on': activeId === t.id }"
-          @click="onTileClick(t.id)"
+          @select="onTileClick(t.id)"
         >
-          <span class="size-tile__name">{{ t.label }}</span>
-          <SizeGlyph :kind="t.glyph" class="size-tile__icon" />
-          <span class="size-tile__dim">{{ t.sub || "‎" }}</span>
-        </button>
+          <template #thumb><SizeGlyph :kind="t.glyph" /></template>
+        </OptionTile>
       </div>
 
       <!-- Поповер ввода: свой размер (Ш×В) или круглая (⌀). Виден только когда
@@ -121,45 +118,6 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.size-tile {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.2rem;
-  width: 5rem;
-  padding: 0.4rem 0.3rem;
-  border: 1px solid var(--color-base-300, #d6d3cd);
-  border-radius: 0.75rem;
-  background: var(--color-base-100, #fff);
-  cursor: pointer;
-  transition: border-color 0.12s, background 0.12s;
-}
-.size-tile:hover { border-color: var(--color-base-content, #555); }
-.size-tile--on {
-  border-color: var(--color-primary, #1f1f1f);
-  border-width: 2px;
-  padding: calc(0.4rem - 1px) calc(0.3rem - 1px);
-  background: var(--color-base-200, #f3f1ea);
-}
-.size-tile__icon { width: 1.6rem; height: 1.6rem; flex: none; }
-.size-tile__name {
-  font-size: 0.75rem;
-  font-weight: 500;
-  line-height: 1.05;
-  text-align: center;
-  /* до 2 строк имени, без обрезки буквами */
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-.size-tile__dim {
-  font-size: 0.65rem;
-  line-height: 1;
-  opacity: 0.55;
-  white-space: nowrap;
-}
 .size-pop {
   position: absolute;
   top: calc(100% + 0.5rem);
