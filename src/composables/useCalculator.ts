@@ -4,7 +4,7 @@
 import { reactive, ref, computed, watch, type InjectionKey } from "vue";
 import { computePrice, type OrderConfig, type AnyConfig, type Sides } from "../lib/pricing/engine";
 import type { PricingData, Sheet } from "../lib/pricing/engine";
-import type { ProductPricing } from "../lib/pricing/data";
+import type { ProductPricing, PaperOption } from "../lib/pricing/data";
 import { isLaminationLocked, forcedLaminationIndex } from "../lib/pricing/rules";
 import type { SpecInput } from "../lib/pricing/spec";
 import { glyphFor, splitLabel, type SizeTile } from "../lib/calculator/sizeGlyph";
@@ -154,14 +154,14 @@ export function useCalculator(props: {
   const artworkName = ref<string | null>(null);
   const artworkPreflight = ref<import("../lib/preflight").Preflight | null>(null);
   const paperGroups = computed(() => {
-    const groups: { group: string; options: { index: number; name: string; image: string | null }[] }[] = [];
+    const groups: { group: string; options: { index: number; name: string; thumb: PaperOption["thumb"] }[] }[] = [];
     product.papers.forEach((p, index) => {
       let g = groups.find((x) => x.group === p.group);
       if (!g) {
         g = { group: p.group, options: [] };
         groups.push(g);
       }
-      g.options.push({ index, name: p.name, image: p.image });
+      g.options.push({ index, name: p.name, thumb: p.thumb });
     });
     return groups;
   });

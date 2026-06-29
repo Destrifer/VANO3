@@ -1,4 +1,8 @@
-import { directusFetch, assetUrl } from "../directus";
+import { directusFetch, assetUrl, responsiveAsset, type ResponsiveImage } from "../directus";
+
+// Размер миниатюры материала в блоке «Материал» (4:3, под плитку сетки).
+const PAPER_THUMB_W = 160;
+const PAPER_THUMB_H = 120;
 import { computePrice } from "./engine";
 import type {
   PricingData,
@@ -46,6 +50,7 @@ export type PaperOption = {
   materialType: string; // тип материала (Directus papers.material_type) — для блока «Материалы»
   description: string | null;
   image: string | null;
+  thumb: ResponsiveImage; // адаптивная миниатюра (avif/webp) для плитки материала
   colors: PaperColor[];
   // спецматериал с фикс-ценой за лист (световозвращающая плёнка, пластик 3M)
   fixedPrice?: CuttingBracket[];
@@ -359,6 +364,7 @@ export async function getProductPricing(
       materialType: pp.material_type ?? "Прочее",
       description: pp.description ?? null,
       image: assetUrl(pp.image),
+      thumb: responsiveAsset(pp.image, PAPER_THUMB_W, PAPER_THUMB_H),
       colors: (pp.colors ?? [])
         .slice()
         .sort((a: any, b: any) => (a.sort ?? 0) - (b.sort ?? 0))

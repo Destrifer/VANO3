@@ -4,9 +4,10 @@
 // Переиспускается: материал визитки, бумага обложки/блока брошюры.
 import { computed, ref, watch } from "vue";
 import SwatchPalette from "./SwatchPalette.vue";
+import type { ResponsiveImage } from "../../lib/directus";
 
 type Color = { name: string; code: string; hex: string | null; image: string | null };
-type Option = { index: number; name: string; image: string | null };
+type Option = { index: number; name: string; thumb: ResponsiveImage };
 type Group = { group: string; options: Option[] };
 const props = defineProps<{
   label?: string;
@@ -70,8 +71,24 @@ const activeOptions = computed(
         :class="{ 'mat-tile--on': o.index === index }"
         @click="emit('update:index', o.index)"
       >
-        <span class="mat-tile__thumb" :style="o.image ? `background-image:url(${o.image})` : ''">
-          <svg v-if="!o.image" viewBox="0 0 24 24" aria-hidden="true" class="mat-tile__glyph">
+        <span class="mat-tile__thumb">
+          <!-- Адаптивная миниатюра: <picture> avif/webp + fallback. Бокс держит
+               место (aspect-ratio) — нет CLS, даже если Directus отдаёт медленно;
+               lazy/async/low — не мешает LCP. -->
+          <picture v-if="o.thumb">
+            <source v-for="s in o.thumb.sources" :key="s.type" :type="s.type" :srcset="s.srcset" />
+            <img
+              :src="o.thumb.src"
+              :width="o.thumb.width"
+              :height="o.thumb.height"
+              :alt="o.name"
+              class="mat-tile__img"
+              loading="lazy"
+              decoding="async"
+              fetchpriority="low"
+            />
+          </picture>
+          <svg v-else viewBox="0 0 24 24" aria-hidden="true" class="mat-tile__glyph">
             <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
               <path d="M14 3v4a1 1 0 0 0 1 1h4" />
               <path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2" />
@@ -116,8 +133,11 @@ const activeOptions = computed(
 .mat-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
+  grid-auto-rows: min-content;
   gap: 0.5rem;
-  max-height: 19rem;     /* ~2 ряда видно, дальше прокрутка */
+  /* Постоянная высота (≈2 ряда) во всех табах: меньше материалов — остаётся
+     пустое место, больше — прокрутка. Так блоки ниже не «прыгают». */
+  height: 14.5rem;
   overflow-y: auto;
   padding-right: 0.25rem;
 }
@@ -145,10 +165,16 @@ const activeOptions = computed(
   place-items: center;
   aspect-ratio: 4 / 3;
   width: 100%;
+  overflow: hidden;
   border-radius: 0.5rem;
-  background-color: var(--color-base-200, #f3f1ea);
-  background-size: cover;
-  background-position: center;
+  background-color: var(--color-base-200, #f3f1ea); /* placeholder, пока грузится */
+}
+.mat-tile__thumb picture { display: contents; }
+.mat-tile__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 .mat-tile__glyph { width: 1.8rem; height: 1.8rem; opacity: 0.35; }
 .mat-tile__name {
