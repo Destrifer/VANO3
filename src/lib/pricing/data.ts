@@ -48,7 +48,7 @@ export type SizePreset = {
   pagesPerSheet?: number; // импозиция (только multipage)
 };
 
-export type BindingOption = Binding & { id: number };
+export type BindingOption = Binding & { id: number; image: string | null; thumb: ResponsiveImage };
 
 // тип фальцовки; kind: book|accordion|roll; image/thumb — иконка сложения
 export type FoldType = { name: string; folds: number; kind: string; image: string | null; thumb: ResponsiveImage };
@@ -349,6 +349,9 @@ export async function getProductPricing(
     ...paperFields("inner_papers"),
     "bindings.bindings_id.id",
     "bindings.bindings_id.name",
+    // Иконка переплёта: раскомментировать, КОГДА в Directus-коллекции `bindings`
+    // появится поле `image` (file) с правом чтения у public-роли — иначе 403.
+    // "bindings.bindings_id.image",
     "bindings.bindings_id.price",
     "bindings.bindings_id.min_pages",
     "bindings.bindings_id.max_pages",
@@ -434,6 +437,8 @@ export async function getProductPricing(
       return {
         id: num(b.id),
         name: b.name,
+        image: assetUrl(b.image),
+        thumb: responsiveAsset(b.image, FOLD_THUMB_W, FOLD_THUMB_H),
         priceBrackets: (Array.isArray(b.price) ? b.price : [])
           .map((br: any) => ({ to: num(br.to), price: num(br.price) }))
           .sort((a: any, z: any) => a.to - z.to),
