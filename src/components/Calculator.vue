@@ -11,7 +11,6 @@ import MaterialField from "./calculator/MaterialField.vue";
 import FoldField from "./calculator/FoldField.vue";
 import FinishingField from "./calculator/FinishingField.vue";
 import CuttingField from "./calculator/CuttingField.vue";
-import ArtworkUpload from "./calculator/ArtworkUpload.vue";
 
 const calc = inject(calcKey)!;
 </script>
@@ -25,6 +24,5 @@ const calc = inject(calcKey)!;
     <FoldField v-if="calc.foldTypes.length" />
     <FinishingField />
     <CuttingField v-if="calc.allowContourCut && !calc.currentPaperFixed" />
-    <ArtworkUpload />
   </div>
 </template>

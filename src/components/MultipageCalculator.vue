@@ -8,7 +8,6 @@ import PaperSelect from "./calculator/PaperSelect.vue";
 import SidesSelect from "./calculator/SidesSelect.vue";
 import CoatingField from "./calculator/CoatingField.vue";
 import QuantitySlider from "./calculator/QuantitySlider.vue";
-import ArtworkUpload from "./calculator/ArtworkUpload.vue";
 
 const calc = inject(mpCalcKey)!;
 const onRange = (e: Event) => calc.setPages(+(e.target as HTMLInputElement).value);
@@ -150,7 +149,6 @@ function bindGlyph(name: string): string {
       <QuantitySlider :presets="calc.presets" v-model="calc.quantity" />
     </div>
 
-    <ArtworkUpload />
   </div>
 </template>
 
