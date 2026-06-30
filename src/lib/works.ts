@@ -1,4 +1,5 @@
-import { directusFetch, assetUrl } from "./directus";
+import { directusFetch, DIRECTUS_PUBLIC_URL } from "./directus";
+import { slugify } from "./translit";
 
 // «Работа» = одно фото из ГАЛЕРЕИ продукта (`products.gallery`, M2M → файлы).
 // Раньше была отдельная коллекция works; теперь единый источник — галерея
@@ -34,7 +35,13 @@ type GalleryRow = {
   sort: number | null;
   caption: string | null;
   alt: string | null;
-  directus_files_id: { id: string; width: number | null; height: number | null } | null;
+  directus_files_id: {
+    id: string;
+    width: number | null;
+    height: number | null;
+    title: string | null;
+    filename_download: string | null;
+  } | null;
 };
 type ProductRow = {
   name: string;
@@ -54,7 +61,33 @@ const FIELDS = [
   "gallery.directus_files_id.id",
   "gallery.directus_files_id.width",
   "gallery.directus_files_id.height",
+  "gallery.directus_files_id.title",
+  "gallery.directus_files_id.filename_download",
 ].join(",");
+
+// URL ассета галереи с человекочитаемым именем-сегментом: Directus отдаёт файл
+// по /assets/<id>/<name>, а astro:assets берёт <name> для имени деривата на сборке
+// (→ _astro/<slug>.<hash>.avif вместо uuid). На рендер/доступ не влияет.
+function galleryUrl(id: string, slug: string): string {
+  return `${DIRECTUS_PUBLIC_URL}/assets/${id}/${slug}.jpg`;
+}
+
+// Подпись фото: своя (caption/alt) приоритетнее. Авто-заголовок Directus (= имя
+// файла словами) считаем мусором и не показываем.
+function humanCaption(
+  caption: string | null,
+  title: string | null,
+  filenameDownload: string | null,
+): string {
+  const c = caption?.trim();
+  if (c) return c;
+  const t = title?.trim();
+  if (!t) return "";
+  const st = slugify(t);
+  const sf = slugify(filenameDownload || "");
+  // заголовок — это просто имя файла (авто) → не подпись
+  return st && sf.includes(st) ? "" : t;
+}
 
 // Один продукт → плоский список Work (по одному на фото галереи).
 function rowToWorks(p: ProductRow): Work[] {
@@ -68,20 +101,23 @@ function rowToWorks(p: ProductRow): Work[] {
         !!g.directus_files_id,
     )
     .sort((a, b) => (a.sort ?? 1e9) - (b.sort ?? 1e9)) // порядок из поля sort
-    .map((g) => {
-      const caption = g.caption?.trim() || "";
-      // alt: явный alt → подпись → осмысленный фолбэк (не показываем «сырое» имя файла)
+    .map((g, i) => {
+      const f = g.directus_files_id;
+      const caption = humanCaption(g.caption, f.title, f.filename_download);
+      // alt: явный alt → подпись → осмысленный фолбэк (не «сырое» имя файла)
       const alt = g.alt?.trim() || caption || `${p.name} — пример работы`;
+      // слаг для имени картинки: из подписи, иначе «<продукт>-N»
+      const slug = slugify(caption) || `${p.slug}-${i + 1}`;
       return {
-        id: `${p.slug}:${g.directus_files_id.id}`,
+        id: `${p.slug}:${f.id}`,
         title: caption,
         description: null,
         credit: null,
         copyright: null,
         image: {
-          url: assetUrl(g.directus_files_id.id)!,
-          width: g.directus_files_id.width ?? null,
-          height: g.directus_files_id.height ?? null,
+          url: galleryUrl(f.id, slug),
+          width: f.width ?? null,
+          height: f.height ?? null,
           alt,
         },
         products: [product],
