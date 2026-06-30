@@ -11,6 +11,7 @@ on:
       - "**.md"
       - "docs/**"
       - "seo/**"
+      - "ops/**"
   workflow_dispatch:
   # Внешний триггер: Directus Flow при публикации контента POST-ит в GitHub dispatches
   # (event_type: deploy-site) -> пересборка статики с актуальным контентом.
