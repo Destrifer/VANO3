@@ -8,14 +8,17 @@ import { getWorks } from "../lib/works";
 // лайтбокса). PhotoSwipe навешивается из BaseLayout на .gallery.
 const works = await getWorks();
 
-// Фасеты — только те продукты/теги, что реально встречаются в работах.
+// Фасеты — только те продукты/категории/теги, что реально встречаются в работах.
 const productMap = new Map<string, string>();
+const categoryMap = new Map<string, string>();
 const tagMap = new Map<string, string>();
 for (const w of works) {
   for (const p of w.products) productMap.set(p.slug, p.name);
+  if (w.category) categoryMap.set(w.category.slug, w.category.name);
   for (const t of w.tags) tagMap.set(t.slug, t.name);
 }
 const products = [...productMap].map(([slug, name]) => ({ slug, name }));
+const categories = [...categoryMap].map(([slug, name]) => ({ slug, name }));
 const tags = [...tagMap].map(([slug, name]) => ({ slug, name }));
 
 const title = "Примеры работ — Printmos";
@@ -49,6 +52,24 @@ const description =
                     name="pm_product"
                     aria-label={p.name}
                     value={p.slug}
+                  />
+                ))}
+              </form>
+            </div>
+          )}
+
+          {categories.length > 1 && (
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="text-sm font-semibold text-base-content/60">Категория:</span>
+              <form class="filter" id="pm-flt-category" role="group" aria-label="Фильтр по категории">
+                <input class="btn btn-sm" type="reset" value="Все" />
+                {categories.map((c) => (
+                  <input
+                    class="btn btn-sm"
+                    type="radio"
+                    name="pm_category"
+                    aria-label={c.name}
+                    value={c.slug}
                   />
                 ))}
               </form>
@@ -104,20 +125,34 @@ const description =
   if (grid) {
     const figures = [...grid.querySelectorAll<HTMLElement>(".gallery__item")];
     const empty = document.getElementById("pm-empty");
-    const state = { product: "", tag: "", q: "" };
+    const state = { product: "", category: "", tag: "", q: "" };
 
     const apply = () => {
       let visible = 0;
       for (const f of figures) {
         const okP = !state.product || (f.dataset.products || "").split(" ").includes(state.product);
+        const okC = !state.category || (f.dataset.category || "") === state.category;
         const okT = !state.tag || (f.dataset.tags || "").split(" ").includes(state.tag);
         const okQ = !state.q || (f.dataset.search || "").includes(state.q);
-        const show = okP && okT && okQ;
+        const show = okP && okC && okT && okQ;
         f.hidden = !show;
         if (show) visible++;
       }
       if (empty) empty.hidden = visible > 0;
     };
+
+    const cf = document.getElementById("pm-flt-category");
+    cf?.addEventListener("change", (e) => {
+      const t = e.target as HTMLInputElement;
+      if (t.name === "pm_category") {
+        state.category = t.value;
+        apply();
+      }
+    });
+    cf?.addEventListener("reset", () => {
+      state.category = "";
+      apply();
+    });
 
     const pf = document.getElementById("pm-flt-product");
     pf?.addEventListener("change", (e) => {
