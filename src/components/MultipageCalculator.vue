@@ -53,6 +53,19 @@ function bindGlyph(name: string): string {
       </template>
     </SizePicker>
 
+    <!-- Тираж (один из основных параметров — сразу после формата) -->
+    <div class="flex flex-col gap-2">
+      <span class="text-sm font-semibold">Тираж</span>
+      <QuantitySelect
+        :presets="calc.presets"
+        v-model="calc.quantity"
+        :per-unit="calc.perUnit"
+        :total="calc.result?.total ?? null"
+        :total-qty="calc.totalQty"
+        :money="calc.money"
+      />
+    </div>
+
     <!-- Полосы: слайдер (×4) + степпер/ввод; переплёт подстраивается -->
     <div class="flex flex-col gap-1.5">
       <span class="text-sm font-semibold">Полос</span>
@@ -126,19 +139,6 @@ function bindGlyph(name: string): string {
         :color-index="0"
       />
       <span class="text-xs opacity-60">Печать блока — двусторонняя (4+4).</span>
-    </div>
-
-    <!-- Тираж -->
-    <div class="flex flex-col gap-2">
-      <span class="text-sm font-semibold">Тираж</span>
-      <QuantitySelect
-        :presets="calc.presets"
-        v-model="calc.quantity"
-        :per-unit="calc.perUnit"
-        :total="calc.result?.total ?? null"
-        :total-qty="calc.totalQty"
-        :money="calc.money"
-      />
     </div>
 
   </div>

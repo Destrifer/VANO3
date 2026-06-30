@@ -44,20 +44,24 @@ const rate = (q: number) => {
       </button>
     </div>
 
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      <label class="input input-sm w-48">
-        <input
-          type="number"
-          min="1"
-          :value="custom"
-          @input="onCustom"
-          placeholder="Другой тираж"
-          class="grow"
-          aria-label="Другой тираж"
-        />
-        <span class="opacity-60">шт</span>
-      </label>
-      <span class="text-sm" v-if="total != null">
+    <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+      <!-- поле «Другой тираж» + доп. контролы (напр. «Видов») держим вместе -->
+      <div class="flex items-center gap-3">
+        <label class="input input-sm w-44">
+          <input
+            type="number"
+            min="1"
+            :value="custom"
+            @input="onCustom"
+            placeholder="Другой тираж"
+            class="grow"
+            aria-label="Другой тираж"
+          />
+          <span class="opacity-60">шт</span>
+        </label>
+        <slot />
+      </div>
+      <span class="text-sm ml-auto" v-if="total != null">
         <span class="font-bold">{{ totalQty }} шт</span>
         <span class="opacity-60"> ≈ {{ money(total) }} ₽</span>
       </span>
