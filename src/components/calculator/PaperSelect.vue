@@ -48,15 +48,15 @@ const activeOptions = computed(
     <span class="text-sm font-semibold">{{ label ?? "Материал" }}</span>
 
     <!-- Табы категорий -->
-    <div v-if="groups.length > 1" role="tablist" class="flex flex-wrap gap-1">
+    <div v-if="groups.length > 1" role="tablist" class="tabs tabs-box w-fit flex-wrap">
       <button
         v-for="g in groups"
         :key="g.group"
         type="button"
         role="tab"
         :aria-selected="g.group === activeGroup"
-        class="mat-tab"
-        :class="{ 'mat-tab--on': g.group === activeGroup }"
+        class="tab"
+        :class="{ 'tab-active': g.group === activeGroup }"
         @click="activeGroup = g.group"
       >
         {{ g.group }}
@@ -96,23 +96,6 @@ const activeOptions = computed(
 </template>
 
 <style scoped>
-.mat-tab {
-  padding: 0.3rem 0.7rem;
-  font-size: 0.8rem;
-  font-weight: 500;
-  border-radius: 999px;
-  border: 1px solid var(--color-base-300, #d6d3cd);
-  background: var(--color-base-100, #fff);
-  cursor: pointer;
-  transition: border-color 0.12s, background 0.12s, color 0.12s;
-}
-.mat-tab:hover { border-color: var(--color-base-content, #555); }
-.mat-tab--on {
-  border-color: var(--color-primary, #1f1f1f);
-  background: var(--color-primary, #1f1f1f);
-  color: var(--color-primary-content, #fff);
-}
-
 .mat-list {
   display: flex;
   flex-wrap: wrap;
