@@ -47,14 +47,20 @@ function openLightbox(c: Swatch) {
     </div>
 
     <div :class="inline ? 'contents' : 'dropdown-content z-20 mt-2 w-60 rounded-box border border-base-300 bg-base-100 p-2 shadow'">
-      <div class="grid gap-2 overflow-y-auto" :class="inline ? 'max-h-44 grid-cols-6' : 'max-h-56 grid-cols-3'">
+      <div
+        class="gap-2 overflow-y-auto"
+        :class="inline ? 'flex flex-wrap max-h-44' : 'grid grid-cols-3 max-h-56'"
+      >
         <div
           v-for="(c, i) in colors"
           :key="i"
           role="button"
           tabindex="0"
-          class="relative aspect-square w-full cursor-pointer overflow-hidden rounded-box border"
-          :class="i === modelValue ? 'border-base-content ring-2 ring-base-content' : 'border-base-300'"
+          class="relative cursor-pointer overflow-hidden rounded-box border"
+          :class="[
+            inline ? 'h-11 w-11' : 'aspect-square w-full',
+            i === modelValue ? 'border-base-content ring-2 ring-base-content' : 'border-base-300',
+          ]"
           :style="c.thumb ? '' : hexStyle(c)"
           :title="c.name + (c.code ? ' · ' + c.code : '')"
           @click="emit('update:modelValue', i)"

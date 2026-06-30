@@ -52,7 +52,7 @@ const emit = defineEmits<{ select: [] }>();
   flex-direction: column;
   align-items: center;
   gap: 0.3rem;
-  width: 6.5rem;
+  width: 9rem;
   padding: 0.4rem;
   border: 1px solid var(--color-base-300, #d6d3cd);
   border-radius: 0.75rem;
@@ -80,9 +80,9 @@ const emit = defineEmits<{ select: [] }>();
 }
 .otile__thumb picture { display: contents; }
 .otile__img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.otile__glyph { width: 1.6rem; height: 1.6rem; opacity: 0.45; }
+.otile__glyph { width: 2.2rem; height: 2.2rem; opacity: 0.45; }
 /* глиф/иконка, переданные через слот #thumb (напр. SizeGlyph) */
-.otile__thumb :slotted(svg) { width: 1.6rem; height: 1.6rem; opacity: 0.45; }
+.otile__thumb :slotted(svg) { width: 2.2rem; height: 2.2rem; opacity: 0.45; }
 .otile__name {
   font-size: 0.72rem;
   line-height: 1.1;

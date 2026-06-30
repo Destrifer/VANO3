@@ -1,14 +1,16 @@
 import { directusFetch, assetUrl, responsiveAsset, type ResponsiveImage } from "../directus";
 
-// Размер миниатюры материала в блоке «Материал» (4:3, под плитку сетки).
-const PAPER_THUMB_W = 160;
-const PAPER_THUMB_H = 120;
+// Миниатюры плиток — 16:9 под единый OptionTile (с запасом под retina).
+const TILE_THUMB_W = 240;
+const TILE_THUMB_H = 135;
+const PAPER_THUMB_W = TILE_THUMB_W; // материал
+const PAPER_THUMB_H = TILE_THUMB_H;
 const COLOR_SWATCH = 64; // свотч цвета (квадрат)
 const COLOR_FULL = 1024; // картинка цвета в lightbox (ресайз по ширине)
-const FIN_THUMB_W = 120; // миниатюра ламинации (4:3, под плитку)
-const FIN_THUMB_H = 90;
-const FOLD_THUMB_W = 120; // иконка фальцовки (4:3, под плитку)
-const FOLD_THUMB_H = 90;
+const FIN_THUMB_W = TILE_THUMB_W; // ламинация
+const FIN_THUMB_H = TILE_THUMB_H;
+const FOLD_THUMB_W = TILE_THUMB_W; // фальцовка
+const FOLD_THUMB_H = TILE_THUMB_H;
 
 // Маппинг цвета (бумага/фольга) → UI: hex/URL + адаптивные свотч и lightbox.
 function mapColor(c: any): PaperColor {

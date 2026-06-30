@@ -65,7 +65,12 @@ const activeOptions = computed(
 
     <!-- Плитки материалов (единый OptionTile, прокрутка при переполнении).
          Высота фиксирована — блоки ниже не «прыгают» при смене таба. -->
-    <div class="mat-list" role="radiogroup" :aria-label="label ?? 'Материал'">
+    <div
+      class="mat-list"
+      :class="{ 'mat-list--fixed': groups.length > 1 }"
+      role="radiogroup"
+      :aria-label="label ?? 'Материал'"
+    >
       <OptionTile
         v-for="o in activeOptions"
         :key="o.index"
@@ -112,11 +117,13 @@ const activeOptions = computed(
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  /* Постоянная высота (≈2 ряда) во всех табах: меньше материалов — остаётся
-     пустое место, больше — прокрутка. Так блоки ниже не «прыгают». */
-  height: 14.5rem;
+  /* По содержимому, но не выше ~2 рядов (дальше прокрутка) — без пустого места,
+     когда материалов мало. */
+  max-height: 15.5rem;
   overflow-y: auto;
   align-content: flex-start;
   padding-right: 0.25rem;
 }
+/* С табами — постоянная высота, чтобы блоки ниже не «прыгали» при смене категории. */
+.mat-list--fixed { height: 15.5rem; }
 </style>
