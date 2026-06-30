@@ -4,9 +4,10 @@
 import { reactive, ref, computed, watch, type InjectionKey } from "vue";
 import { computePrice, type OrderConfig, type AnyConfig, type Sides } from "../lib/pricing/engine";
 import type { PricingData, Sheet } from "../lib/pricing/engine";
-import type { ProductPricing } from "../lib/pricing/data";
+import type { ProductPricing, PaperOption } from "../lib/pricing/data";
 import { isLaminationLocked, forcedLaminationIndex } from "../lib/pricing/rules";
 import type { SpecInput } from "../lib/pricing/spec";
+import { glyphFor, splitLabel, type SizeTile } from "../lib/calculator/sizeGlyph";
 
 export function useCalculator(props: {
   product: ProductPricing;
@@ -37,6 +38,77 @@ export function useCalculator(props: {
   function backToList() {
     customMode.value = false;
     sizeIndex.value = 0;
+  }
+
+  // — Плитки-иконки выбора размера/формы (единый ряд) —
+  // Круг и сложная форма сводятся в тот же ряд: пресеты ⌀ дают форму+размер,
+  // а флаги allow_round/allow_complex добавляют отдельные плитки-режимы.
+  const hasRoundPreset = product.sizes.some((s) => s.shape === "round");
+  const sizeTiles = computed<SizeTile[]>(() => {
+    const tiles: SizeTile[] = product.sizes.map((s, i) => {
+      const { top, sub } = splitLabel(s.label, s.width, s.height, s.shape);
+      return { id: `p${i}`, glyph: glyphFor(s.shape, s.width, s.height), label: top, sub };
+    });
+    // У плиток-режимов в нижней строке показываем заданный размер, когда плитка
+    // активна (поповер можно закрыть — размер всё равно виден).
+    const wh = `${customW.value}×${customH.value}`;
+    // «Круглая» отдельной плиткой — только если у продукта нет готовых ⌀-пресетов
+    if (product.allowRound && !hasRoundPreset)
+      tiles.push({
+        id: "round", glyph: "round", label: "Круглая",
+        sub: shape.value === "round" ? `⌀${diameter.value}` : undefined,
+      });
+    if (product.allowComplex)
+      tiles.push({
+        id: "complex", glyph: "complex", label: "Сложная",
+        sub: shape.value === "complex" ? wh : undefined,
+      });
+    if (product.allowCustom)
+      tiles.push({
+        id: "custom", glyph: "custom", label: "Свой",
+        sub: customMode.value && shape.value !== "complex" ? wh : undefined,
+      });
+    return tiles;
+  });
+  // Какая плитка активна (для подсветки) — выводится из состояния, не хранится.
+  const activeTileId = computed(() => {
+    if (shape.value === "complex") return "complex";
+    if (customMode.value) return "custom";
+    if (shape.value === "round" && !hasRoundPreset) return "round";
+    return `p${sizeIndex.value}`;
+  });
+  // Что показывает поповер активной плитки: ввод Ш×В, ⌀ или ничего.
+  const sizeInput = computed<"rect" | "round" | null>(() => {
+    if (shape.value === "complex") return "rect"; // габарит реза
+    if (customMode.value) return "rect";
+    if (shape.value === "round" && !hasRoundPreset) return "round";
+    return null;
+  });
+  function selectTile(id: string) {
+    if (id === "custom") {
+      shape.value = "rectangular";
+      customMode.value = true;
+      sizeIndex.value = -1;
+      return;
+    }
+    if (id === "complex") {
+      shape.value = "complex";
+      customMode.value = true; // размер = габарит реза (свой)
+      sizeIndex.value = -1;
+      return;
+    }
+    if (id === "round") {
+      shape.value = "round"; // круглая без пресета → ввод ⌀
+      customMode.value = false;
+      return;
+    }
+    const i = Number(id.slice(1));
+    const s = product.sizes[i];
+    if (!s) return;
+    customMode.value = false;
+    sizeIndex.value = i;
+    shape.value = s.shape === "round" ? "round" : "rectangular";
+    if (s.shape === "round") diameter.value = s.width;
   }
 
   const dims = computed(() => {
@@ -82,14 +154,14 @@ export function useCalculator(props: {
   const artworkName = ref<string | null>(null);
   const artworkPreflight = ref<import("../lib/preflight").Preflight | null>(null);
   const paperGroups = computed(() => {
-    const groups: { group: string; options: { index: number; name: string }[] }[] = [];
+    const groups: { group: string; options: { index: number; name: string; thumb: PaperOption["thumb"] }[] }[] = [];
     product.papers.forEach((p, index) => {
       let g = groups.find((x) => x.group === p.group);
       if (!g) {
         g = { group: p.group, options: [] };
         groups.push(g);
       }
-      g.options.push({ index, name: p.name });
+      g.options.push({ index, name: p.name, thumb: p.thumb });
     });
     return groups;
   });
@@ -399,6 +471,8 @@ export function useCalculator(props: {
     // форма/размер
     shapes, shape, sizeIndex, customMode, customW, customH, diameter, dims, sizeWarning,
     onSizeChange, backToList,
+    // плитки-иконки выбора размера/формы
+    sizeTiles, activeTileId, sizeInput, selectTile,
     // стороны / контурная резка / фальцовка
     singleSided, doubleSided, allowContourCut, contourCut,
     foldTypes, foldTypeIndex, selectedFold,

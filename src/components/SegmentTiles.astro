@@ -1,7 +1,7 @@
 ---
-// Плитки-альтернативы (кластеры Tier-1) — компактные квадратные карточки с
-// иконкой и ценой по пресету, БЕЗ заголовка. Размещаются в правом верхнем углу
-// хаба/кластера (первый экран, не съедают калькулятор). Пусто → ничего.
+// Ряд сегментов-кластеров (Tier-1) — компактные плитки «иконка + название + цена
+// по пресету», БЕЗ заголовка. Горизонтальный ряд под H1 хаба/кластера. На
+// кластере текущий сегмент подсвечен (activeHref). Пусто → ничего.
 import ProductTile from "./ProductTile.astro";
 
 interface Tile {
@@ -10,9 +10,10 @@ interface Tile {
   icon?: string | null;
   priceFrom?: number | null;
 }
-const { items = [], label = "Похожие виды" } = Astro.props as {
+const { items = [], label = "Похожие виды", activeHref = null } = Astro.props as {
   items?: Tile[];
   label?: string;
+  activeHref?: string | null;
 };
 ---
 
@@ -26,6 +27,7 @@ const { items = [], label = "Похожие виды" } = Astro.props as {
             name={t.name}
             icon={t.icon ?? null}
             priceFrom={t.priceFrom ?? null}
+            active={activeHref != null && t.href === activeHref}
             compact
           />
         ))}

@@ -50,40 +50,67 @@ function add() {
 </script>
 
 <template>
-  <aside class="card card-border border-base-content">
-    <div class="card-body gap-3">
+  <!-- Плавающая корзина ПОВЕРХ контента: десктоп — карточка в правом нижнем
+       углу (position: fixed); мобайл (<768) — нижняя панель над контакт-баром.
+       Пустую (нет расчёта) не показываем. -->
+  <aside class="plate" :class="{ 'plate--empty': !calc.result }">
+    <div class="plate__inner">
       <template v-if="calc.result">
-        <div class="text-3xl font-bold leading-tight">{{ calc.money(calc.result.total) }} ₽</div>
-        <div class="text-sm text-base-content/60">
-          {{ (calc.result.total / calc.totalQty).toFixed(2) }} ₽/шт · {{ calc.totalQty }} шт
+        <div class="plate__lead">
+          <div class="plate__price-box">
+            <div class="plate__price">{{ calc.money(calc.result.total) }} ₽</div>
+            <div class="plate__sub">
+              {{ (calc.result.total / calc.totalQty).toFixed(2) }} ₽/шт · {{ calc.totalQty }} шт
+            </div>
+          </div>
+
+          <!-- Срок готовности — только на десктопе (на панели мобайла прячем) -->
+          <div class="ready-plate" :title="lead.title">
+            <svg class="ready-plate__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+              fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0m9 0l3 2m-3-7v5" />
+            </svg>
+            <span>Готово {{ lead.text }}</span>
+          </div>
+
+          <button class="btn btn-primary plate__btn" :class="{ 'btn-success': added }" @click="add">
+            {{ added ? "Добавлено ✓" : "В корзину" }}
+          </button>
         </div>
-
-        <!-- Срок готовности — мотивация заказать сейчас -->
-        <div class="ready-plate" :title="lead.title">
-          <svg class="ready-plate__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
-            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0m9 0l3 2m-3-7v5" />
-          </svg>
-          <span>Готово {{ lead.text }}</span>
-        </div>
-
-        <button class="btn btn-primary btn-block" :class="{ 'btn-success': added }" @click="add">
-          {{ added ? "Добавлено ✓" : "В корзину" }}
-        </button>
-
-        <ul class="flex flex-col gap-1.5 text-sm">
-          <li v-for="(l, i) in calc.result.lines" :key="i" class="flex justify-between gap-4 border-b border-base-300 pb-1">
-            <span>{{ l.label }}</span><span>{{ calc.money(l.amount) }} ₽</span>
-          </li>
-        </ul>
-        <p class="text-xs text-base-content/60">Предварительный расчёт. Точная цена — после проверки макета.</p>
+        <p class="plate__note">Предварительный расчёт. Точная цена — после проверки макета.</p>
+        <!-- доп. действие (напр. «Получить ссылку») — только десктоп -->
+        <div class="plate__extra"><slot name="extra" /></div>
       </template>
-      <p v-else class="text-sm text-base-content/60">Заполните параметры для расчёта.</p>
+      <p v-else class="plate__empty">Заполните параметры для расчёта.</p>
     </div>
   </aside>
 </template>
 
 <style scoped>
+/* Десктоп: плавающая карточка в правом нижнем углу ПОВЕРХ контента. */
+.plate {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 30;
+  width: min(22rem, calc(100vw - 2rem));
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+  border: 1px solid var(--color-base-content);
+  border-radius: var(--radius-box, 1rem);
+  background: var(--color-base-100);
+  box-shadow: 0 10px 30px rgb(0 0 0 / 18%);
+}
+.plate--empty { display: none; } /* нет расчёта — корзину не показываем */
+.plate__inner { display: flex; flex-direction: column; gap: 0.75rem; padding: 1rem; }
+.plate__lead { display: flex; flex-direction: column; gap: 0.75rem; }
+.plate__price { font-size: 1.875rem; font-weight: 700; line-height: 1.1; }
+.plate__sub { font-size: 0.875rem; color: var(--color-base-content); opacity: 0.6; }
+.plate__btn { width: 100%; }
+.plate__note { font-size: 0.75rem; color: var(--color-base-content); opacity: 0.6; }
+.plate__empty { font-size: 0.875rem; color: var(--color-base-content); opacity: 0.6; }
+.plate__extra:empty { display: none; }
+
 .ready-plate {
   display: inline-flex;
   align-items: center;
@@ -98,5 +125,31 @@ function add() {
 .ready-plate__icon {
   width: 1.1rem;
   height: 1.1rem;
+}
+
+/* Мобайл: фиксированная нижняя панель (цена слева, кнопка справа).
+   Идёт ПОСЛЕ базовых правил — иначе override display:none перекрывается. */
+@media (max-width: 767px) {
+  .plate {
+    left: 0;
+    right: 0;
+    width: auto;
+    max-height: none;
+    overflow: visible;
+    /* над глобальной контакт-панелью (.mobile-bar), а не поверх неё */
+    bottom: var(--mobile-bar-h, 5rem);
+    z-index: 40;
+    border: 0;
+    border-top: 1px solid var(--color-base-300);
+    border-radius: 0;
+    box-shadow: 0 -4px 16px rgb(0 0 0 / 10%);
+  }
+  .plate__inner { padding: 0.6rem 1rem; }
+  .plate__lead { flex-direction: row; align-items: center; justify-content: space-between; gap: 1rem; }
+  .plate__price { font-size: 1.4rem; }
+  .plate__btn { width: auto; flex: none; }
+  .ready-plate,
+  .plate__note,
+  .plate__extra { display: none; }
 }
 </style>

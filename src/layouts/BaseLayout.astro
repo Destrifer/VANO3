@@ -303,31 +303,31 @@ const businessLd = localBusiness(settings, siteUrl);
       <div class="mobile-bar__row">
         {
           telHref && (
-            <a class="mobile-bar__btn" href={telHref}>
+            <a class="btn btn-ghost flex-1 flex-col gap-1 h-auto py-2 text-xs font-normal [&_svg]:size-6" href={telHref}>
               <Icon name="tabler:phone" />
               Позвонить
             </a>
           )
         }
-        <a class="mobile-bar__btn" href="/">
+        <a class="btn btn-ghost flex-1 flex-col gap-1 h-auto py-2 text-xs font-normal [&_svg]:size-6" href="/">
           <Icon name="tabler:calculator" />
           Расчет
         </a>
-        <button type="button" class="mobile-bar__btn" data-sheet-open>
+        <button type="button" class="btn btn-ghost flex-1 flex-col gap-1 h-auto py-2 text-xs font-normal [&_svg]:size-6" data-sheet-open>
           <Icon name="tabler:message" />
           Чат
         </button>
       </div>
     </div>
 
-    <!-- Шторка выбора канала связи -->
-    <dialog class="channel-sheet" id="channelSheet">
-      <form method="dialog" class="channel-sheet__inner">
-        <p class="channel-sheet__title">Связаться</p>
+    <!-- Шторка выбора канала связи (daisyUI modal, снизу на мобиле, по центру на десктопе) -->
+    <dialog class="modal modal-bottom sm:modal-middle" id="channelSheet">
+      <div class="modal-box flex flex-col gap-3 max-w-md [&_svg]:size-5">
+        <h3 class="font-bold text-lg">Связаться</h3>
         {
           settings.whatsapp_url && (
             <a
-              class="channel-sheet__link"
+              class="btn btn-outline justify-start gap-2"
               id="chWhatsapp"
               data-base={settings.whatsapp_url}
               href={settings.whatsapp_url}
@@ -341,7 +341,7 @@ const businessLd = localBusiness(settings, siteUrl);
         }
         {
           settings.telegram_url && (
-            <a class="channel-sheet__link" href={settings.telegram_url} target="_blank" rel="noopener">
+            <a class="btn btn-outline justify-start gap-2" href={settings.telegram_url} target="_blank" rel="noopener">
               <Icon name="tabler:brand-telegram" />
               Telegram
             </a>
@@ -349,14 +349,19 @@ const businessLd = localBusiness(settings, siteUrl);
         }
         {
           telHref && (
-            <a class="channel-sheet__link" href={telHref}>
+            <a class="btn btn-outline justify-start gap-2" href={telHref}>
               <Icon name="tabler:phone" />
               Позвонить
             </a>
           )
         }
-        <p class="channel-sheet__note">Обычно отвечаем за 10–15 минут в рабочее время.</p>
-        <button class="channel-sheet__close" value="cancel">Закрыть</button>
+        <p class="text-sm opacity-60">Обычно отвечаем за 10–15 минут в рабочее время.</p>
+        <form method="dialog">
+          <button class="btn btn-ghost btn-block" value="cancel">Закрыть</button>
+        </form>
+      </div>
+      <form method="dialog" class="modal-backdrop">
+        <button>закрыть</button>
       </form>
     </dialog>
 

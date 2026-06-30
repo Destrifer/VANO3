@@ -1,17 +1,23 @@
 <script setup lang="ts">
-// Тираж визитки = общий QuantitySelect + строка «Видов» (специфично для листовых).
+// Тираж визитки = слайдер-пресеты (прилипание) + строка «Видов» (для листовых).
 import { inject } from "vue";
 import { calcKey } from "../../composables/useCalculator";
-import QuantitySelect from "./QuantitySelect.vue";
+import QuantitySlider from "./QuantitySlider.vue";
 
 const calc = inject(calcKey)!;
 </script>
 
 <template>
   <div class="flex flex-col gap-1.5">
-    <span class="text-sm font-semibold">Тираж</span>
-    <QuantitySelect :presets="calc.presets" v-model="calc.quantity" :per-unit="calc.perUnit" />
-    <div class="flex items-center gap-3">
+    <div class="flex items-baseline justify-between gap-3">
+      <span class="text-sm font-semibold">Тираж</span>
+      <span class="text-sm" v-if="calc.perUnit(calc.quantity) != null">
+        <span class="opacity-70">{{ calc.perUnit(calc.quantity)?.toFixed(2) }} ₽/шт</span>
+        <span class="font-bold" v-if="calc.result"> · {{ calc.money(calc.result.total) }} ₽</span>
+      </span>
+    </div>
+    <QuantitySlider :presets="calc.presets" v-model="calc.quantity" />
+    <div class="mt-1 flex items-center gap-3">
       <span class="text-sm opacity-70">Видов</span>
       <div class="join">
         <button type="button" class="btn btn-sm btn-outline join-item" @click="calc.decViews" :disabled="calc.views <= 1" aria-label="Меньше видов">−</button>

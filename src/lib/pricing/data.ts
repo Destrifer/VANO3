@@ -1,4 +1,29 @@
-import { directusFetch, assetUrl } from "../directus";
+import { directusFetch, assetUrl, responsiveAsset, type ResponsiveImage } from "../directus";
+
+// Миниатюры плиток — 16:9 под единый OptionTile (с запасом под retina).
+const TILE_THUMB_W = 240;
+const TILE_THUMB_H = 135;
+const PAPER_THUMB_W = TILE_THUMB_W; // материал
+const PAPER_THUMB_H = TILE_THUMB_H;
+const COLOR_SWATCH = 64; // свотч цвета (квадрат)
+const COLOR_FULL = 1024; // картинка цвета в lightbox (ресайз по ширине)
+const FIN_THUMB_W = TILE_THUMB_W; // ламинация
+const FIN_THUMB_H = TILE_THUMB_H;
+const FOLD_THUMB_W = TILE_THUMB_W; // фальцовка
+const FOLD_THUMB_H = TILE_THUMB_H;
+
+// Маппинг цвета (бумага/фольга) → UI: hex/URL + адаптивные свотч и lightbox.
+function mapColor(c: any): PaperColor {
+  return {
+    id: num(c.id),
+    name: c.name,
+    code: c.code,
+    hex: c.hex ?? null,
+    image: assetUrl(c.image),
+    thumb: responsiveAsset(c.image, COLOR_SWATCH, COLOR_SWATCH),
+    full: responsiveAsset(c.image, COLOR_FULL, undefined, [1]),
+  };
+}
 import { computePrice } from "./engine";
 import type {
   PricingData,
@@ -25,9 +50,10 @@ export type SizePreset = {
   pagesPerSheet?: number; // импозиция (только multipage)
 };
 
-export type BindingOption = Binding & { id: number };
+export type BindingOption = Binding & { id: number; image: string | null; thumb: ResponsiveImage };
 
-export type FoldType = { name: string; folds: number; kind: string }; // тип фальцовки; kind: book|accordion|roll
+// тип фальцовки; kind: book|accordion|roll; image/thumb — иконка сложения
+export type FoldType = { name: string; folds: number; kind: string; image: string | null; thumb: ResponsiveImage };
 
 export type PaperColor = {
   id: number;
@@ -35,6 +61,8 @@ export type PaperColor = {
   code: string;
   hex: string | null;
   image: string | null; // URL картинки-свотча или null
+  thumb: ResponsiveImage; // адаптивный свотч (avif/webp, квадрат)
+  full: ResponsiveImage; // адаптивная картинка для lightbox (ресайз по ширине)
 };
 
 // Материал для UI: цена для движка (name+price) + презентация (group/description/colors).
@@ -46,6 +74,7 @@ export type PaperOption = {
   materialType: string; // тип материала (Directus papers.material_type) — для блока «Материалы»
   description: string | null;
   image: string | null;
+  thumb: ResponsiveImage; // адаптивная миниатюра (avif/webp) для плитки материала
   colors: PaperColor[];
   // спецматериал с фикс-ценой за лист (световозвращающая плёнка, пластик 3M)
   fixedPrice?: CuttingBracket[];
@@ -57,6 +86,7 @@ export type FinishingOption = Finishing & {
   id: number;
   group: string | null;
   image: string | null; // фото отделки (finishing_options.image)
+  thumb: ResponsiveImage; // адаптивная миниатюра (avif/webp) для плитки ламинации
   colors: PaperColor[];
 };
 
@@ -321,6 +351,9 @@ export async function getProductPricing(
     ...paperFields("inner_papers"),
     "bindings.bindings_id.id",
     "bindings.bindings_id.name",
+    // Иконка переплёта: раскомментировать, КОГДА в Directus-коллекции `bindings`
+    // появится поле `image` (file) с правом чтения у public-роли — иначе 403.
+    // "bindings.bindings_id.image",
     "bindings.bindings_id.price",
     "bindings.bindings_id.min_pages",
     "bindings.bindings_id.max_pages",
@@ -359,16 +392,11 @@ export async function getProductPricing(
       materialType: pp.material_type ?? "Прочее",
       description: pp.description ?? null,
       image: assetUrl(pp.image),
+      thumb: responsiveAsset(pp.image, PAPER_THUMB_W, PAPER_THUMB_H),
       colors: (pp.colors ?? [])
         .slice()
         .sort((a: any, b: any) => (a.sort ?? 0) - (b.sort ?? 0))
-        .map((c: any) => ({
-          id: num(c.id),
-          name: c.name,
-          code: c.code,
-          hex: c.hex ?? null,
-          image: assetUrl(c.image),
-        })),
+        .map(mapColor),
       fixedPrice: hasFixed
         ? pp.fixed_price.map((b: any) => ({ to: num(b.to), price: num(b.price) })).sort((a: any, z: any) => a.to - z.to)
         : undefined,
@@ -393,6 +421,8 @@ export async function getProductPricing(
       name: String(f.name ?? ""),
       folds: num(f.folds),
       kind: String(f.kind ?? "accordion"),
+      image: assetUrl(f.image),
+      thumb: responsiveAsset(f.image, FOLD_THUMB_W, FOLD_THUMB_H),
     })),
     sizes: (p.sizes ?? []).map((s: any) => ({
       label: s.label,
@@ -409,6 +439,8 @@ export async function getProductPricing(
       return {
         id: num(b.id),
         name: b.name,
+        image: assetUrl(b.image),
+        thumb: responsiveAsset(b.image, FOLD_THUMB_W, FOLD_THUMB_H),
         priceBrackets: (Array.isArray(b.price) ? b.price : [])
           .map((br: any) => ({ to: num(br.to), price: num(br.price) }))
           .sort((a: any, z: any) => a.to - z.to),
@@ -431,6 +463,7 @@ export async function getProductPricing(
         name: f.name,
         group: f.group ?? null,
         image: assetUrl(f.image),
+        thumb: responsiveAsset(f.image, FIN_THUMB_W, FIN_THUMB_H),
         unit: f.unit,
         unitPrice: f.unit_price == null ? null : num(f.unit_price),
         setupPrice: num(f.setup_price),
@@ -441,13 +474,7 @@ export async function getProductPricing(
         colors: (f.colors ?? [])
           .slice()
           .sort((a: any, b: any) => (a.sort ?? 0) - (b.sort ?? 0))
-          .map((c: any) => ({
-            id: num(c.id),
-            name: c.name,
-            code: c.code,
-            hex: c.hex ?? null,
-            image: assetUrl(c.image),
-          })),
+          .map(mapColor),
       } as FinishingOption;
     }),
   };

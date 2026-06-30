@@ -120,15 +120,21 @@ export type PriceResult = {
 };
 
 // Ставка ступени: строка с наибольшим minSheets, не превышающим n.
+// Ниже самой нижней ступени берём её ставку (самую дорогую за лист), а НЕ 0:
+// минимума по тиражу/числу листов нет, поэтому малый заказ должен считаться по
+// честной ставке (порог рентабельности ловит уже minOrder на итоге, см. computeSheet).
 export function tierRate(tiers: Tier[], n: number): number {
   let rate = 0;
   let best = -1;
+  let lowest: Tier | null = null; // ступень с минимальным minSheets (без опоры на сортировку)
   for (const t of tiers) {
+    if (lowest === null || t.minSheets < lowest.minSheets) lowest = t;
     if (n >= t.minSheets && t.minSheets > best) {
       best = t.minSheets;
       rate = t.price;
     }
   }
+  if (best === -1 && lowest) return lowest.price; // n ниже всех ступеней
   return rate;
 }
 

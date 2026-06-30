@@ -91,6 +91,13 @@ Current local infrastructure:
 - Local dev secrets are not production secrets and must be replaced before deployment.
 - Docker Desktop requires Windows hypervisor/WSL2. If hypervisor is disabled for other workflows, stop containers with `docker compose stop` before switching modes.
 
+Production content workflow (live as of 2026-06-30):
+
+- **Prod is live**: `https://printmos.ru` (Astro) + `https://admin.printmos.ru` (Directus). Real content and images (papers, prices, finishing photos, galleries, SEO text) are now **authored directly in the PROD Directus admin**, not locally.
+- **`git push` carries CODE only.** Calculator data and uploaded files live in Directus (Postgres DB + the `directus_uploads` volume), which is **separate per environment** — pushing code does NOT move rows or images from local to prod. Local Directus is for code/schema/dev experiments only.
+- **Schema** travels semi-manually via the versioned `directus/snapshot.yaml` (`schema apply`); content rows and files do not.
+- **Deploy triggers:** push to `master` rebuilds the Astro image (CI → ghcr → SSH). Doc/SEO-only pushes are `paths-ignore`d. Publishing content in Directus fires a Flow → GitHub `repository_dispatch` (`deploy-site`) → automatic static rebuild, so editing on prod refreshes the site without a manual push.
+
 Reverse proxy direction:
 
 - Prefer Caddy over Nginx at the start because it has simpler configuration, automatic HTTPS, reverse proxy support, and HTTP/3 support on the public edge.
@@ -405,6 +412,9 @@ Goal: turn the current technical prototype into a coherent first public site ske
 - Price «от» = `minPrice()` (cheapest paper × min tirage 50 × 1-sided), not `defaultPrice(100)` (`src/lib/pricing/data.ts`).
 - Dynamic price table = `PriceTable.vue` inside the configurator island (SSR → crawlable in HTML, hydrate → interactive). Rows = size|paper|sides (auto axis), cols = tirages, cell = total + ₽/шт + Δ% vs selected (gain/loss tokens `--color-gain/--color-loss` in `app.css @theme`). Click sets calc params; price via `calc.priceForCell` (П2).
 - Hub block `OptionsInfo.astro` («Материалы и технологии»): product-agnostic, built from the product's options. Material cards grouped by material TYPE (офсетная/мелованная/картон/пластик/дизайнерская), postpress by finishing group; each card = list (daisyUI `menu`) + preview (square avif thumb + description). CSS-only progressive toggle (all panels in HTML, П6, no popups, no new entities). Grid `repeat(auto-fit, minmax(min(100%,26rem),1fr))`, container queries for card-internal layout, equal-height + scroll for long lists. Tooltips `?` (`InfoTip.vue`) demoed on CoatingField.
+- Pricing engine guard: `tierRate()` now returns the lowest tier's rate when the sheet count is below the lowest `min_sheets` (instead of 0 — no tirage minimum exists, so a tiny order must still price at the most-expensive per-sheet rate; the money floor is `minOrder`). Verified with a unit check; affects both print and step-priced finishing (foil).
+- daisyUI consistency pass (audited with the local daisyUI skill): site chrome that hand-rolled standard controls moved to library components — mobile action bar `.mobile-bar__btn` → `btn btn-ghost`; the «Связаться» sheet `.channel-sheet*` `<dialog>` → daisyUI `modal modal-bottom sm:modal-middle` + `btn` (≈95 lines of dead CSS removed); material-category tabs `.mat-tab` → `tabs tabs-box`. Deliberately left custom (no 1:1 daisyUI fit, built on theme tokens): `OptionTile`, `QuantitySlider`, product tiles, the desktop hover mega-menu `.nav-group` (mobile nav already uses daisyUI `dropdown`/`menu`), and the 4-block footer.
+- Content authoring moved to PROD Directus (2026-06-30): real images/prices/text are entered in `admin.printmos.ru`, not local; `git push` ships code only (see «Production content workflow»). Local Directus is now dev/schema only.
 
 ## Tech Debt And Open Questions
 
@@ -462,4 +472,5 @@ Goal: turn the current technical prototype into a coherent first public site ske
 - Keep this file updated when the stack, roadmap, or major product decisions change.
 - Add new decisions to the decisions log instead of relying on memory.
 - Add unresolved issues to the tech debt/open questions section.
+- Content & images are authored in PROD Directus (`admin.printmos.ru`), not locally. Never assume `git push` moves data/images — it ships code (and, semi-manually, schema) only. Do not seed/overwrite prod content from local test data.
 - Keep code changes small and explain the TypeScript/Astro/Vue concept being practiced.
