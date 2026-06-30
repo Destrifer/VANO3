@@ -9,6 +9,7 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
+    "check": "astro check",
     "astro": "astro"
   },
   "dependencies": {
@@ -31,6 +32,8 @@
     "vue": "^3.5.35"
   },
   "devDependencies": {
-    "@types/nodemailer": "^8.0.1"
+    "@astrojs/check": "^0.9.9",
+    "@types/nodemailer": "^8.0.1",
+    "typescript": "^6.0.3"
   }
 }

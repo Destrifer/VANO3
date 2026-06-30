@@ -8,6 +8,7 @@ const mk = (prices: number[]) => lo.map((m, i) => ({ minSheets: m, price: prices
 const data: PricingData = {
   pressSheet: { width: 438, height: 309, margin: 2 },
   plotterSheet: { width: 290, height: 405, margin: 2 },
+  brochureSheet: { width: 438, height: 309, margin: 6 },
   bleed: 2,
   urgencyMultiplier: 1.5,
   prepCost: 0,
@@ -17,6 +18,8 @@ const data: PricingData = {
     "4+0": mk([80, 60, 55, 50, 47, 45, 42, 40, 37, 35, 32, 30]),
     "4+4": mk([120, 100, 90, 85, 80, 75, 70, 65, 60, 55, 50, 45]),
   },
+  plotterCutting: [],
+  manualCuttingRate: 0,
 };
 
 const paper = { name: "Мелованная 300 г/м²", price: 25 };
@@ -36,7 +39,8 @@ const base: Omit<OrderConfig, "quantity" | "sides" | "finishing"> = {
 function run(title: string, cfg: OrderConfig) {
   const r = computePrice(cfg, data);
   console.log(`\n=== ${title} ===`);
-  console.log(`лист ${r.sheet.width}×${r.sheet.height} | на листе: ${r.fitPerSheet} | листов: ${r.sheets}`);
+  const sheet = r.sheet ? `${r.sheet.width}×${r.sheet.height}` : "—";
+  console.log(`лист ${sheet} | на листе: ${r.fitPerSheet} | листов: ${r.sheets}`);
   for (const l of r.lines) console.log(`  ${l.label} = ${l.amount.toFixed(2)}`);
   console.log(`  ИТОГО: ${r.total.toFixed(2)} ₽  (${(r.total / cfg.quantity).toFixed(2)} ₽/шт)`);
 }

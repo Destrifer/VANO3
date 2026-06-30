@@ -9,8 +9,6 @@ import { faqPage } from "../lib/seo/jsonld";
 // (src/lib/checkout.ts): способы, стоимость курьера и т.п. берём оттуда, чтобы
 // не разойтись с тем, что человек видит при оформлении. Реквизиты — из settings.
 const settings = await getSettings();
-const siteUrl = Astro.site?.toString() ?? "https://printmos.ru";
-const pageUrl = new URL("/dostavka-oplata", siteUrl).toString();
 
 const address = settings.address ?? "Москва";
 const hours = settings.hours ?? null;

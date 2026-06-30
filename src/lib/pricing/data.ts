@@ -40,7 +40,7 @@ import type {
 
 const num = (v: unknown): number => Number(v ?? 0);
 
-export type Strategy = "sheet" | "multipage" | "area" | "perpiece";
+export type Strategy = "sheet" | "multipage" | "fixed" | "area" | "perpiece";
 
 export type SizePreset = {
   label: string;
@@ -155,7 +155,7 @@ export async function getPricingData(): Promise<PricingData> {
     printTiers,
     plotterCutting: (Array.isArray(s.plotter_cutting) ? s.plotter_cutting : [])
       .map((b: any) => ({ to: num(b.to), price: num(b.price) }))
-      .sort((a, b) => a.to - b.to),
+      .sort((a: CuttingBracket, b: CuttingBracket) => a.to - b.to),
     manualCuttingRate: num(s.manual_cutting_rate),
   };
 }
