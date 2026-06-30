@@ -6729,10 +6729,8 @@ fields:
             value: sheet
           - text: Multipage (bound)
             value: multipage
-          - text: Area (m2)
-            value: area
-          - text: Per piece
-            value: perpiece
+          - text: Fixed (price table)
+            value: fixed
       readonly: false
       required: false
       searchable: true
