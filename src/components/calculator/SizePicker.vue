@@ -74,6 +74,7 @@ onBeforeUnmount(() => {
         <OptionTile
           v-for="t in tiles"
           :key="t.id"
+          icon
           :label="t.label"
           :sub="t.sub || undefined"
           :active="activeId === t.id"

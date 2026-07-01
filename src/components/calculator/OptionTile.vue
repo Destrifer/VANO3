@@ -15,8 +15,10 @@ withDefaults(
     active?: boolean;
     disabled?: boolean;
     title?: string;
+    icon?: boolean; // компактный вариант для рядов без фото: иконка слева, текст
+                    // справа, активная — киноварью (без серой заливки-миниатюры)
   }>(),
-  { active: false, disabled: false },
+  { active: false, disabled: false, icon: false },
 );
 const emit = defineEmits<{ select: [] }>();
 </script>
@@ -29,7 +31,7 @@ const emit = defineEmits<{ select: [] }>();
     :disabled="disabled"
     :title="title ?? label"
     class="otile"
-    :class="{ 'otile--on': active, 'otile--off': disabled }"
+    :class="{ 'otile--on': active, 'otile--off': disabled, 'otile--icon': icon }"
     @click="emit('select')"
   >
     <span class="otile__thumb" :style="fill && !thumb ? `background:${fill}` : ''">
@@ -41,8 +43,10 @@ const emit = defineEmits<{ select: [] }>();
         <svg v-else-if="glyph" viewBox="0 0 24 24" aria-hidden="true" class="otile__glyph" v-html="glyph" />
       </slot>
     </span>
-    <span class="otile__name">{{ label }}</span>
-    <span v-if="sub" class="otile__sub">{{ sub }}</span>
+    <span class="otile__text">
+      <span class="otile__name">{{ label }}</span>
+      <span v-if="sub" class="otile__sub">{{ sub }}</span>
+    </span>
   </button>
 </template>
 
@@ -83,6 +87,13 @@ const emit = defineEmits<{ select: [] }>();
 .otile__glyph { width: 2.2rem; height: 2.2rem; opacity: 0.45; }
 /* глиф/иконка, переданные через слот #thumb (напр. SizeGlyph) */
 .otile__thumb :slotted(svg) { width: 2.2rem; height: 2.2rem; opacity: 0.45; }
+.otile__text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
+}
 .otile__name {
   font-size: 0.72rem;
   line-height: 1.1;
@@ -93,4 +104,44 @@ const emit = defineEmits<{ select: [] }>();
   overflow: hidden;
 }
 .otile__sub { font-size: 0.65rem; line-height: 1; opacity: 0.55; white-space: nowrap; }
+
+/* ── Вариант «icon»: ряды без фото (размер, стороны печати). Иконка слева,
+   текст справа, плитка низкая; активная — киноварью, без серой заливки, чтобы
+   иконка не сливалась с фоном выделения. ─────────────────────────────────── */
+.otile--icon {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.55rem;
+  width: auto;
+  min-width: 6rem;
+  padding: 0.45rem 0.7rem;
+}
+.otile--icon .otile__thumb {
+  width: auto;
+  aspect-ratio: auto;
+  flex: 0 0 auto;
+  background: none; /* прозрачно — не сливается с выделением */
+  border-radius: 0;
+}
+.otile--icon .otile__glyph,
+.otile--icon .otile__thumb :slotted(svg) { width: 1.7rem; height: 1.7rem; opacity: 0.75; }
+.otile--icon .otile__text { align-items: flex-start; gap: 0.1rem; }
+.otile--icon .otile__name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: left;
+  -webkit-line-clamp: 1;
+}
+.otile--icon .otile__sub { line-height: 1.1; }
+/* активная icon-плитка — киноварь: рамка + иконка + текст, без заливки */
+.otile--icon.otile--on {
+  border-color: var(--color-accent-ink);
+  background: var(--color-base-100, #fff);
+  color: var(--color-accent-ink);
+  padding: calc(0.45rem - 1px) calc(0.7rem - 1px);
+}
+.otile--icon.otile--on:hover { border-color: var(--color-accent-ink); }
+.otile--icon.otile--on .otile__sub { color: var(--color-accent-ink); opacity: 1; }
+.otile--icon.otile--on .otile__glyph,
+.otile--icon.otile--on .otile__thumb :slotted(svg) { opacity: 1; }
 </style>

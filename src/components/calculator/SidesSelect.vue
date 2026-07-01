@@ -27,6 +27,7 @@ const TILES: { id: Sides; name: string; sub: string }[] = [
       <OptionTile
         v-for="t in TILES"
         :key="t.id"
+        icon
         :label="t.name"
         :sub="t.sub"
         :glyph="ICONS[t.id]"
