@@ -57,6 +57,7 @@ jobs:
           build-args: |
             DIRECTUS_URL=${{ env.DIRECTUS_PUBLIC_URL }}
             DIRECTUS_PUBLIC_URL=${{ env.DIRECTUS_PUBLIC_URL }}
+            CACHEBUST=${{ github.run_id }}-${{ github.run_attempt }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
           cache-from: type=gha

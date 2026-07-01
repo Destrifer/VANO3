@@ -18,7 +18,12 @@ ENV DIRECTUS_PUBLIC_URL=${DIRECTUS_PUBLIC_URL}
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
-RUN npm run build
+# CACHEBUST: уникальное значение на каждый прогон CI инвалидирует кэш слоя ниже,
+# заставляя `npm run build` ЗАНОВО перечитать контент из Directus. Без этого при
+# контентных пересборках (код не менялся) Docker переиспользовал бы старую сборку
+# и правки в Directus не попадали бы на сайт.
+ARG CACHEBUST=0
+RUN echo "build $CACHEBUST" && npm run build
 
 # ---- runtime stage ----
 FROM node:22-alpine AS runner
