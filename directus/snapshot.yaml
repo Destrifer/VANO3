@@ -431,7 +431,7 @@ collections:
       collapse: open
       collection: products
       color: null
-      display_template: null
+      display_template: '{{name}}'
       group: catalog
       hidden: false
       icon: null
@@ -542,6 +542,30 @@ collections:
       versioning: false
     schema:
       name: products_finishing
+  - collection: products_gallery
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      collapse: open
+      collection: products_gallery
+      color: null
+      display_template: '{{caption}}'
+      group: null
+      hidden: true
+      icon: photo_library
+      item_duplication_fields: null
+      note: Галерея продукта (фото + подпись/alt/порядок)
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: products_gallery
   - collection: products_inner_papers
     meta:
       accountability: all
@@ -6166,7 +6190,9 @@ fields:
       searchable: true
       sort: 2
       special: null
-      translations: null
+      translations:
+        - language: ru-RU
+          translation: Статус
       validation: null
       validation_message: null
       width: full
@@ -6206,7 +6232,9 @@ fields:
       searchable: true
       sort: 3
       special: null
-      translations: null
+      translations:
+        - language: ru-RU
+          translation: Сортировка
       validation: null
       validation_message: null
       width: full
@@ -6239,14 +6267,16 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: null
+      note: Название продукта
       options: null
       readonly: false
       required: true
       searchable: true
       sort: 4
       special: null
-      translations: null
+      translations:
+        - language: ru-RU
+          translation: Название
       validation: null
       validation_message: null
       width: full
@@ -6279,7 +6309,7 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: null
+      note: Часть адреса страницы
       options:
         slug: true
         trim: true
@@ -6288,7 +6318,9 @@ fields:
       searchable: true
       sort: 5
       special: null
-      translations: null
+      translations:
+        - language: ru-RU
+          translation: Slug (URL)
       validation: null
       validation_message: null
       width: full
@@ -6321,7 +6353,7 @@ fields:
       group: null
       hidden: false
       interface: select-dropdown-m2o
-      note: null
+      note: Раздел каталога
       options:
         template: '{{name}}'
       readonly: false
@@ -6330,7 +6362,9 @@ fields:
       sort: 6
       special:
         - m2o
-      translations: null
+      translations:
+        - language: ru-RU
+          translation: Категория
       validation: null
       validation_message: null
       width: full
@@ -6363,7 +6397,7 @@ fields:
       group: null
       hidden: false
       interface: boolean
-      note: null
+      note: Выводить в главном меню
       options: null
       readonly: false
       required: false
@@ -6371,7 +6405,9 @@ fields:
       sort: 7
       special:
         - cast-boolean
-      translations: null
+      translations:
+        - language: ru-RU
+          translation: Показывать в меню
       validation: null
       validation_message: null
       width: full
@@ -6404,14 +6440,16 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: Tabler icon, напр. tabler:sticker
+      note: Иконка Tabler, напр. tabler:sticker
       options: null
       readonly: false
       required: false
       searchable: true
       sort: 8
       special: null
-      translations: null
+      translations:
+        - language: ru-RU
+          translation: Иконка
       validation: null
       validation_message: null
       width: full
@@ -6444,7 +6482,7 @@ fields:
       group: null
       hidden: false
       interface: boolean
-      note: Показывать плиткой на главной
+      note: Выводить плиткой на главной
       options: null
       readonly: false
       required: false
@@ -6452,7 +6490,9 @@ fields:
       sort: 9
       special:
         - cast-boolean
-      translations: null
+      translations:
+        - language: ru-RU
+          translation: Показывать на главной
       validation: null
       validation_message: null
       width: full
@@ -6478,14 +6518,19 @@ fields:
     type: alias
     meta:
       collection: products
-      conditions: null
+      conditions:
+        - hidden: true
+          name: Только «sheet»
+          rule:
+            strategy:
+              _neq: sheet
       display: null
       display_options: null
       field: papers
       group: null
       hidden: false
       interface: list-m2m
-      note: Материалы (бумага/плёнка), доступные этому продукту
+      note: Бумага/плёнка, доступные для выбора
       options: null
       readonly: false
       required: false
@@ -6493,7 +6538,9 @@ fields:
       sort: 10
       special:
         - m2m
-      translations: null
+      translations:
+        - language: ru-RU
+          translation: Материалы
       validation: null
       validation_message: null
       width: full
@@ -6509,7 +6556,7 @@ fields:
       group: null
       hidden: false
       interface: list-o2m
-      note: Пресеты размеров
+      note: Пресеты размеров (для многостраничных — форматы)
       options: null
       readonly: false
       required: false
@@ -6517,7 +6564,9 @@ fields:
       sort: 11
       special:
         - o2m
-      translations: null
+      translations:
+        - language: ru-RU
+          translation: Размеры
       validation: null
       validation_message: null
       width: full
@@ -6533,7 +6582,7 @@ fields:
       group: null
       hidden: false
       interface: select-dropdown
-      note: Базовый лист/резка
+      note: Базовый лист и резка (лист/плоттер)
       options:
         choices:
           - text: Лист (ручная резка)
@@ -6545,7 +6594,9 @@ fields:
       searchable: true
       sort: 12
       special: null
-      translations: null
+      translations:
+        - language: ru-RU
+          translation: Производство
       validation: null
       validation_message: null
       width: half
@@ -6571,21 +6622,28 @@ fields:
     type: boolean
     meta:
       collection: products
-      conditions: null
+      conditions:
+        - hidden: true
+          name: Скрыть для «multipage»
+          rule:
+            strategy:
+              _eq: multipage
       display: null
       display_options: null
       field: allow_round
       group: null
       hidden: false
       interface: boolean
-      note: Можно круглое (диаметр, плоттер)
+      note: Разрешить круглое изделие (диаметр, плоттер)
       options: null
       readonly: false
       required: false
       searchable: true
       sort: 13
       special: null
-      translations: null
+      translations:
+        - language: ru-RU
+          translation: Круглая форма
       validation: null
       validation_message: null
       width: half
@@ -6611,21 +6669,28 @@ fields:
     type: boolean
     meta:
       collection: products
-      conditions: null
+      conditions:
+        - hidden: true
+          name: Скрыть для «multipage»
+          rule:
+            strategy:
+              _eq: multipage
       display: null
       display_options: null
       field: allow_complex
       group: null
       hidden: false
       interface: boolean
-      note: Можно сложную форму (плоттер)
+      note: Разрешить сложную форму (плоттер)
       options: null
       readonly: false
       required: false
       searchable: true
       sort: 14
       special: null
-      translations: null
+      translations:
+        - language: ru-RU
+          translation: Сложная форма
       validation: null
       validation_message: null
       width: half
@@ -6651,21 +6716,28 @@ fields:
     type: boolean
     meta:
       collection: products
-      conditions: null
+      conditions:
+        - hidden: true
+          name: Скрыть для «multipage»
+          rule:
+            strategy:
+              _eq: multipage
       display: null
       display_options: null
       field: allow_custom
       group: null
       hidden: false
       interface: boolean
-      note: Можно свой размер
+      note: Разрешить произвольный размер изделия
       options: null
       readonly: false
       required: false
       searchable: true
       sort: 15
       special: null
-      translations: null
+      translations:
+        - language: ru-RU
+          translation: Свой размер
       validation: null
       validation_message: null
       width: half
@@ -6691,14 +6763,19 @@ fields:
     type: alias
     meta:
       collection: products
-      conditions: null
+      conditions:
+        - hidden: true
+          name: Скрыть для «fixed»
+          rule:
+            strategy:
+              _eq: fixed
       display: null
       display_options: null
       field: finishing
       group: null
       hidden: false
       interface: list-m2m
-      note: Доступная постпечать
+      note: Доступная постпечать (ламинация/фольга/…)
       options: null
       readonly: false
       required: false
@@ -6706,7 +6783,9 @@ fields:
       sort: 16
       special:
         - m2m
-      translations: null
+      translations:
+        - language: ru-RU
+          translation: Постобработка
       validation: null
       validation_message: null
       width: full
@@ -6722,7 +6801,7 @@ fields:
       group: null
       hidden: false
       interface: select-dropdown
-      note: Pricing/configurator strategy
+      note: Стратегия ценообразования и конфигуратора
       options:
         choices:
           - text: Sheet (imposition)
@@ -6736,7 +6815,9 @@ fields:
       searchable: true
       sort: 17
       special: null
-      translations: null
+      translations:
+        - language: ru-RU
+          translation: Стратегия расчёта
       validation: null
       validation_message: null
       width: half
@@ -6762,14 +6843,19 @@ fields:
     type: alias
     meta:
       collection: products
-      conditions: null
+      conditions:
+        - hidden: true
+          name: Только «multipage»
+          rule:
+            strategy:
+              _neq: multipage
       display: null
       display_options: null
       field: cover_papers
       group: null
       hidden: false
       interface: list-m2m
-      note: null
+      note: Материалы обложки (только многостраничные)
       options: null
       readonly: false
       required: false
@@ -6777,7 +6863,9 @@ fields:
       sort: 18
       special:
         - m2m
-      translations: null
+      translations:
+        - language: ru-RU
+          translation: Бумага обложки
       validation: null
       validation_message: null
       width: full
@@ -6786,14 +6874,19 @@ fields:
     type: alias
     meta:
       collection: products
-      conditions: null
+      conditions:
+        - hidden: true
+          name: Только «multipage»
+          rule:
+            strategy:
+              _neq: multipage
       display: null
       display_options: null
       field: inner_papers
       group: null
       hidden: false
       interface: list-m2m
-      note: null
+      note: Материалы блока/страниц (только многостраничные)
       options: null
       readonly: false
       required: false
@@ -6801,7 +6894,9 @@ fields:
       sort: 19
       special:
         - m2m
-      translations: null
+      translations:
+        - language: ru-RU
+          translation: Бумага блока
       validation: null
       validation_message: null
       width: full
@@ -6810,14 +6905,19 @@ fields:
     type: alias
     meta:
       collection: products
-      conditions: null
+      conditions:
+        - hidden: true
+          name: Только «multipage»
+          rule:
+            strategy:
+              _neq: multipage
       display: null
       display_options: null
       field: bindings
       group: null
       hidden: false
       interface: list-m2m
-      note: null
+      note: Виды переплёта (только многостраничные)
       options: null
       readonly: false
       required: false
@@ -6825,7 +6925,9 @@ fields:
       sort: 20
       special:
         - m2m
-      translations: null
+      translations:
+        - language: ru-RU
+          translation: Переплёт
       validation: null
       validation_message: null
       width: full
@@ -6834,21 +6936,28 @@ fields:
     type: boolean
     meta:
       collection: products
-      conditions: null
+      conditions:
+        - hidden: true
+          name: Скрыть для «multipage»
+          rule:
+            strategy:
+              _eq: multipage
       display: null
       display_options: null
       field: single_sided
       group: null
       hidden: false
       interface: boolean
-      note: Print one side only (stickers)
+      note: Печать только с одной стороны (наклейки)
       options: null
       readonly: false
       required: false
       searchable: true
       sort: 21
       special: null
-      translations: null
+      translations:
+        - language: ru-RU
+          translation: Только односторонняя
       validation: null
       validation_message: null
       width: half
@@ -6874,21 +6983,28 @@ fields:
     type: boolean
     meta:
       collection: products
-      conditions: null
+      conditions:
+        - hidden: true
+          name: Скрыть для «multipage»
+          rule:
+            strategy:
+              _eq: multipage
       display: null
       display_options: null
       field: allow_contour_cut
       group: null
       hidden: false
       interface: boolean
-      note: Offer contour kiss-cut (+50% cut)
+      note: Предлагать контурную надсечку (+50% к резке)
       options: null
       readonly: false
       required: false
       searchable: true
       sort: 22
       special: null
-      translations: null
+      translations:
+        - language: ru-RU
+          translation: Контурная резка
       validation: null
       validation_message: null
       width: half
@@ -6914,21 +7030,28 @@ fields:
     type: string
     meta:
       collection: products
-      conditions: null
+      conditions:
+        - hidden: true
+          name: Только «sheet»
+          rule:
+            strategy:
+              _neq: sheet
       display: null
       display_options: null
       field: preview_kind
       group: null
       hidden: false
       interface: input
-      note: Preview mockup key (card/sticker), empty=card
+      note: Макет превью (card/sticker/leaflet/letterhead)
       options: null
       readonly: false
       required: false
       searchable: true
       sort: 23
       special: null
-      translations: null
+      translations:
+        - language: ru-RU
+          translation: Тип превью
       validation: null
       validation_message: null
       width: half
@@ -6954,21 +7077,28 @@ fields:
     type: boolean
     meta:
       collection: products
-      conditions: null
+      conditions:
+        - hidden: true
+          name: Только «sheet»
+          rule:
+            strategy:
+              _neq: sheet
       display: null
       display_options: null
       field: double_sided
       group: null
       hidden: false
       interface: boolean
-      note: Always 4+4 (booklets)
+      note: Печать всегда 4+4 (буклеты)
       options: null
       readonly: false
       required: false
       searchable: true
       sort: 24
       special: null
-      translations: null
+      translations:
+        - language: ru-RU
+          translation: Всегда двусторонняя
       validation: null
       validation_message: null
       width: half
@@ -6994,14 +7124,19 @@ fields:
     type: json
     meta:
       collection: products
-      conditions: null
+      conditions:
+        - hidden: true
+          name: Только «sheet»
+          rule:
+            strategy:
+              _neq: sheet
       display: null
       display_options: null
       field: fold_types
       group: null
       hidden: false
       interface: input-code
-      note: '[{name,folds}] fold options (booklets)'
+      note: Варианты сложения, JSON [{name,folds}] (буклеты)
       options:
         language: json
       readonly: false
@@ -7010,7 +7145,9 @@ fields:
       sort: 25
       special:
         - cast-json
-      translations: null
+      translations:
+        - language: ru-RU
+          translation: Типы фальцовки
       validation: null
       validation_message: null
       width: full
@@ -7036,14 +7173,19 @@ fields:
     type: json
     meta:
       collection: products
-      conditions: null
+      conditions:
+        - hidden: true
+          name: Только «fixed»
+          rule:
+            strategy:
+              _neq: fixed
       display: null
       display_options: null
       field: fixed_price
       group: null
       hidden: false
       interface: input-code
-      note: '[{to,price}] ₽/лист по числу листов (fixed)'
+      note: JSON [{to,price}] — ₽/лист по числу листов (стратегия fixed)
       options:
         language: json
       readonly: false
@@ -7052,7 +7194,9 @@ fields:
       sort: 26
       special:
         - cast-json
-      translations: null
+      translations:
+        - language: ru-RU
+          translation: Фикс-цена за лист
       validation: null
       validation_message: null
       width: full
@@ -7078,21 +7222,28 @@ fields:
     type: float
     meta:
       collection: products
-      conditions: null
+      conditions:
+        - hidden: true
+          name: Только «fixed»
+          rule:
+            strategy:
+              _neq: fixed
       display: null
       display_options: null
       field: fixed_sheet_width
       group: null
       hidden: false
       interface: input
-      note: Fixed sheet W, mm
+      note: Печатный лист — ширина, мм (стратегия fixed)
       options: null
       readonly: false
       required: false
       searchable: true
       sort: 27
       special: null
-      translations: null
+      translations:
+        - language: ru-RU
+          translation: Ширина листа (фикс), мм
       validation: null
       validation_message: null
       width: third
@@ -7118,21 +7269,28 @@ fields:
     type: float
     meta:
       collection: products
-      conditions: null
+      conditions:
+        - hidden: true
+          name: Только «fixed»
+          rule:
+            strategy:
+              _neq: fixed
       display: null
       display_options: null
       field: fixed_sheet_height
       group: null
       hidden: false
       interface: input
-      note: null
+      note: Печатный лист — высота, мм (стратегия fixed)
       options: null
       readonly: false
       required: false
       searchable: true
       sort: 28
       special: null
-      translations: null
+      translations:
+        - language: ru-RU
+          translation: Высота листа (фикс), мм
       validation: null
       validation_message: null
       width: third
@@ -7158,21 +7316,28 @@ fields:
     type: float
     meta:
       collection: products
-      conditions: null
+      conditions:
+        - hidden: true
+          name: Только «fixed»
+          rule:
+            strategy:
+              _neq: fixed
       display: null
       display_options: null
       field: fixed_sheet_margin
       group: null
       hidden: false
       interface: input
-      note: null
+      note: Запас по краю листа, мм (стратегия fixed)
       options: null
       readonly: false
       required: false
       searchable: true
       sort: 29
       special: null
-      translations: null
+      translations:
+        - language: ru-RU
+          translation: Поле листа (фикс), мм
       validation: null
       validation_message: null
       width: third
@@ -7213,7 +7378,9 @@ fields:
       sort: 30
       special:
         - m2m
-      translations: null
+      translations:
+        - language: ru-RU
+          translation: Вопросы и ответы (FAQ)
       validation: null
       validation_message: null
       width: full
@@ -7229,14 +7396,16 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: H1 по запросу (если пусто — берётся name)
+      note: H1 по запросу (если пусто — берётся название)
       options: null
       readonly: false
       required: false
       searchable: true
       sort: 31
       special: null
-      translations: null
+      translations:
+        - language: ru-RU
+          translation: Заголовок H1
       validation: null
       validation_message: null
       width: full
@@ -7269,14 +7438,16 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: ≤60 знаков, с зацепкой (срок/«от»/в Москве)
+      note: ≤60 знаков, с зацепкой (срок/«в Москве»)
       options: null
       readonly: false
       required: false
       searchable: true
       sort: 32
       special: null
-      translations: null
+      translations:
+        - language: ru-RU
+          translation: Meta Title
       validation: null
       validation_message: null
       width: full
@@ -7309,14 +7480,16 @@ fields:
       group: null
       hidden: false
       interface: input-multiline
-      note: Сниппет до клика, влияет на CTR
+      note: Сниппет в выдаче до клика, влияет на CTR
       options: null
       readonly: false
       required: false
       searchable: true
       sort: 33
       special: null
-      translations: null
+      translations:
+        - language: ru-RU
+          translation: Meta Description
       validation: null
       validation_message: null
       width: full
@@ -7349,14 +7522,16 @@ fields:
       group: null
       hidden: false
       interface: input-rich-text-html
-      note: 'Интро: вхождения головы + контекстные внутренние ссылки (≤~1500 знаков)'
+      note: Интро страницы (SEO-вхождения + польза)
       options: null
       readonly: false
       required: false
       searchable: true
       sort: 34
       special: null
-      translations: null
+      translations:
+        - language: ru-RU
+          translation: Вводный текст
       validation: null
       validation_message: null
       width: full
@@ -7389,7 +7564,7 @@ fields:
       group: null
       hidden: false
       interface: file
-      note: Скачиваемый шаблон макета
+      note: Скачиваемый шаблон макета для клиента
       options: null
       readonly: false
       required: false
@@ -7397,7 +7572,9 @@ fields:
       sort: 35
       special:
         - file
-      translations: null
+      translations:
+        - language: ru-RU
+          translation: Шаблон макета
       validation: null
       validation_message: null
       width: half
@@ -7430,7 +7607,7 @@ fields:
       group: null
       hidden: false
       interface: list-o2m
-      note: Кластерные страницы этого продукта (Tier-1, pSEO)
+      note: Кластерные/pSEO страницы этого продукта
       options:
         enableCreate: true
         enableSelect: false
@@ -7440,7 +7617,9 @@ fields:
       sort: 36
       special:
         - o2m
-      translations: null
+      translations:
+        - language: ru-RU
+          translation: Кластерные страницы
       validation: null
       validation_message: null
       width: full
@@ -7456,14 +7635,16 @@ fields:
       group: null
       hidden: false
       interface: input
-      note: Срок изготовления, рабочих дней (база). Влияет на «срок готовности».
+      note: Рабочих дней (база продукта)
       options: null
       readonly: false
       required: false
       searchable: true
       sort: 37
       special: null
-      translations: null
+      translations:
+        - language: ru-RU
+          translation: Срок изготовления, дней
       validation: null
       validation_message: null
       width: half
@@ -7484,6 +7665,32 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
+  - collection: products
+    field: gallery
+    type: alias
+    meta:
+      collection: products
+      conditions: null
+      display: null
+      display_options: null
+      field: gallery
+      group: null
+      hidden: false
+      interface: files
+      note: Несколько фото изделия; автоматически попадают на страницу /works
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 36
+      special:
+        - files
+      translations:
+        - language: ru-RU
+          translation: Галерея
+      validation: null
+      validation_message: null
+      width: full
   - collection: products_bindings
     field: id
     type: integer
@@ -7964,6 +8171,170 @@ fields:
       has_auto_increment: false
       foreign_key_table: finishing_options
       foreign_key_column: id
+  - collection: products_gallery
+    field: id
+    type: integer
+    meta:
+      collection: products_gallery
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: null
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 1
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: products_gallery
+      data_type: integer
+      default_value: nextval('products_gallery_id_seq'::regclass)
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: true
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: products_gallery
+    field: caption
+    type: string
+    meta:
+      collection: products_gallery
+      conditions: null
+      display: null
+      display_options: null
+      field: caption
+      group: null
+      hidden: false
+      interface: input
+      note: Подпись/название (используется для alt и имени файла)
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 2
+      special: null
+      translations:
+        - language: ru-RU
+          translation: Подпись
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: caption
+      table: products_gallery
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: products_gallery
+    field: alt
+    type: string
+    meta:
+      collection: products_gallery
+      conditions: null
+      display: null
+      display_options: null
+      field: alt
+      group: null
+      hidden: false
+      interface: input
+      note: Если пусто — берётся из подписи
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 3
+      special: null
+      translations:
+        - language: ru-RU
+          translation: Alt-текст
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: alt
+      table: products_gallery
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: products_gallery
+    field: sort
+    type: integer
+    meta:
+      collection: products_gallery
+      conditions: null
+      display: null
+      display_options: null
+      field: sort
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 4
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: sort
+      table: products_gallery
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
   - collection: products_inner_papers
     field: id
     type: integer
@@ -10390,8 +10761,8 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: products
-      foreign_key_column: id
+      foreign_key_table: null
+      foreign_key_column: null
   - collection: works_tags
     field: id
     type: integer
@@ -10967,6 +11338,48 @@ relations:
       constraint_name: products_finishing_finishing_id_foreign
       on_update: NO ACTION
       on_delete: CASCADE
+  - collection: products_gallery
+    field: directus_files_id
+    related_collection: directus_files
+    meta:
+      junction_field: products_id
+      many_collection: products_gallery
+      many_field: directus_files_id
+      one_allowed_collections: null
+      one_collection: directus_files
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: products_gallery
+      column: directus_files_id
+      foreign_key_table: directus_files
+      foreign_key_column: id
+      constraint_name: products_gallery_directus_files_id_foreign
+      on_update: NO ACTION
+      on_delete: SET NULL
+  - collection: products_gallery
+    field: products_id
+    related_collection: products
+    meta:
+      junction_field: directus_files_id
+      many_collection: products_gallery
+      many_field: products_id
+      one_allowed_collections: null
+      one_collection: products
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: gallery
+      sort_field: sort
+    schema:
+      table: products_gallery
+      column: products_id
+      foreign_key_table: products
+      foreign_key_column: id
+      constraint_name: products_gallery_products_id_foreign
+      on_update: NO ACTION
+      on_delete: CASCADE
   - collection: products_inner_papers
     field: products_id
     related_collection: products
@@ -11182,14 +11595,6 @@ relations:
       one_deselect_action: nullify
       one_field: null
       sort_field: null
-    schema:
-      table: works_products
-      column: products_id
-      foreign_key_table: products
-      foreign_key_column: id
-      constraint_name: works_products_products_id_foreign
-      on_update: NO ACTION
-      on_delete: CASCADE
   - collection: works_tags
     field: works_id
     related_collection: works

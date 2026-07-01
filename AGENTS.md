@@ -209,7 +209,7 @@ Expected features:
 
 Current next learning step:
 
-- Lesson 1: understand the minimal Astro project structure and replace the default page with a first minimal black-and-white homepage for printmos.ru.
+- (Historical) The course roadmap above is complete through deployment; the project is live in production. Current work is tracked in `TECHDEBT.md`, `CONTENT.md`, and `seo/roadmap-sections.md`.
 
 Near-term learning stages:
 
@@ -387,7 +387,7 @@ Goal: turn the current technical prototype into a coherent first public site ske
 - Added `src/lib/directus.ts` and `src/lib/navigation.ts` for Directus API access.
 - Homepage design direction and visual references are documented in `src/pages/design/homepage-design.md`.
 - Earlier mobile homepage notes are kept in `src/pages/design/mobile-homepage.md`.
-- Implemented the pricing engine as a pure stage pipeline in `src/lib/pricing/engine.ts` (print → paper → finishing → cutting → min-order → rounding); product/pricing data mapped from Directus in `data.ts`; field dependencies kept as declarative data in `rules.ts`. Current scope is digital-only; offset auto-choice and the `fixed` strategy are designed (doc 03) but not yet built.
+- Implemented the pricing engine as a pure stage pipeline in `src/lib/pricing/engine.ts` (print → paper → finishing → cutting → min-order → rounding); product/pricing data mapped from Directus in `data.ts`; field dependencies kept as declarative data in `rules.ts`. Current scope is digital-only; offset auto-choice is designed (doc 03) but not built; the `fixed` strategy is built (envelopes/folders/3D-stickers: type + tirage → price).
 - Added cutting to the engine: plotter cutting as upper-bound brackets (`pricing_settings.plotter_cutting`), manual (big-sheet) cutting as a percentage of the order (`pricing_settings.manual_cutting_rate`, default 0.15). Cutting is computed automatically, not user-selectable.
 - Refactored the calculator into a thin orchestrator (`Calculator.vue`) + `useCalculator()` composable + presentational field components in `src/components/calculator/`, sharing state via `provide`/`inject` (typed `calcKey`). Shared `SwatchPalette` component for paper/foil color popovers. UI is daisyUI-only (theme `lofi`) with no hand-written scoped CSS.
 - Removed urgency (срочно) from the calculator UI; срочность is decided by a manager at order approval. The `urgencyMultiplier` stays in the engine for later reuse.
@@ -400,8 +400,8 @@ Goal: turn the current technical prototype into a coherent first public site ske
 - Implemented cart→order flow (Этап 2): client cart (nanostores + localStorage) → `/api/upload` (signature validation + Tier 1 preflight) → `/api/order` (server recompute via `priceFromSpec`, nested create of `order` + `order_items` with the least-privilege server token). Order = заявка (payment deferred). Directus collections `orders`/`order_items` live in group `sales`; admin shows readable display templates, `spec` hidden.
 - Implemented preflight Tier 1 (`src/lib/preflight.ts`, pdf-lib + sharp): PDF — pages vs sides, size + bleed (MediaBox); raster — dpi vs ordered size, CMYK/RGB; traffic light green/yellow/red stored on `order_items.preflight_status` + `preflight_report`. Accepted formats: PDF/AI/EPS/PSD/CDR/SVG/FIG/JPG/PNG/TIFF — only PDF/raster are auto-checked; sources are accepted and marked «проверит специалист».
 - Designed (not yet built) the delivery & payment track — spec in `06-delivery-payment.md`. Decisions: payment = online prepay (reserved «скоро»), on-receipt, B2B invoice; gateway TBD (ЮKassa/Тинькофф). Delivery = provider-agnostic adapter model + data config in Directus; start contract-free via `manual` + ПВЗ `widget` (many providers, fulfilled by manager), add per-provider `api` later. Exclude Почта России / Деловые Линии (different format). Server is authoritative for delivery cost and payment status.
-- Galleries & portfolio: `works` collection (M2M → products, M2M → `work_tags`) is the single source for both per-product galleries and the `/works` portfolio page (`getWorks`). Previews are static optimized `<picture>` (astro:assets AVIF/WebP + srcset, width/height from file meta) for SEO/LCP/CLS; the lightbox is PhotoSwipe v5, lazy-loaded on idle from `BaseLayout` (zero initial JS, core via dynamic import on open). Originals stay raw in Directus; Astro optimizes at build (Directus public asset transforms return 403). `/works` filter (daisyUI `filter`) + search are client-side over static cards; filtered-out cards are excluded from the lightbox via `:not([hidden])`.
-- Pricing engine = strategy dispatch: `computePrice(config, data)` routes by `config.strategy` to `computeSheet` (default/листовая) or `computeMultipage`. Each product declares `products.strategy` (sheet | multipage | area | perpiece). New patterns add a strategy + Directus data, never an if/else tree in components. `PriceResult` sheet-only fields are optional. Remaining strategies to build: `area` (м²/баннеры), `perpiece` (таблички).
+- Galleries & portfolio — **superseded 2026-07-01:** the `works` collection was replaced by `products.gallery` (M2M Files, junction `products_gallery` with caption/alt/sort, public-read). `getWorks()` now aggregates product galleries; `/works` = the aggregate with product/category filter. Image filename in URLs = transliterated caption (`translit.ts`) → readable `_astro/<slug>_<hash>.avif`. The old `works`/`work_tags` collections are unused (deletion tracked in TECHDEBT §2). Historical decision (original design): Previews are static optimized `<picture>` (astro:assets AVIF/WebP + srcset, width/height from file meta) for SEO/LCP/CLS; the lightbox is PhotoSwipe v5, lazy-loaded on idle from `BaseLayout` (zero initial JS, core via dynamic import on open). Originals stay raw in Directus; Astro optimizes at build (Directus public asset transforms return 403). `/works` filter (daisyUI `filter`) + search are client-side over static cards; filtered-out cards are excluded from the lightbox via `:not([hidden])`.
+- Pricing engine = strategy dispatch: `computePrice(config, data)` routes by `config.strategy` to `computeSheet` (default/листовая), `computeMultipage`, or the `fixed` branch. Each product declares `products.strategy` (**sheet | multipage | fixed** — the Directus dropdown was narrowed 2026-07-01, commit 6d3a049). New patterns add a strategy + Directus data, never an if/else tree in components. `PriceResult` sheet-only fields are optional. `area` (м²/баннеры) and `perpiece` (таблички ПВХ/металл) were planned but DROPPED — out of capability (широкоформат/жёсткие таблички не делаем); the TS type in `pricing/data.ts` still mentions them (cleanup in TECHDEBT §5).
 - Unified calculator field layer: shared PRESENTATIONAL components (props/v-model, like `SwatchPalette`) reused by every calculator — `CoatingField` (ламинация+фольга), `PaperSelect`, `SidesSelect`, `QuantitySelect`, `FormatField` (пресет↔«свой размер» на месте + «из списка»). Visitki field components became thin wrappers over these. `SharedCalc`/`sharedKey` is the strategy-agnostic contract for shared widgets (`OrderPlate`, `ArtworkUpload`). `ProductConfigurator` dispatches to `SheetConfigurator` or `MultipageConfigurator` by `product.strategy`; the static Astro gallery is passed in as a `gallery` slot.
 - Multipage (brochures) pattern: блок (полосы) + обложка + переплёт. Imposition is GEOMETRIC from the brochure press sheet (`pricing_settings.brochure_sheet_*` = 438×309): полос/лист = fit-per-side × 2; works for presets and «свой размер» (custom limited to the sheet). Полосы кратны 4, свободны 8..400; переплёт авто-подбирается по числу полос (скоба ≤64, пружина ≤200, клей ≥100; несовместимые недоступны). Цена переплёта — брекеты ₽/экз по тиражу (`bindings.price`). Блок всегда белый и 4+4; обложке — стороны + ламинация + фольга. Booklet preview reacts to cover color / foil / binding. Server recomputes imposition from the spec (browser not trusted).
 - Stickers pattern = sheet strategy + data (no new engine): плёнки-материалы, формы прям/круг/фигура (плоттер), односторонняя (`products.single_sided`), контурная надсечка (`OrderConfig.contourCut`, `products.allow_contour_cut`) = +50% к резке, ламинация+фольга, `preview_kind="sticker"`. ~22 продукта категории «Наклейки» добавляются как чистые данные.
@@ -418,19 +418,13 @@ Goal: turn the current technical prototype into a coherent first public site ske
 
 ## Tech Debt And Open Questions
 
-- Choose exact package manager before project creation: pnpm is the current default.
 - Online payment: decided to include eventually (reserved «скоро» in UI); first launch uses on-receipt + B2B invoice. Pick the gateway (ЮKassa/Тинькофф) and build the create-payment + webhook flow in a later phase (see doc 06).
-- Decide whether SEO targets one city/region or multiple city landing pages.
-- Decide how complex pricing rules should be: fixed prices, option matrix, formula-based calculator, or hybrid.
-- Research whether to build a small internal pricing rule engine or adopt an existing rules/formula library.
-- Decide how pricing formulas should be edited safely in Directus without allowing arbitrary unsafe code execution.
-- Decide notification channel: Telegram, email, or both.
-- Decide deployment target for Astro and Directus.
-- Choose Git hosting provider: GitHub is the current default unless changed.
-- Choose VPS provider and operating system.
-- Choose domain name and DNS provider.
-- Decide whether PostgreSQL should run in Docker on the VPS or as managed PostgreSQL.
-- Define backup strategy for PostgreSQL and Directus uploads before production launch.
+- Notification channel: **Telegram** (hoster blocks SMTP ports 25/465/587; email revisit if ports get opened). Wiring the actual order notifications is still pending.
+- ~~Package manager~~ — resolved: npm in practice (`package-lock.json`).
+- ~~SEO region~~ — resolved: Moscow only; geo landing pages are an anti-pattern (PLAYBOOK §4).
+- ~~Pricing rules complexity / engine vs library / safe formulas in Directus~~ — resolved: in-house pure stage pipeline (`pricing/engine.ts`), data-driven brackets/rates in Directus collections, no formulas from the admin.
+- ~~Deployment target / Git hosting / VPS / domain / PostgreSQL~~ — resolved and LIVE: GitHub (Destrifer/VANO3) → Actions → ghcr → SSH; VPS Ubuntu 24.04, Docker Compose (Caddy + Astro Node + Directus 11.17.4 + postgres:18); `printmos.ru` + `admin.printmos.ru`. See `docs/deployment-plan.md`.
+- ~~Backup strategy~~ — resolved: `pmos-backup` daily cron 03:30 (pg_dump + uploads, rotation; scripts in `ops/`); off-site copy is manual (scp) — periodic chore.
 - Client-side pricing currently exposes rates/formulas in the browser bundle. Before production, move price computation to a server endpoint / Astro action (П2: one engine, but not shipped to the client).
 - Move declarative field-dependency rules (`src/lib/pricing/rules.ts`) into Directus once the model is stable, keeping the applier functions in code.
 - Visual constructor track (if started): build the curated template library, OSI-licensed fonts, and licensed stock images — an ongoing content task, not code.
@@ -438,23 +432,20 @@ Goal: turn the current technical prototype into a coherent first public site ske
 - Preflight Tier 2 (needs Ghostscript/poppler/mutool in the Docker image): CMYK/Pantone inside PDF, fonts outlined, real image dpi inside PDF, visual overlay (cut/bleed/safe zones), auto-fix (add bleed, RGB→CMYK).
 - CDR/FIG are accepted by file extension only (no reliable magic bytes) — revisit if abuse appears.
 - Checkout currently does NOT block on red preflight (human-in-the-loop: red is shown, manager reviews). Decide later whether red should hard-block.
-- Capture Directus schema snapshots for `orders`/`order_items` into the repo (doc 04 schema workflow), so the orders schema is version-controlled.
-- Capture schema snapshots for the calculator/gallery collections too: `works`, `work_tags`, `bindings`, the new `products`/`product_sizes`/`pricing_settings` fields (strategy, preview_kind, single_sided, allow_contour_cut, cover/inner papers, pages_per_sheet, brochure_sheet_*). Currently created via the runtime admin token only — not version-controlled.
+- ~~Capture Directus schema snapshots / automate apply~~ — resolved 2026-07-02: full schema versioned in `directus/snapshot.yaml` (re-snapshotted from prod, incl. `products_gallery`); deploy applies it automatically (deploy.yml step «Apply Directus schema», before the Astro build). Discipline: schema edited on prod → run `ops/schema-snapshot.sh` → commit (stale snapshot would roll prod schema back). Local Directus still needs a catch-up `schema apply`.
 
 ### SEO track — tech debt (after Phases 1–4)
 
-- **Branch base.** SEO code is on `docs/seo-strategy` based on `feat/fixed-price` (the most advanced *unmerged* branch), NOT `master`. Parallel feature branches (gallery, stickers, multipage, booklets, fixed-price, delivery-payment) are unmerged; there is no integration branch. Decide a merge/integration strategy before deploy.
-- **Directus fields NOT yet created** (code reads them with graceful fallback): `products` — `meta_title`, `meta_description`, `h1`, `intro_text`, `characteristics`, `template_file`, `faq` (M2M→`faq_items`); new collection `faq_items` (`question`, `answer`); `papers.image`; paper material-type (repurpose `group` → офсетная/мелованная/картон/пластик/дизайнерская, OR add `material_type`); `finishing_options.description` + `image`. Until they exist the following are **temporary placeholders**:
-  - service content empty → auto title/description fallback in `[slug].astro`;
-  - material grouping derived from paper NAME (`materialType()` in `OptionsInfo.astro`) — replace with Directus field;
+- ~~**Branch base.**~~ — resolved: everything is merged; **`master` is the deploy branch** (push → CI → prod). SEO/docs-only pushes are `paths-ignore`d.
+- ~~**Directus fields NOT yet created**~~ — created (Ф2; in `directus/snapshot.yaml`): `faq_items`, `products` SEO fields, `papers.material_type`, `papers.image`/`finishing_options.image` (render via `<Picture>`). Still placeholder-ish:
   - postpress explanation texts hardcoded in `src/lib/optionInfo.ts` — replace with `finishing_options.description` (П1);
-  - all material/postpress thumbnails = single placeholder `src/assets/materials/placeholder.jpg` — replace with real `papers.image`/`finishing_options.image`.
-- **Configurator preset/URL** implemented for SHEET strategy only; multipage (brochures) not covered.
+  - real photos for materials/postpress/galleries — content task on prod.
+- ~~**Configurator preset/URL** SHEET only~~ — resolved: `MultipageConfigurator` accepts `preset` → `applyMultipagePreset`; fixed has no preset (by design so far).
 - **Tooltips `?`** only on CoatingField (lamination/foil) as a demo — extend to fold/cutting/material fields.
-- **`SegmentTiles` (hub tiles) empty** — needs Phase 5: `promoted_pages` cluster pages (build-time `getStaticPaths`, self-canonical, configurator preset). Also unbuilt: trust/hub pages `/o-nas`, `/guides`, `/garantii`, `/kak-zakazat` (footer links → 404).
-- **No default OG image** — `og:image` is emitted only when a page passes `ogImage`. Add `/og-default.png` + default in `BaseLayout`.
+- ~~**`SegmentTiles` empty / Phase 5**~~ — done: `promoted_pages` clusters live on route `[product]/[cluster].astro` across 32 hubs. Trust pages: `/o-nas` + `/dostavka-oplata` built; `/guides`, `/garantii`, `/kak-zakazat` dropped from plan and footer (stale `/guides` links in business-cards content removed on prod 2026-07-02).
+- **No default OG image** — `og:image` is emitted only when a page passes `ogImage`. Add `/og-default.png` + default in `BaseLayout` (also in TECHDEBT §1).
 - **OptionsInfo open UX question:** equal-height makes single-option material cards mostly empty. Candidate fix — hide the list for single-option groups (preview only) and/or lower the long-list `max-height`.
-- Before production: validate JSON-LD (Rich Results), check CWV/Lighthouse on the hub; confirm the Yandex Webmaster export region (Moscow) for query numbers.
+- Before production launch (снятие noindex — намеренно закрыт): validate JSON-LD (Rich Results), re-check CWV on live pages (lab: главная 100, /business-cards 99).
 
 ### Cart & order architecture (decided)
 

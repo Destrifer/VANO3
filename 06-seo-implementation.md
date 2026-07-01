@@ -116,7 +116,7 @@
 
 ### Предусловия
 
-1. ~~Конфигуратор не принимает пресет и не читает URL~~ — ✅ **СДЕЛАНО.** Логика в `src/composables/calcUrlState.ts`: `applyPreset(calc, preset)` (семантический пресет `{shape,sides,quantity,paperIndex,foil,foilColorIndex,laminationIndex}` с защитой диапазонов), `presetFromSearch`/`searchFromCalc` (короткие читаемые параметры `?foil=1&paper=…&qty=…`), `applyPresetFromUrl` (один раз читает URL на клиенте), `buildShareUrl` (собирает ссылку на расчёт). Подключено: `ProductConfigurator` принимает проп `preset` → `SheetConfigurator` применяет в setup (работает в SSR-рендере острова) + `applyPresetFromUrl` в `onMounted`. **Важно по SEO:** URL **НЕ** синхронизируется автоматически — параметры появляются только по кнопке «Получить ссылку на расчёт» (`OrderPlate`-зона), чтобы в обычном обходе не плодились параметрические URL. Кластерный пресет приходит с сервера по **чистому** URL. Проверено: смена опций не меняет адрес; кнопка копирует `…?foil=1&lam=2`; расшаренная ссылка открывает конфигуратор с пресетом. ⚠️ Реализовано для **листового** конфигуратора; многостраничный (`MultipageConfigurator`) пресет пока не принимает (нужно при кластерах на multipage-продуктах).
+1. ~~Конфигуратор не принимает пресет и не читает URL~~ — ✅ **СДЕЛАНО.** Логика в `src/composables/calcUrlState.ts`: `applyPreset(calc, preset)` (семантический пресет `{shape,sides,quantity,paperIndex,foil,foilColorIndex,laminationIndex}` с защитой диапазонов), `presetFromSearch`/`searchFromCalc` (короткие читаемые параметры `?foil=1&paper=…&qty=…`), `applyPresetFromUrl` (один раз читает URL на клиенте), `buildShareUrl` (собирает ссылку на расчёт). Подключено: `ProductConfigurator` принимает проп `preset` → `SheetConfigurator` применяет в setup (работает в SSR-рендере острова) + `applyPresetFromUrl` в `onMounted`. **Важно по SEO:** URL **НЕ** синхронизируется автоматически — параметры появляются только по кнопке «Получить ссылку на расчёт» (`OrderPlate`-зона), чтобы в обычном обходе не плодились параметрические URL. Кластерный пресет приходит с сервера по **чистому** URL. Проверено: смена опций не меняет адрес; кнопка копирует `…?foil=1&lam=2`; расшаренная ссылка открывает конфигуратор с пресетом. Многостраничный конфигуратор тоже принимает пресет (`MultipageConfigurator.vue`: проп `preset` → `applyMultipagePreset`) — см. «Механизмы пресета» ниже.
 2. **Базовый шаблон услуги (Этап 3) готов и наполнен** хотя бы на флагмане — pSEO-страница его расширяет. ✅ визитки наполнены (Ф2).
 
 ### Реализация по шагам
@@ -164,7 +164,7 @@
 ## Вне этого захода (зафиксировано)
 
 - **pSEO** — вынесено в Этап 4 выше (после базовых услуг, требует доработки конфигуратора под пресет/URL).
-- **Хаб/доверие** (`/o-nas`, `/guides`, `/garantii`, `/kak-zakazat`) — сейчас битые ссылки в футере (`BaseLayout.astro:178-180`); страницы делаем отдельно.
+- **Хаб/доверие** — статус на 2026-06-14: `/o-nas` и `/dostavka-oplata` собраны; `/guides`, `/garantii`, `/kak-zakazat` исключены из плана и убраны из футера. Остаток — живые ссылки на `/guides` в Directus-контенте визиток (TECHDEBT).
 
 ---
 
@@ -218,7 +218,7 @@
 | Ф1 Тех-фундамент | ✅ сделано (jsonld/JsonLd, Breadcrumbs, site+sitemap, robots) |
 | Ф2 Контент-модель | ✅ сделано (Directus: `faq_items` + поля `products`; визитки наполнены; snapshot в `directus/snapshot.yaml`) |
 | Ф3 Хаб визиток | ✅ сделано: анатомия + контент + интро(2 кол.) + материалы + FAQ + **плитки** (`SegmentTiles` из кластеров продукта) |
-| Ф4 Конфигуратор: пресет+URL | ✅ сделано (`calcUrlState.ts`; пресет с сервера, ссылка по кнопке; листовой конфигуратор, multipage — нет) |
+| Ф4 Конфигуратор: пресет+URL | ✅ сделано (`calcUrlState.ts`; пресет с сервера, ссылка по кнопке; sheet `applyPreset` + multipage `applyMultipagePreset`; fixed — пресета нет) |
 | Ф5 Кластеры Tier-1 | ✅ сделано: коллекция `promoted_pages` (+M2M `faq`) в Directus; `src/lib/promotedPages.ts`; **отдельный роут `src/pages/[product]/[cluster].astro`** (вложенный URL `/business-cards/foil`, self-canonical, пресет в конфигуратор, крошки 4 уровня). **Засеяно 7 кластеров:** `urgent, foil, plastic, designer, magnetic, metal, round`. Осталость: пресеты urgent, цена «от» на плитках, VIP/премиум. |
 | Ф5b Уровень Tier-2 (страница без плитки) | ✅ механизм + контент: поле `promoted_pages.show_as_tile` (boolean, default false). Хаб/сиблинги делят: `show_as_tile` → плитки, иначе → «Смотрите также» (`RelatedLinks.astro`). Визитки: засеяны **VIP** (Tier-1), **ламинация** и **УФ-лак** (Tier-2); под лак расширен `CalcPreset.finishing`. Шелкография выкинута (нет в каталоге). |
 | Ф6 Фишки, Ф7 Хвост/хабы доверия | ❌ нет |
