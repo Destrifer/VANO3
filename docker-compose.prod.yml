@@ -45,6 +45,11 @@ services:
       PUBLIC_URL: ${DIRECTUS_PUBLIC_URL}
       CORS_ENABLED: "true"
       CORS_ORIGIN: ${SITE_ORIGIN}
+      # Directus 12: лицензия (OIG-ключ в .env.production; пусто = Core tier).
+      LICENSE_KEY: ${DIRECTUS_LICENSE_KEY:-}
+      # Directus 12 сменил default на false; мы за Caddy — доверяем X-Forwarded-For,
+      # иначе rate-limit/логи видят IP прокси. На 11.x значение = прежний default.
+      IP_TRUST_PROXY: "true"
     volumes:
       - directus_uploads:/directus/uploads
       - directus_extensions:/directus/extensions

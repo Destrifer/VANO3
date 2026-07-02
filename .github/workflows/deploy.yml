@@ -65,7 +65,8 @@ jobs:
             cd /opt/printmos
             C="docker compose -p printmos -f docker-compose.prod.yml --env-file .env.production"
             $C cp directus/snapshot.yaml directus:/tmp/snapshot.yaml
-            $C exec -T directus npx directus schema apply --yes /tmp/snapshot.yaml
+            # node cli.js, НЕ npx: в образе directus 12 npx отсутствует
+            $C exec -T directus node /directus/cli.js schema apply --yes /tmp/snapshot.yaml
 
       - uses: docker/setup-buildx-action@v3
 

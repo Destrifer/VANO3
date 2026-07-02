@@ -19,6 +19,10 @@ services:
     environment:
       KEY: ${DIRECTUS_KEY}
       SECRET: ${DIRECTUS_SECRET}
+      # Directus 12: лицензия (пусто = Core tier; OIG-ключ в .env)
+      LICENSE_KEY: ${DIRECTUS_LICENSE_KEY:-}
+      # Directus 12 требует АБСОЛЮТНЫЙ public URL (в 11 работал дефолт "/")
+      PUBLIC_URL: ${DIRECTUS_PUBLIC_URL:-http://localhost:8055}
 
       ADMIN_EMAIL: ${DIRECTUS_ADMIN_EMAIL}
       ADMIN_PASSWORD: ${DIRECTUS_ADMIN_PASSWORD}
