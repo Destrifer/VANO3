@@ -1,0 +1,78 @@
+---
+// Яндекс.Метрика с отложенной загрузкой — вне окна замера LCP/INP.
+// Счётчик (tag.js ~50 КБ + webvisor) не грузится на старте, а ждёт
+// первого взаимодействия ИЛИ простоя браузера. Тот же приём, что у
+// PhotoSwipe и фасада карты: на начальную загрузку 0 КБ, CWV не страдают.
+// Для реальных посетителей визит фиксируется всё равно (скролл/клик/тач
+// случаются в первые секунды), боты без взаимодействия — по таймауту.
+interface Props {
+  id?: number;
+}
+const { id = 110322186 } = Astro.props;
+// Только на проде: в `astro dev` счётчик не рендерим, чтобы заходы с
+// локалки не загрязняли живую статистику. PROD=true в `astro build`.
+const enabled = import.meta.env.PROD;
+---
+
+{enabled && (
+<script is:inline define:vars={{ id }}>
+  (function () {
+    let fired = false;
+
+    function loadMetrika() {
+      if (fired) return;
+      fired = true;
+
+      // Оригинальный инициализатор Яндекса (async-инъекция tag.js).
+      (function (m, e, t, r, i, k, a) {
+        m[i] = m[i] || function () { (m[i].a = m[i].a || []).push(arguments); };
+        m[i].l = 1 * new Date();
+        for (var j = 0; j < document.scripts.length; j++) {
+          if (document.scripts[j].src === r) return;
+        }
+        k = e.createElement(t);
+        a = e.getElementsByTagName(t)[0];
+        k.async = 1;
+        k.src = r;
+        a.parentNode.insertBefore(k, a);
+      })(window, document, "script", "https://mc.yandex.ru/metrika/tag.js?id=" + id, "ym");
+
+      window.ym(id, "init", {
+        ssr: true,
+        webvisor: true,
+        clickmap: true,
+        ecommerce: "dataLayer",
+        accurateTrackBounce: true,
+        trackLinks: true,
+      });
+    }
+
+    // Первое взаимодействие — грузим немедленно.
+    const events = ["scroll", "mousemove", "touchstart", "pointerdown", "keydown"];
+    const onInteract = function () {
+      events.forEach(function (ev) { window.removeEventListener(ev, onInteract); });
+      loadMetrika();
+    };
+    events.forEach(function (ev) {
+      window.addEventListener(ev, onInteract, { once: true, passive: true });
+    });
+
+    // Страховка: если взаимодействия нет — грузим в простое (или через 3.5 c).
+    if ("requestIdleCallback" in window) {
+      requestIdleCallback(loadMetrika, { timeout: 3500 });
+    } else {
+      setTimeout(loadMetrika, 3500);
+    }
+  })();
+</script>
+
+<noscript>
+  <div>
+    <img
+      src={`https://mc.yandex.ru/watch/${id}`}
+      style="position:absolute; left:-9999px;"
+      alt=""
+    />
+  </div>
+</noscript>
+)}

@@ -7,6 +7,7 @@ import { getMenu } from "../lib/categories";
 import { getSettings } from "../lib/settings";
 import CartButton from "../components/CartButton.vue";
 import JsonLd from "../components/seo/JsonLd.astro";
+import YandexMetrika from "../components/seo/YandexMetrika.astro";
 import { localBusiness } from "../lib/seo/jsonld";
 
 const menu = await getMenu();
@@ -95,6 +96,46 @@ const businessLd = localBusiness(settings, siteUrl);
         ],
       })}
     />
+
+    <script is:inline>
+      // Ранний гейт лайтбокса: инлайн в <head>, активен ДО загрузки бандлов —
+      // закрывает окно «превью уже кликабельно, а JS ещё не исполнился».
+      // Клик по галерее до готовности PhotoSwipe не пускаем по ссылке (иначе
+      // откроется оригинал фото), запоминаем в __pmLbPending и будим загрузчик
+      // из BaseLayout-скрипта (__pmLbEnsure). Если бандл так и не исполнился —
+      // через 2.5 с отпускаем клик в нативную ссылку (деградация как без JS).
+      (function () {
+        window.addEventListener("pageshow", function (e) {
+          if (e.persisted) window.__pmLbPending = null; // bfcache: забыть старый клик
+        });
+        document.addEventListener(
+          "click",
+          function (e) {
+            if (window.__pmLbReady) return; // PhotoSwipe готов — перехватит сам
+            // модификаторы/средняя кнопка — нативное «открыть в новой вкладке»
+            if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.button > 0) return;
+            var t = e.target && e.target.closest && e.target.closest(".gallery a.gallery__link");
+            if (!t) return;
+            e.preventDefault();
+            window.__pmLbPending = t;
+            if (window.__pmLbEnsure) {
+              window.__pmLbEnsure();
+            } else {
+              setTimeout(function () {
+                if (window.__pmLbEnsure) window.__pmLbEnsure();
+                else if (!window.__pmLbReady && window.__pmLbPending) {
+                  window.__pmLbReady = true;
+                  var l = window.__pmLbPending;
+                  window.__pmLbPending = null;
+                  l.click();
+                }
+              }, 2500);
+            }
+          },
+          true,
+        );
+      })();
+    </script>
 
     <slot name="head" />
   </head>
@@ -431,62 +472,41 @@ const businessLd = localBusiness(settings, siteUrl);
         btn.addEventListener("click", () => sheet?.showModal());
       });
 
-      // Лайтбокс галереи (PhotoSwipe). Подключаем модуль ТОЛЬКО если на странице
-      // есть галерея, и ТОЛЬКО в простое — на начальную загрузку 0 КБ, CWV не
-      // страдают. Тяжёлое ядро photoswipe грузится уже внутри, при открытии.
+      // Лайтбокс галереи (PhotoSwipe). Клики до готовности перехватывает ранний
+      // инлайн-гейт в <head> (__pmLbPending/__pmLbReady) — он закрывает гонку
+      // «кликнул раньше, чем исполнился этот бандл». Здесь — загрузчик: модуль
+      // подключаем ТОЛЬКО если на странице есть галерея, и ТОЛЬКО в простое —
+      // на начальную загрузку 0 КБ, CWV не страдают. Тяжёлое ядро photoswipe
+      // грузится уже внутри, при открытии.
+      const w = window as unknown as {
+        __pmLbReady?: boolean;
+        __pmLbPending?: HTMLAnchorElement | null;
+        __pmLbEnsure?: () => void;
+      };
       if (document.querySelector(".gallery a.gallery__link")) {
-        let ready = false; // модуль загружен И PhotoSwipe инициализирован
         let loading: Promise<unknown> | null = null;
-        let pending: HTMLAnchorElement | null = null; // линк, ожидающий открытия
-
-        const ensure = () => {
-          if (!loading) {
-            loading = import("../scripts/gallery-lightbox")
-              .then(() => {
-                ready = true;
-                // если кликнули, пока грузилось — открываем тот линк (теперь его
-                // перехватит PhotoSwipe; повторный .click() пройдёт мимо нашего
-                // гейта, т.к. ready=true).
-                if (pending) {
-                  const l = pending;
-                  pending = null;
-                  l.click();
-                }
-              })
-              .catch(() => {
-                // Модуль не загрузился (сеть) — снимаем гейт, чтобы клики не
-                // зависали: сработает нативная ссылка (откроется фото, как без JS).
-                ready = true;
-                if (pending) {
-                  const l = pending;
-                  pending = null;
-                  l.click();
-                }
-              });
-          }
-          return loading;
+        // Снимаем гейт и доигрываем отложенный клик. При успехе его перехватит
+        // PhotoSwipe; при ошибке загрузки (сеть) сработает нативная ссылка —
+        // откроется фото, как без JS. Идемпотентно: pending обнуляется.
+        const release = () => {
+          w.__pmLbReady = true;
+          const l = w.__pmLbPending;
+          w.__pmLbPending = null;
+          l?.click();
         };
-
-        // Гейт до готовности: НЕ пускаем по ссылке, запоминаем линк, грузим модуль.
-        // Это закрывает гонку «кликнул раньше, чем PhotoSwipe привязался».
-        document.addEventListener(
-          "click",
-          (e) => {
-            const link = (e.target as HTMLElement | null)?.closest?.(
-              ".gallery a.gallery__link",
-            ) as HTMLAnchorElement | null;
-            if (!link || ready) return; // готов → PhotoSwipe откроет сам
-            e.preventDefault();
-            pending = link;
-            ensure();
-          },
-          true,
-        );
+        const ensure = () => {
+          if (!loading) loading = import("../scripts/gallery-lightbox").catch(() => {});
+          loading.then(release);
+        };
+        w.__pmLbEnsure = ensure;
+        if (w.__pmLbPending) ensure(); // кликнули раньше, чем исполнился бандл
 
         // Прелоад в простое, чтобы к первому клику обычно уже было готово.
         if ("requestIdleCallback" in window) requestIdleCallback(() => ensure());
         else setTimeout(ensure, 1200);
       }
     </script>
+
+    <YandexMetrika />
   </body>
 </html>
