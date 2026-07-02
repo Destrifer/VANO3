@@ -71,10 +71,11 @@
   `papers.image` / `finishing_options.image`).
 - [ ] **Тексты опций и правила в коде** — `src/lib/optionInfo.ts`,
   `src/lib/pricing/rules.ts` («позже переедет в Directus»).
-- [ ] **Коллекция `works` мертва — удалить.** Галерея переехала в
-  `products.gallery` (M2M Files, junction `products_gallery`; 2026-07-01),
-  `getWorks()` читает галереи продуктов. Коллекции `works`/`work_tags` в
-  Directus (прод + локаль) больше не используются — снести и обновить снапшот.
+- [x] ~~**Коллекция `works` мертва — удалить.**~~ — ✅ 2026-07-02: снесены
+  `works`/`work_tags`/`works_products`/`works_tags` на проде и локали (владелец
+  подтвердил; их FK `works_image_foreign` блокировал удаление файлов из
+  библиотеки). Снапшот пере-снят без них (−1113 строк). Бэкап с данными works —
+  `before-directus12`.
 - [x] ~~**Срок «1–3 дня» захардкожен**~~ — ✅ 2026-06-09: «срок готовности» из
   данных. `products.lead_days` + `settings.cutoff_hour`, чистая `lib/leadtime.ts`,
   живой пересчёт на клиенте (в отсечку/полночь). Бейдж на плитках главной и в
