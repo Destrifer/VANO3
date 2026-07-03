@@ -21,6 +21,7 @@ function mapColor(c: any): PaperColor {
     hex: c.hex ?? null,
     image: assetUrl(c.image),
     thumb: responsiveAsset(c.image, COLOR_SWATCH, COLOR_SWATCH),
+    tile: responsiveAsset(c.image, TILE_THUMB_W, TILE_THUMB_H),
     full: responsiveAsset(c.image, COLOR_FULL, undefined, [1]),
   };
 }
@@ -62,6 +63,7 @@ export type PaperColor = {
   hex: string | null;
   image: string | null; // URL картинки-свотча или null
   thumb: ResponsiveImage; // адаптивный свотч (avif/webp, квадрат)
+  tile: ResponsiveImage; // миниатюра 16:9 для OptionTile (цвета фольги)
   full: ResponsiveImage; // адаптивная картинка для lightbox (ресайз по ширине)
 };
 

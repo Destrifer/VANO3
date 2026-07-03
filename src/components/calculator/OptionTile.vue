@@ -17,10 +17,12 @@ withDefaults(
     title?: string;
     icon?: boolean; // компактный вариант для рядов без фото: иконка слева, текст
                     // справа, активная — киноварью (без серой заливки-миниатюры)
+    zoom?: boolean; // кнопка-лупа на миниатюре: клик по плитке выбирает,
+                    // клик по лупе шлёт zoom (lightbox — забота родителя)
   }>(),
-  { active: false, disabled: false, icon: false },
+  { active: false, disabled: false, icon: false, zoom: false },
 );
-const emit = defineEmits<{ select: [] }>();
+const emit = defineEmits<{ select: []; zoom: [] }>();
 </script>
 
 <template>
@@ -42,6 +44,17 @@ const emit = defineEmits<{ select: [] }>();
         </picture>
         <svg v-else-if="glyph" viewBox="0 0 24 24" aria-hidden="true" class="otile__glyph" v-html="glyph" />
       </slot>
+      <span
+        v-if="zoom"
+        role="button"
+        tabindex="0"
+        aria-label="Увеличить"
+        class="otile__zoom"
+        @click.stop="emit('zoom')"
+        @keydown.enter.stop.prevent="emit('zoom')"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+      </span>
     </span>
     <span class="otile__text">
       <span class="otile__name">{{ label }}</span>
@@ -74,6 +87,7 @@ const emit = defineEmits<{ select: [] }>();
 .otile--off { cursor: not-allowed; opacity: 0.4; }
 .otile--off:hover { border-color: var(--color-base-300, #d6d3cd); }
 .otile__thumb {
+  position: relative;
   display: grid;
   place-items: center;
   aspect-ratio: 16 / 9;
@@ -85,6 +99,18 @@ const emit = defineEmits<{ select: [] }>();
 .otile__thumb picture { display: contents; }
 .otile__img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .otile__glyph { width: 2.2rem; height: 2.2rem; opacity: 0.45; }
+.otile__zoom {
+  position: absolute;
+  top: 0.2rem;
+  right: 0.2rem;
+  display: grid;
+  place-items: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 1px solid var(--color-base-content, #555);
+  border-radius: 9999px;
+  background: var(--color-base-100, #fff);
+}
 /* глиф/иконка, переданные через слот #thumb (напр. SizeGlyph) */
 .otile__thumb :slotted(svg) { width: 2.2rem; height: 2.2rem; opacity: 0.45; }
 .otile__text {

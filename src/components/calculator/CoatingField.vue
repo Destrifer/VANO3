@@ -3,6 +3,7 @@
 // плитками (OptionTile): «без» + варианты с миниатюрой (avif/webp) / глифом /
 // цвет-заливкой. Единое для всех калькуляторов. Без бизнес-логики — только
 // отображение и v-model наружу.
+import { ref } from "vue";
 import InfoTip from "../InfoTip.vue";
 import OptionTile from "./OptionTile.vue";
 import { optionInfo } from "../../lib/optionInfo";
@@ -17,7 +18,7 @@ const GLYPH_NONE =
 const GLYPH_LAM =
   '<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 18a2 2 0 0 1 2 2a2 2 0 0 1 2-2a2 2 0 0 1-2-2a2 2 0 0 1-2 2m0-12a2 2 0 0 1 2 2a2 2 0 0 1 2-2a2 2 0 0 1-2-2a2 2 0 0 1-2 2M9 18a6 6 0 0 1 6-6a6 6 0 0 1-6-6a6 6 0 0 1-6 6a6 6 0 0 1 6 6"/>';
 
-type Color = { name: string; code: string; hex: string | null; image: string | null; thumb: ResponsiveImage; full: ResponsiveImage };
+type Color = { name: string; code: string; hex: string | null; image: string | null; thumb: ResponsiveImage; tile: ResponsiveImage; full: ResponsiveImage };
 defineProps<{
   laminationOptions: { name: string; thumb: ResponsiveImage }[];
   laminationIndex: number;
@@ -31,6 +32,16 @@ const emit = defineEmits<{
   "update:foilOn": [v: boolean];
   "update:foilColorIndex": [v: number];
 }>();
+
+// Lightbox фото фольги — тот же паттерн, что в SwatchPalette: лупа на плитке
+// открывает <dialog> с полной картинкой, клик по самой плитке — выбор.
+const lightboxEl = ref<HTMLDialogElement | null>(null);
+const lightbox = ref<{ name: string; img: ResponsiveImage } | null>(null);
+function openLightbox(c: Color) {
+  if (!c.full) return;
+  lightbox.value = { name: c.name, img: c.full };
+  lightboxEl.value?.showModal();
+}
 </script>
 
 <template>
@@ -86,12 +97,25 @@ const emit = defineEmits<{
         v-for="(c, i) in foilOption.colors"
         :key="i"
         :label="c.name"
-        :thumb="c.thumb"
+        :thumb="c.tile"
         :fill="c.hex ?? '#ccc'"
         :active="foilOn && foilColorIndex === i"
         :title="c.name + (c.code ? ' · ' + c.code : '')"
+        :zoom="!!c.full"
         @select="emit('update:foilColorIndex', i); emit('update:foilOn', true)"
+        @zoom="openLightbox(c)"
       />
     </div>
+
+    <dialog ref="lightboxEl" class="modal">
+      <div class="modal-box max-w-lg p-2">
+        <picture v-if="lightbox">
+          <source v-for="s in lightbox.img!.sources" :key="s.type" :type="s.type" :srcset="s.srcset" />
+          <img :src="lightbox.img!.src" :alt="lightbox.name" class="w-full rounded" />
+        </picture>
+        <p v-if="lightbox" class="mt-2 text-center text-sm">{{ lightbox.name }}</p>
+      </div>
+      <form method="dialog" class="modal-backdrop"><button>закрыть</button></form>
+    </dialog>
   </div>
 </template>
