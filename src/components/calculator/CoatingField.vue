@@ -108,10 +108,10 @@ function openLightbox(c: Color) {
     </div>
 
     <dialog ref="lightboxEl" class="modal">
-      <div class="modal-box max-w-lg p-2">
+      <div class="modal-box w-auto max-w-[92vw] p-2">
         <picture v-if="lightbox">
-          <source v-for="s in lightbox.img!.sources" :key="s.type" :type="s.type" :srcset="s.srcset" />
-          <img :src="lightbox.img!.src" :alt="lightbox.name" class="w-full rounded" />
+          <source v-for="s in lightbox.img!.sources" :key="s.type" :type="s.type" :srcset="s.srcset" :sizes="lightbox.img!.sizes" />
+          <img :src="lightbox.img!.src" :alt="lightbox.name" :sizes="lightbox.img!.sizes" class="mx-auto max-h-[80vh] rounded" />
         </picture>
         <p v-if="lightbox" class="mt-2 text-center text-sm">{{ lightbox.name }}</p>
       </div>

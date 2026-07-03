@@ -1,4 +1,4 @@
-import { directusFetch, assetUrl, responsiveAsset, type ResponsiveImage } from "../directus";
+import { directusFetch, assetUrl, responsiveAsset, responsiveAssetFluid, type ResponsiveImage } from "../directus";
 
 // Миниатюры плиток — 16:9 под единый OptionTile (с запасом под retina).
 const TILE_THUMB_W = 240;
@@ -6,7 +6,10 @@ const TILE_THUMB_H = 135;
 const PAPER_THUMB_W = TILE_THUMB_W; // материал
 const PAPER_THUMB_H = TILE_THUMB_H;
 const COLOR_SWATCH = 64; // свотч цвета (квадрат)
-const COLOR_FULL = 1024; // картинка цвета в lightbox (ресайз по ширине)
+// Lightbox цвета: браузер выбирает по вьюпорту (моб. — меньше, ПК — до 4K),
+// апскейла нет — крупнее оригинала Directus не отдаст (withoutEnlargement).
+const COLOR_FULL_WIDTHS = [768, 1280, 2048, 3840];
+const COLOR_FULL_SIZES = "(max-width: 767px) 100vw, 92vw";
 const FIN_THUMB_W = TILE_THUMB_W; // ламинация
 const FIN_THUMB_H = TILE_THUMB_H;
 const FOLD_THUMB_W = TILE_THUMB_W; // фальцовка
@@ -22,7 +25,7 @@ function mapColor(c: any): PaperColor {
     image: assetUrl(c.image),
     thumb: responsiveAsset(c.image, COLOR_SWATCH, COLOR_SWATCH),
     tile: responsiveAsset(c.image, TILE_THUMB_W, TILE_THUMB_H),
-    full: responsiveAsset(c.image, COLOR_FULL, undefined, [1]),
+    full: responsiveAssetFluid(c.image, COLOR_FULL_WIDTHS, COLOR_FULL_SIZES),
   };
 }
 import { computePrice } from "./engine";

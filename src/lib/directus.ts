@@ -33,15 +33,23 @@ export type ResponsiveImage = {
   sources: { type: string; srcset: string }[]; // avif, webp (по убыванию приоритета)
   width: number;
   height: number;
+  sizes?: string; // только при w-дескрипторах (responsiveAssetFluid)
 } | null;
 
 const ASSET_QUALITY = 70;
 
 // height задан → кроп под бокс (fit=cover); опущен → ресайз по ширине с
 // сохранением пропорций (для lightbox, чтобы картинку не обрезало).
-function assetVariant(id: string, w: number, h: number | undefined, format?: string): string {
-  const p = new URLSearchParams({ width: String(w), quality: String(ASSET_QUALITY) });
-  if (h !== undefined) { p.set("height", String(h)); p.set("fit", "cover"); }
+function assetVariant(id: string, w: number, h: number | undefined, format?: string, noEnlarge = false): string {
+  // noEnlarge: ресайз через transforms c withoutEnlargement — Directus не
+  // апскейлит оригинал меньше запрошенной ширины (top-level width — апскейлит).
+  const p = noEnlarge
+    ? new URLSearchParams({
+        transforms: JSON.stringify([["resize", { width: w, withoutEnlargement: true }]]),
+        quality: String(ASSET_QUALITY),
+      })
+    : new URLSearchParams({ width: String(w), quality: String(ASSET_QUALITY) });
+  if (!noEnlarge && h !== undefined) { p.set("height", String(h)); p.set("fit", "cover"); }
   if (format) p.set("format", format);
   return `${DIRECTUS_PUBLIC_URL}/assets/${id}?${p.toString()}`;
 }
@@ -65,6 +73,30 @@ export function responsiveAsset(
     width,
     height: height ?? width, // только для атрибута/aspect; при ресайзе по ширине переопределяется CSS
     src: assetVariant(id, width, height),
+    sources: [
+      { type: "image/avif", srcset: srcset("avif") },
+      { type: "image/webp", srcset: srcset("webp") },
+    ],
+  };
+}
+
+// Лайтбокс/полноэкранные фото: srcset по ширинам (w-дескрипторы) + sizes —
+// браузер сам выбирает вариант под вьюпорт и dpr (мобильный тянет меньше,
+// десктоп — вплоть до 4K), но не крупнее оригинала (withoutEnlargement).
+export function responsiveAssetFluid(
+  id: string | null | undefined,
+  widths: number[],
+  sizes: string,
+): ResponsiveImage {
+  if (!id) return null;
+  const srcset = (format?: string) =>
+    widths.map((w) => `${assetVariant(id, w, undefined, format, true)} ${w}w`).join(", ");
+  const mid = widths[Math.floor((widths.length - 1) / 2)];
+  return {
+    width: widths[widths.length - 1],
+    height: widths[widths.length - 1], // формальность; реальные пропорции задаёт CSS
+    sizes,
+    src: assetVariant(id, mid, undefined, undefined, true),
     sources: [
       { type: "image/avif", srcset: srcset("avif") },
       { type: "image/webp", srcset: srcset("webp") },
