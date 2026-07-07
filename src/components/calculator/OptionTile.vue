@@ -17,12 +17,29 @@ withDefaults(
     title?: string;
     icon?: boolean; // компактный вариант для рядов без фото: иконка слева, текст
                     // справа, активная — киноварью (без серой заливки-миниатюры)
-    zoom?: boolean; // кнопка-лупа на миниатюре: клик по плитке выбирает,
-                    // клик по лупе шлёт zoom (lightbox — забота родителя)
+    zoom?: boolean; // миниатюра кликабельна: клик по фото шлёт zoom (lightbox —
+                    // забота родителя), клик по остальной плитке — выбор. На
+                    // ховере — затенение, подпись «Увеличить» и параллакс-зум.
   }>(),
   { active: false, disabled: false, icon: false, zoom: false },
 );
 const emit = defineEmits<{ select: []; zoom: [] }>();
+
+// Параллакс миниатюры: фото слегка увеличено и «плывёт» за курсором в пределах
+// рамки. Смещение — CSS-переменные на элементе, transform считает CSS.
+function thumbMove(e: MouseEvent) {
+  const el = e.currentTarget as HTMLElement;
+  const r = el.getBoundingClientRect();
+  const x = (e.clientX - r.left) / r.width - 0.5;
+  const y = (e.clientY - r.top) / r.height - 0.5;
+  el.style.setProperty("--px", `${(-x * 6).toFixed(2)}%`);
+  el.style.setProperty("--py", `${(-y * 6).toFixed(2)}%`);
+}
+function thumbLeave(e: MouseEvent) {
+  const el = e.currentTarget as HTMLElement;
+  el.style.removeProperty("--px");
+  el.style.removeProperty("--py");
+}
 </script>
 
 <template>
@@ -36,7 +53,18 @@ const emit = defineEmits<{ select: []; zoom: [] }>();
     :class="{ 'otile--on': active, 'otile--off': disabled, 'otile--icon': icon }"
     @click="emit('select')"
   >
-    <span class="otile__thumb" :style="fill && !thumb ? `background:${fill}` : ''">
+    <span
+      class="otile__thumb"
+      :class="{ 'otile__thumb--zoom': zoom }"
+      :style="fill && !thumb ? `background:${fill}` : ''"
+      :role="zoom ? 'button' : undefined"
+      :tabindex="zoom ? 0 : undefined"
+      :aria-label="zoom ? 'Увеличить фото' : undefined"
+      @click="zoom && ($event.stopPropagation(), emit('zoom'))"
+      @keydown.enter="zoom && ($event.stopPropagation(), $event.preventDefault(), emit('zoom'))"
+      @mousemove="zoom && thumbMove($event)"
+      @mouseleave="zoom && thumbLeave($event)"
+    >
       <slot name="thumb">
         <picture v-if="thumb">
           <source v-for="s in thumb.sources" :key="s.type" :type="s.type" :srcset="s.srcset" />
@@ -44,15 +72,13 @@ const emit = defineEmits<{ select: []; zoom: [] }>();
         </picture>
         <svg v-else-if="glyph" viewBox="0 0 24 24" aria-hidden="true" class="otile__glyph" v-html="glyph" />
       </slot>
-      <span
-        v-if="zoom"
-        role="button"
-        tabindex="0"
-        aria-label="Увеличить"
-        class="otile__zoom"
-        @click.stop="emit('zoom')"
-        @keydown.enter.stop.prevent="emit('zoom')"
-      >
+      <!-- ховер-подсказка (десктоп): затенение + «Увеличить» -->
+      <span v-if="zoom" class="otile__hint" aria-hidden="true">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+        Увеличить
+      </span>
+      <!-- метка для тачей (ховера нет): некликабельный значок в углу -->
+      <span v-if="zoom" class="otile__badge" aria-hidden="true">
         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
       </span>
     </span>
@@ -99,17 +125,51 @@ const emit = defineEmits<{ select: []; zoom: [] }>();
 .otile__thumb picture { display: contents; }
 .otile__img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .otile__glyph { width: 2.2rem; height: 2.2rem; opacity: 0.45; }
-.otile__zoom {
+
+/* ── Кликабельная миниатюра (zoom): клик по фото — lightbox, по плитке — выбор.
+   Ховер: лёгкий зум + параллакс за курсором (--px/--py ставит JS), затенение
+   и подпись «Увеличить». На тачах ховера нет — постоянный значок-метка. ── */
+.otile__thumb--zoom { cursor: zoom-in; }
+.otile__thumb--zoom .otile__img {
+  transition: transform 0.25s ease;
+  will-change: transform;
+}
+.otile__hint {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  font-size: 0.68rem;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  pointer-events: none;
+}
+.otile__badge {
+  display: none;
   position: absolute;
   top: 0.2rem;
   right: 0.2rem;
-  display: grid;
   place-items: center;
   width: 1.25rem;
   height: 1.25rem;
   border: 1px solid var(--color-base-content, #555);
   border-radius: 9999px;
   background: var(--color-base-100, #fff);
+  pointer-events: none;
+}
+@media (hover: hover) {
+  .otile__thumb--zoom:hover .otile__img {
+    transform: scale(1.12) translate(var(--px, 0%), var(--py, 0%));
+  }
+  .otile__thumb--zoom:hover .otile__hint,
+  .otile__thumb--zoom:focus-visible .otile__hint { opacity: 1; }
+}
+@media (hover: none) {
+  .otile__thumb--zoom .otile__badge { display: grid; }
 }
 /* глиф/иконка, переданные через слот #thumb (напр. SizeGlyph) */
 .otile__thumb :slotted(svg) { width: 2.2rem; height: 2.2rem; opacity: 0.45; }
