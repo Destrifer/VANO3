@@ -6,10 +6,11 @@ const TILE_THUMB_H = 135;
 const PAPER_THUMB_W = TILE_THUMB_W; // материал
 const PAPER_THUMB_H = TILE_THUMB_H;
 const COLOR_SWATCH = 64; // свотч цвета (квадрат)
-// Lightbox цвета: браузер выбирает по вьюпорту (моб. — меньше, ПК — до 4K),
-// апскейла нет — крупнее оригинала Directus не отдаст (withoutEnlargement).
-const COLOR_FULL_WIDTHS = [768, 1280, 2048, 3840];
-const COLOR_FULL_SIZES = "(max-width: 767px) 100vw, 92vw";
+// Lightbox (цвета, материалы, ламинация): браузер выбирает по вьюпорту (моб. —
+// меньше, ПК — до 4K), апскейла нет — крупнее оригинала Directus не отдаст
+// (withoutEnlargement).
+const FULL_WIDTHS = [768, 1280, 2048, 3840];
+const FULL_SIZES = "(max-width: 767px) 100vw, 92vw";
 const FIN_THUMB_W = TILE_THUMB_W; // ламинация
 const FIN_THUMB_H = TILE_THUMB_H;
 const FOLD_THUMB_W = TILE_THUMB_W; // фальцовка
@@ -25,7 +26,7 @@ function mapColor(c: any): PaperColor {
     image: assetUrl(c.image),
     thumb: responsiveAsset(c.image, COLOR_SWATCH, COLOR_SWATCH),
     tile: responsiveAsset(c.image, TILE_THUMB_W, TILE_THUMB_H),
-    full: responsiveAssetFluid(c.image, COLOR_FULL_WIDTHS, COLOR_FULL_SIZES),
+    full: responsiveAssetFluid(c.image, FULL_WIDTHS, FULL_SIZES),
   };
 }
 import { computePrice } from "./engine";
@@ -80,6 +81,7 @@ export type PaperOption = {
   description: string | null;
   image: string | null;
   thumb: ResponsiveImage; // адаптивная миниатюра (avif/webp) для плитки материала
+  full: ResponsiveImage; // адаптивная картинка для lightbox (ресайз по ширине)
   colors: PaperColor[];
   // спецматериал с фикс-ценой за лист (световозвращающая плёнка, пластик 3M)
   fixedPrice?: CuttingBracket[];
@@ -92,6 +94,7 @@ export type FinishingOption = Finishing & {
   group: string | null;
   image: string | null; // фото отделки (finishing_options.image)
   thumb: ResponsiveImage; // адаптивная миниатюра (avif/webp) для плитки ламинации
+  full: ResponsiveImage; // адаптивная картинка для lightbox (ресайз по ширине)
   colors: PaperColor[];
 };
 
@@ -398,6 +401,7 @@ export async function getProductPricing(
       description: pp.description ?? null,
       image: assetUrl(pp.image),
       thumb: responsiveAsset(pp.image, PAPER_THUMB_W, PAPER_THUMB_H),
+      full: responsiveAssetFluid(pp.image, FULL_WIDTHS, FULL_SIZES),
       colors: (pp.colors ?? [])
         .slice()
         .sort((a: any, b: any) => (a.sort ?? 0) - (b.sort ?? 0))
@@ -469,6 +473,7 @@ export async function getProductPricing(
         group: f.group ?? null,
         image: assetUrl(f.image),
         thumb: responsiveAsset(f.image, FIN_THUMB_W, FIN_THUMB_H),
+        full: responsiveAssetFluid(f.image, FULL_WIDTHS, FULL_SIZES),
         unit: f.unit,
         unitPrice: f.unit_price == null ? null : num(f.unit_price),
         setupPrice: num(f.setup_price),

@@ -154,14 +154,14 @@ export function useCalculator(props: {
   const artworkName = ref<string | null>(null);
   const artworkPreflight = ref<import("../lib/preflight").Preflight | null>(null);
   const paperGroups = computed(() => {
-    const groups: { group: string; options: { index: number; name: string; thumb: PaperOption["thumb"] }[] }[] = [];
+    const groups: { group: string; options: { index: number; name: string; thumb: PaperOption["thumb"]; full: PaperOption["full"] }[] }[] = [];
     product.papers.forEach((p, index) => {
       let g = groups.find((x) => x.group === p.group);
       if (!g) {
         g = { group: p.group, options: [] };
         groups.push(g);
       }
-      g.options.push({ index, name: p.name, thumb: p.thumb });
+      g.options.push({ index, name: p.name, thumb: p.thumb, full: p.full });
     });
     return groups;
   });

@@ -6,6 +6,7 @@
 import { ref } from "vue";
 import InfoTip from "../InfoTip.vue";
 import OptionTile from "./OptionTile.vue";
+import ImageLightbox from "./ImageLightbox.vue";
 import { optionInfo } from "../../lib/optionInfo";
 import type { ResponsiveImage } from "../../lib/directus";
 
@@ -20,7 +21,7 @@ const GLYPH_LAM =
 
 type Color = { name: string; code: string; hex: string | null; image: string | null; thumb: ResponsiveImage; tile: ResponsiveImage; full: ResponsiveImage };
 defineProps<{
-  laminationOptions: { name: string; thumb: ResponsiveImage }[];
+  laminationOptions: { name: string; thumb: ResponsiveImage; full?: ResponsiveImage }[];
   laminationIndex: number;
   laminationLocked: boolean;
   foilOption: { name: string; colors: Color[] } | null;
@@ -33,15 +34,9 @@ const emit = defineEmits<{
   "update:foilColorIndex": [v: number];
 }>();
 
-// Lightbox фото фольги — тот же паттерн, что в SwatchPalette: лупа на плитке
-// открывает <dialog> с полной картинкой, клик по самой плитке — выбор.
-const lightboxEl = ref<HTMLDialogElement | null>(null);
-const lightbox = ref<{ name: string; img: ResponsiveImage } | null>(null);
-function openLightbox(c: Color) {
-  if (!c.full) return;
-  lightbox.value = { name: c.name, img: c.full };
-  lightboxEl.value?.showModal();
-}
+// Lightbox фото (фольга/ламинация) — общий ImageLightbox: лупа на плитке
+// открывает полную картинку, клик по самой плитке — выбор.
+const lightbox = ref<InstanceType<typeof ImageLightbox> | null>(null);
 </script>
 
 <template>
@@ -72,7 +67,9 @@ function openLightbox(c: Color) {
         :glyph="GLYPH_LAM"
         :active="laminationIndex === i"
         :disabled="laminationLocked"
+        :zoom="!!o.full"
         @select="emit('update:laminationIndex', i)"
+        @zoom="lightbox?.open(o.name, o.full ?? null)"
       />
     </div>
     <span class="text-sm opacity-70 min-h-5" :class="{ invisible: !laminationLocked }">
@@ -103,19 +100,10 @@ function openLightbox(c: Color) {
         :title="c.name + (c.code ? ' · ' + c.code : '')"
         :zoom="!!c.full"
         @select="emit('update:foilColorIndex', i); emit('update:foilOn', true)"
-        @zoom="openLightbox(c)"
+        @zoom="lightbox?.open(c.name, c.full)"
       />
     </div>
-
-    <dialog ref="lightboxEl" class="modal">
-      <div class="modal-box w-auto max-w-[92vw] p-2">
-        <picture v-if="lightbox">
-          <source v-for="s in lightbox.img!.sources" :key="s.type" :type="s.type" :srcset="s.srcset" :sizes="lightbox.img!.sizes" />
-          <img :src="lightbox.img!.src" :alt="lightbox.name" :sizes="lightbox.img!.sizes" class="mx-auto max-h-[80vh] rounded" />
-        </picture>
-        <p v-if="lightbox" class="mt-2 text-center text-sm">{{ lightbox.name }}</p>
-      </div>
-      <form method="dialog" class="modal-backdrop"><button>закрыть</button></form>
-    </dialog>
   </div>
+
+  <ImageLightbox ref="lightbox" />
 </template>

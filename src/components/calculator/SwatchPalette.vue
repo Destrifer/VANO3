@@ -4,6 +4,7 @@
 // (avif/webp + retina) через responsiveAsset, чтобы не тянуть оригиналы.
 // inline=true — рисуем сразу сетку (блок материала); иначе кнопка-дропдаун (фольга).
 import { computed, ref } from "vue";
+import ImageLightbox from "./ImageLightbox.vue";
 import type { ResponsiveImage } from "../../lib/directus";
 
 type Swatch = {
@@ -24,14 +25,8 @@ const emit = defineEmits<{ "update:modelValue": [value: number] }>();
 const current = computed(() => props.colors[props.modelValue] ?? props.colors[0]);
 const hexStyle = (c?: Swatch) => `background:${c?.hex ?? "#ccc"}`;
 
-// Lightbox инкапсулирован внутри компонента.
-const lightboxEl = ref<HTMLDialogElement | null>(null);
-const lightbox = ref<{ name: string; img: ResponsiveImage } | null>(null);
-function openLightbox(c: Swatch) {
-  if (!c.full) return;
-  lightbox.value = { name: c.name, img: c.full };
-  lightboxEl.value?.showModal();
-}
+// Lightbox — общий ImageLightbox (тот же, что у плиток материалов/покрытий).
+const lightbox = ref<InstanceType<typeof ImageLightbox> | null>(null);
 </script>
 
 <template>
@@ -75,7 +70,7 @@ function openLightbox(c: Swatch) {
             tabindex="0"
             aria-label="Увеличить"
             class="absolute right-0.5 top-0.5 grid h-5 w-5 place-items-center rounded-full border border-base-content bg-base-100"
-            @click.stop="openLightbox(c)"
+            @click.stop="lightbox?.open(c.name, c.full)"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
           </span>
@@ -83,15 +78,6 @@ function openLightbox(c: Swatch) {
       </div>
     </div>
 
-    <dialog ref="lightboxEl" class="modal">
-      <div class="modal-box w-auto max-w-[92vw] p-2">
-        <picture v-if="lightbox">
-          <source v-for="s in lightbox.img!.sources" :key="s.type" :type="s.type" :srcset="s.srcset" :sizes="lightbox.img!.sizes" />
-          <img :src="lightbox.img!.src" :alt="lightbox.name" :sizes="lightbox.img!.sizes" class="mx-auto max-h-[80vh] rounded" />
-        </picture>
-        <p v-if="lightbox" class="mt-2 text-center text-sm">{{ lightbox.name }}</p>
-      </div>
-      <form method="dialog" class="modal-backdrop"><button>закрыть</button></form>
-    </dialog>
+    <ImageLightbox ref="lightbox" />
   </div>
 </template>

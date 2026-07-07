@@ -5,6 +5,7 @@
 import { computed, ref, watch } from "vue";
 import SwatchPalette from "./SwatchPalette.vue";
 import OptionTile from "./OptionTile.vue";
+import ImageLightbox from "./ImageLightbox.vue";
 import type { ResponsiveImage } from "../../lib/directus";
 
 // Глиф-фолбэк материала без фото (Tabler file).
@@ -12,7 +13,7 @@ const MAT_GLYPH =
   '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2"/></g>';
 
 type Color = { name: string; code: string; hex: string | null; image: string | null; thumb: ResponsiveImage; full: ResponsiveImage };
-type Option = { index: number; name: string; thumb: ResponsiveImage };
+type Option = { index: number; name: string; thumb: ResponsiveImage; full?: ResponsiveImage };
 type Group = { group: string; options: Option[] };
 const props = defineProps<{
   label?: string;
@@ -41,6 +42,10 @@ watch(
 const activeOptions = computed(
   () => props.groups.find((g) => g.group === activeGroup.value)?.options ?? [],
 );
+
+// Lightbox фото материала — паттерн CoatingField: лупа на плитке открывает
+// полную картинку, клик по самой плитке — выбор.
+const lightbox = ref<InstanceType<typeof ImageLightbox> | null>(null);
 </script>
 
 <template>
@@ -78,9 +83,13 @@ const activeOptions = computed(
         :thumb="o.thumb"
         :glyph="MAT_GLYPH"
         :active="o.index === index"
+        :zoom="!!o.full"
         @select="emit('update:index', o.index)"
+        @zoom="lightbox?.open(o.name, o.full ?? null)"
       />
     </div>
+
+    <ImageLightbox ref="lightbox" />
 
     <!-- Цвет выбранного материала -->
     <template v-if="colors.length">
