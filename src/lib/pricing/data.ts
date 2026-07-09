@@ -251,7 +251,14 @@ export function presetPrice(
 ): number | null {
   if (p.strategy !== "sheet" || !preset) return defaultPrice(p, pricing);
   const round = preset.shape === "round";
-  const size = p.sizes[0];
+  const sizeIdx =
+    preset.sizeIndex != null &&
+    Number.isInteger(preset.sizeIndex) &&
+    preset.sizeIndex >= 0 &&
+    preset.sizeIndex < p.sizes.length
+      ? preset.sizeIndex
+      : 0;
+  const size = p.sizes[sizeIdx];
   // Круглая форма: диаметр по умолчанию как в калькуляторе (40 мм), иначе размер[0].
   const ROUND_D = 40;
   const width = round ? ROUND_D : size?.width ?? 0;
