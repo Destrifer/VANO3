@@ -155,16 +155,31 @@ onBeforeUnmount(() => ro?.disconnect());
   overflow-y: auto;
   align-content: flex-start;
   padding-right: 0.25rem;
-  /* Тонкий постоянный скроллбар в цветах темы (системный на macOS скрыт) */
-  scrollbar-width: thin;
-  scrollbar-color: var(--color-base-300, #d6d3cd) transparent;
+  /* daisyUI ставит scrollbar-color на :root, свойство наследуется, а Chrome
+     121+ при непустом scrollbar-color игнорирует ::-webkit-scrollbar-стили.
+     Сбрасываем, чтобы кастомный скроллбар ниже заработал (Firefox — @supports). */
+  scrollbar-color: auto;
 }
-.mat-list::-webkit-scrollbar { width: 8px; }
+/* Заметный постоянный скроллбар: круглый тумб + видимый жёлоб. */
+.mat-list::-webkit-scrollbar { width: 10px; }
+.mat-list::-webkit-scrollbar-track {
+  background: var(--color-base-200, #f3f1ea);
+  border-radius: 9999px;
+}
 .mat-list::-webkit-scrollbar-thumb {
   background: var(--color-base-300, #d6d3cd);
-  border-radius: 4px;
+  border-radius: 9999px;
 }
-.mat-list::-webkit-scrollbar-track { background: transparent; }
+.mat-list::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in oklch, var(--color-base-content, #555) 35%, transparent);
+}
+/* Firefox не знает ::-webkit-scrollbar — ему стандартные свойства */
+@supports not selector(::-webkit-scrollbar) {
+  .mat-list {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-base-300, #d6d3cd) var(--color-base-200, #f3f1ea);
+  }
+}
 /* С табами — постоянная высота, чтобы блоки ниже не «прыгали» при смене категории. */
 .mat-list--fixed { height: 19rem; }
 </style>
