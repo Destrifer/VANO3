@@ -2,7 +2,7 @@
 // Презентационный выбор материала: табы по категориям (Стандартные/Дизайнерские/
 // Спец…) + сетка плиток-материалов (текстура + название) + палитра цвета снизу.
 // Переиспускается: материал визитки, бумага обложки/блока брошюры.
-import { computed, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import SwatchPalette from "./SwatchPalette.vue";
 import OptionTile from "./OptionTile.vue";
 import ImageLightbox from "./ImageLightbox.vue";
@@ -46,6 +46,24 @@ const activeOptions = computed(
 // Lightbox фото материала — паттерн CoatingField: лупа на плитке открывает
 // полную картинку, клик по самой плитке — выбор.
 const lightbox = ref<InstanceType<typeof ImageLightbox> | null>(null);
+
+// Аффорданс прокрутки: пока снизу есть скрытые плитки — градиент-затухание у
+// нижнего края (докрутил до конца или таб без переполнения — гаснет).
+// Пересчёт: скролл, смена таба, ресайз (плитки переносятся по-другому).
+const listEl = ref<HTMLElement | null>(null);
+const faded = ref(false);
+function updateFade() {
+  const el = listEl.value;
+  faded.value = !!el && el.scrollHeight - el.scrollTop - el.clientHeight > 4;
+}
+watch(activeOptions, () => nextTick(updateFade));
+let ro: ResizeObserver | null = null;
+onMounted(() => {
+  updateFade();
+  ro = new ResizeObserver(updateFade);
+  if (listEl.value) ro.observe(listEl.value);
+});
+onBeforeUnmount(() => ro?.disconnect());
 </script>
 
 <template>
@@ -69,24 +87,30 @@ const lightbox = ref<InstanceType<typeof ImageLightbox> | null>(null);
     </div>
 
     <!-- Плитки материалов (единый OptionTile, прокрутка при переполнении).
-         Высота фиксирована — блоки ниже не «прыгают» при смене таба. -->
-    <div
-      class="mat-list"
-      :class="{ 'mat-list--fixed': groups.length > 1 }"
-      role="radiogroup"
-      :aria-label="label ?? 'Материал'"
-    >
-      <OptionTile
-        v-for="o in activeOptions"
-        :key="o.index"
-        :label="o.name"
-        :thumb="o.thumb"
-        :glyph="MAT_GLYPH"
-        :active="o.index === index"
-        :zoom="!!o.full"
-        @select="emit('update:index', o.index)"
-        @zoom="lightbox?.open(o.name, o.full ?? null)"
-      />
+         Высота фиксирована — блоки ниже не «прыгают» при смене таба. Высота
+         срезает третий ряд посередине + градиент-затухание, чтобы прокрутка
+         была очевидна. -->
+    <div class="mat-wrap" :class="{ 'mat-wrap--fade': faded }">
+      <div
+        ref="listEl"
+        class="mat-list"
+        :class="{ 'mat-list--fixed': groups.length > 1 }"
+        role="radiogroup"
+        :aria-label="label ?? 'Материал'"
+        @scroll.passive="updateFade"
+      >
+        <OptionTile
+          v-for="o in activeOptions"
+          :key="o.index"
+          :label="o.name"
+          :thumb="o.thumb"
+          :glyph="MAT_GLYPH"
+          :active="o.index === index"
+          :zoom="!!o.full"
+          @select="emit('update:index', o.index)"
+          @zoom="lightbox?.open(o.name, o.full ?? null)"
+        />
+      </div>
     </div>
 
     <ImageLightbox ref="lightbox" />
@@ -108,17 +132,39 @@ const lightbox = ref<InstanceType<typeof ImageLightbox> | null>(null);
 </template>
 
 <style scoped>
+.mat-wrap { position: relative; }
+/* Затухание у нижнего края, пока снизу есть скрытые плитки (класс ставит JS).
+   Справа отступ — не накрывать скроллбар. */
+.mat-wrap--fade::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 12px;
+  bottom: 0;
+  height: 3rem;
+  background: linear-gradient(to bottom, transparent, var(--color-base-100, #fff));
+  pointer-events: none;
+}
 .mat-list {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  /* По содержимому, но не выше ~2 рядов (дальше прокрутка) — без пустого места,
-     когда материалов мало. */
-  max-height: 15.5rem;
+  /* По содержимому, но не выше ~2,5 рядов: третий ряд срезан посередине —
+     видно, что список прокручивается. Без пустого места, когда материалов мало. */
+  max-height: 19rem;
   overflow-y: auto;
   align-content: flex-start;
   padding-right: 0.25rem;
+  /* Тонкий постоянный скроллбар в цветах темы (системный на macOS скрыт) */
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-base-300, #d6d3cd) transparent;
 }
+.mat-list::-webkit-scrollbar { width: 8px; }
+.mat-list::-webkit-scrollbar-thumb {
+  background: var(--color-base-300, #d6d3cd);
+  border-radius: 4px;
+}
+.mat-list::-webkit-scrollbar-track { background: transparent; }
 /* С табами — постоянная высота, чтобы блоки ниже не «прыгали» при смене категории. */
-.mat-list--fixed { height: 15.5rem; }
+.mat-list--fixed { height: 19rem; }
 </style>
