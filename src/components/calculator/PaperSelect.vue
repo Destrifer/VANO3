@@ -48,22 +48,61 @@ const activeOptions = computed(
 const lightbox = ref<InstanceType<typeof ImageLightbox> | null>(null);
 
 // Аффорданс прокрутки: пока снизу есть скрытые плитки — градиент-затухание у
-// нижнего края (докрутил до конца или таб без переполнения — гаснет).
-// Пересчёт: скролл, смена таба, ресайз (плитки переносятся по-другому).
+// нижнего края (докрутил до конца или таб без переполнения — гаснет) + свой
+// рисованный скроллбар. Нативный скрыт: Win11-браузеры (fluent overlay)
+// рисуют его тонкой полоской и разворачивают только по ховеру, игнорируя
+// кастомные ::-webkit-scrollbar-стили, — поэтому трек и тумб у нас свои
+// div'ы. Пересчёт: скролл, смена таба, ресайз (плитки переносятся по-другому).
 const listEl = ref<HTMLElement | null>(null);
 const faded = ref(false);
-function updateFade() {
+const bar = ref({ visible: false, top: 0, h: 100 }); // top/h — % высоты трека
+function updateScrollUi() {
   const el = listEl.value;
-  faded.value = !!el && el.scrollHeight - el.scrollTop - el.clientHeight > 4;
+  if (!el) {
+    faded.value = false;
+    bar.value.visible = false;
+    return;
+  }
+  const overflow = el.scrollHeight > el.clientHeight + 1;
+  faded.value = overflow && el.scrollHeight - el.scrollTop - el.clientHeight > 4;
+  bar.value = {
+    visible: overflow,
+    top: (el.scrollTop / el.scrollHeight) * 100,
+    h: (el.clientHeight / el.scrollHeight) * 100,
+  };
 }
-watch(activeOptions, () => nextTick(updateFade));
+watch(activeOptions, () => nextTick(updateScrollUi));
 let ro: ResizeObserver | null = null;
 onMounted(() => {
-  updateFade();
-  ro = new ResizeObserver(updateFade);
+  updateScrollUi();
+  ro = new ResizeObserver(updateScrollUi);
   if (listEl.value) ro.observe(listEl.value);
 });
 onBeforeUnmount(() => ro?.disconnect());
+
+// Перетаскивание тумба — как у нативного скроллбара.
+function onThumbDown(e: PointerEvent) {
+  const el = listEl.value;
+  if (!el) return;
+  e.preventDefault();
+  const startY = e.clientY;
+  const startTop = el.scrollTop;
+  const ratio = el.scrollHeight / el.clientHeight;
+  const move = (ev: PointerEvent) => { el.scrollTop = startTop + (ev.clientY - startY) * ratio; };
+  const up = () => {
+    window.removeEventListener("pointermove", move);
+    window.removeEventListener("pointerup", up);
+  };
+  window.addEventListener("pointermove", move);
+  window.addEventListener("pointerup", up);
+}
+// Клик по треку — прыжок (центрируем видимую область на точке клика).
+function onTrackDown(e: PointerEvent) {
+  const el = listEl.value;
+  if (!el || e.target !== e.currentTarget) return;
+  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+  el.scrollTop = ((e.clientY - rect.top) / rect.height) * el.scrollHeight - el.clientHeight / 2;
+}
 </script>
 
 <template>
@@ -97,7 +136,7 @@ onBeforeUnmount(() => ro?.disconnect());
         :class="{ 'mat-list--fixed': groups.length > 1 }"
         role="radiogroup"
         :aria-label="label ?? 'Материал'"
-        @scroll.passive="updateFade"
+        @scroll.passive="updateScrollUi"
       >
         <OptionTile
           v-for="o in activeOptions"
@@ -109,6 +148,13 @@ onBeforeUnmount(() => ro?.disconnect());
           :zoom="!!o.full"
           @select="emit('update:index', o.index)"
           @zoom="lightbox?.open(o.name, o.full ?? null)"
+        />
+      </div>
+      <div v-if="bar.visible" class="mat-bar" aria-hidden="true" @pointerdown="onTrackDown">
+        <div
+          class="mat-bar__thumb"
+          :style="{ top: bar.top + '%', height: bar.h + '%' }"
+          @pointerdown="onThumbDown"
         />
       </div>
     </div>
@@ -154,31 +200,35 @@ onBeforeUnmount(() => ro?.disconnect());
   max-height: 19rem;
   overflow-y: auto;
   align-content: flex-start;
-  padding-right: 0.25rem;
-  /* daisyUI ставит scrollbar-color на :root, свойство наследуется, а Chrome
-     121+ при непустом scrollbar-color игнорирует ::-webkit-scrollbar-стили.
-     Сбрасываем, чтобы кастомный скроллбар ниже заработал (Firefox — @supports). */
-  scrollbar-color: auto;
+  padding-right: 1.1rem; /* место под собственный скроллбар */
+  /* нативный скроллбар скрыт — вместо него .mat-bar */
+  scrollbar-width: none;
 }
-/* Заметный постоянный скроллбар: круглый тумб + видимый жёлоб. */
-.mat-list::-webkit-scrollbar { width: 10px; }
-.mat-list::-webkit-scrollbar-track {
+.mat-list::-webkit-scrollbar { display: none; }
+/* Собственный скроллбар: всегда одинаковый во всех браузерах, не зависит от
+   fluent/overlay-режимов ОС. Геометрию тумба (top/height) считает JS. */
+.mat-bar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: 10px;
+  border-radius: 9999px;
   background: var(--color-base-200, #f3f1ea);
-  border-radius: 9999px;
 }
-.mat-list::-webkit-scrollbar-thumb {
+.mat-bar__thumb {
+  position: absolute;
+  left: 0;
+  right: 0;
+  min-height: 1.5rem;
+  border-radius: 9999px;
   background: var(--color-base-300, #d6d3cd);
-  border-radius: 9999px;
+  touch-action: none;
+  transition: background 0.12s;
 }
-.mat-list::-webkit-scrollbar-thumb:hover {
+.mat-bar__thumb:hover,
+.mat-bar__thumb:active {
   background: color-mix(in oklch, var(--color-base-content, #555) 35%, transparent);
-}
-/* Firefox не знает ::-webkit-scrollbar — ему стандартные свойства */
-@supports not selector(::-webkit-scrollbar) {
-  .mat-list {
-    scrollbar-width: thin;
-    scrollbar-color: var(--color-base-300, #d6d3cd) var(--color-base-200, #f3f1ea);
-  }
 }
 /* С табами — постоянная высота, чтобы блоки ниже не «прыгали» при смене категории. */
 .mat-list--fixed { height: 19rem; }
