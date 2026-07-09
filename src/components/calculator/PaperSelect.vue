@@ -91,11 +91,14 @@ const lightbox = ref<InstanceType<typeof ImageLightbox> | null>(null);
 
     <ImageLightbox ref="lightbox" />
 
-    <!-- Цвет выбранного материала -->
+    <!-- Цвет выбранного материала: имя выбранного — в заголовке (тултипов
+         на тачах нет, а свотч сам по себе имя не сообщает) -->
     <template v-if="colors.length">
-      <span class="mt-1 text-sm font-semibold">Цвет материала</span>
+      <span class="mt-1 text-sm font-semibold">
+        Цвет материала:
+        <span class="font-normal opacity-70">{{ colors[colorIndex]?.name }}</span>
+      </span>
       <SwatchPalette
-        inline
         :colors="colors"
         :modelValue="colorIndex"
         @update:modelValue="emit('update:colorIndex', $event)"
