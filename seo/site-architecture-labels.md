@@ -15,16 +15,19 @@ Tier‑3 (голова → хаб) 104 268 (65%) · Tier‑1 21 378 (13%) · EXC
 ## Хаб `/labels` «Печать этикеток»
 H1: **Печать этикеток**. Голова `печать этикеток` 26k + `самоклеящиеся этикетки` 30k. Вхождения Tier‑3: дизайн, цена/тираж, цветность, метод/отделка, **маркировка/переменные данные** (честный знак/штрих/QR). Кросс‑ссылка на `/stickers` (наклейки).
 
-## Tier‑1 — кластеры с плиткой (пресеты в `paperIndex`/`shape`)
+## Tier‑1 — кластеры с плиткой (пресеты в `paperId`/`shape`)
 | URL | Материал/форма | Пресет | ~Спрос |
 |---|---|---|---|
-| `/labels/bottle` | на бутылки/тару (плёнка) | `paperIndex:4` | 7 919 |
-| `/labels/film` | плёночные/ПП | `paperIndex:4` | 4 375 |
+| `/labels/bottle` | на бутылки/тару (плёнка) | `paperId:21` ⚠️ | 7 919 |
+| `/labels/film` | плёночные/ПП | `paperId:21` ⚠️ | 4 375 |
 | `/labels/round` | круглые | `shape:round` | 3 325 |
-| `/labels/paper` | бумажные | `paperIndex:0` | 1 907 |
-| `/labels/transparent` | прозрачные | `paperIndex:6` | 1 605 |
-| `/labels/metallic` | металлизированные | `paperIndex:7` | 1 238 |
-| `/labels/urgent` | срочные | — | 1 009 |
+| `/labels/paper` | бумажные | `paperId:17` | 1 907 |
+| `/labels/transparent` | прозрачные | `paperId:23` | 1 605 |
+| `/labels/metallic` | металлизированные | `paperId:24` | 1 238 |
+| `/labels/urgent` | срочные | ➖ срочности нет в `CalcPreset` | 1 009 |
+
+> ⚠️ **Канибализация:** `bottle` и `film` открывают калькулятор в ОДИНАКОВОМ состоянии
+> (`paperId:21`). Развести при аудите раздела — см. `cluster-preset-audit.md`.
 
 ## Tier‑2 — назначение‑ниши (`show_as_tile=false`, без пресета)
 `/labels/wine` вино · `/labels/beer` пиво · `/labels/drinks` напитки/алкоголь · `/labels/cosmetics` косметика · `/labels/food` продукты (масло/мёд/еда) · `/labels/coffee` кофе/чай.
