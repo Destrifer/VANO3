@@ -161,9 +161,10 @@ function onTrackDown(e: PointerEvent) {
 
     <ImageLightbox ref="lightbox" />
 
-    <!-- Цвет выбранного материала: имя выбранного — в заголовке (тултипов
-         на тачах нет, а свотч сам по себе имя не сообщает) -->
-    <template v-if="colors.length">
+    <!-- Палитра цвета — только если у материала РЕАЛЬНО есть выбор (>1 цвета).
+         Один цвет = «цвет основы» материала (белая/прозрачная плёнка): он красит
+         превью, но выбирать нечего → палитру не показываем (как у Coral Print). -->
+    <template v-if="colors.length > 1">
       <span class="mt-1 text-sm font-semibold">
         Цвет материала:
         <span class="font-normal opacity-70">{{ colors[colorIndex]?.name }}</span>

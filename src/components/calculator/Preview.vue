@@ -29,6 +29,44 @@ const foldCount = computed(() =>
   calc.foldTypes?.length && calc.selectedFold ? calc.selectedFold.folds : 0,
 );
 
+// Спецрендер материала выводится из имени материала/цвета (как glossStrength от
+// имени ламинации): прозрачная плёнка — «шахматка» сквозь основу; металлик/
+// серебро/световозвращающая — диагональный блик. Плоский hex такие не передаёт.
+const matSignature = computed(
+  () => `${calc.currentPaper?.name ?? ""} ${calc.currentPaper?.materialType ?? ""} ${calc.colors[calc.selectedColorIndex]?.name ?? ""}`,
+);
+const isTransparent = computed(() => /прозрач/i.test(matSignature.value));
+const isMetallic = computed(() => /серебр|металл|световозвр|золот/i.test(matSignature.value));
+
+// «Шахматка» прозрачности (конвенция редакторов) поверх основы, приглушённо —
+// чтобы читалась и подложка-цвет, и сквозной характер плёнки.
+function drawTransparencyGrid(ctx: CanvasRenderingContext2D, r: Rect) {
+  const sq = Math.max(6, Math.min(r.w, r.h) / 12);
+  ctx.save();
+  ctx.globalAlpha = 0.5;
+  for (let iy = 0, y = r.y; y < r.y + r.h; iy++, y += sq) {
+    for (let ix = 0, x = r.x; x < r.x + r.w; ix++, x += sq) {
+      ctx.fillStyle = (ix + iy) % 2 ? "#ffffff" : "#cfd4d8";
+      ctx.fillRect(x, y, Math.min(sq, r.x + r.w - x), Math.min(sq, r.y + r.h - y));
+    }
+  }
+  ctx.restore();
+}
+
+// Металлический блик: диагональный светлый градиент поверх основы (серебро/фольга).
+function drawMetallicSheen(ctx: CanvasRenderingContext2D, r: Rect) {
+  const g = ctx.createLinearGradient(r.x, r.y, r.x + r.w, r.y + r.h);
+  g.addColorStop(0, "rgba(255,255,255,0)");
+  g.addColorStop(0.38, "rgba(255,255,255,0.32)");
+  g.addColorStop(0.5, "rgba(255,255,255,0.62)");
+  g.addColorStop(0.62, "rgba(255,255,255,0.32)");
+  g.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.save();
+  ctx.fillStyle = g;
+  ctx.fillRect(r.x, r.y, r.w, r.h);
+  ctx.restore();
+}
+
 function draw() {
   const cv = canvasRef.value;
   const parent = cv?.parentElement;
@@ -87,8 +125,10 @@ function draw() {
   ctx.save();
   shapePath(ctx, r, radius, isRound.value);
   ctx.clip();
+  if (isTransparent.value) drawTransparencyGrid(ctx, r);
   paperTexture(ctx, r, laminated.value ? 22 : 46, laminated.value ? 0.35 : 0.7);
   mockup.value.content(ctx, r, env);
+  if (isMetallic.value) drawMetallicSheen(ctx, r);
   if (glossStrength.value > 0) laminationGloss(ctx, r, glossStrength.value);
   if (calc.foilOn && mockup.value.foil) mockup.value.foil(ctx, r, env);
   // линии сгиба (буклеты): пунктир, делит лист на панели foldCount+1
@@ -241,6 +281,7 @@ watch(
     calc.laminationIndex, glossStrength.value,
     calc.foilOn, foilHex.value, cornersRounded.value, calc.product.previewKind,
     foldCount.value, calc.foldTypeIndex,
+    isTransparent.value, isMetallic.value, calc.selectedColorIndex,
   ],
   () => draw(),
 );
