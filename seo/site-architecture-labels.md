@@ -18,16 +18,17 @@ H1: **Печать этикеток**. Голова `печать этикето
 ## Tier‑1 — кластеры с плиткой (пресеты в `paperId`/`shape`)
 | URL | Материал/форма | Пресет | ~Спрос |
 |---|---|---|---|
-| `/labels/bottle` | на бутылки/тару (плёнка) | `paperId:21` ⚠️ | 7 919 |
-| `/labels/film` | плёночные/ПП | `paperId:21` ⚠️ | 4 375 |
+| `/labels/bottle` | на бутылки/тару (плёнка) | `paperId:21` (Muflon глянц.) | 7 919 |
+| `/labels/film` | плёночные/ПП | `paperId:20` (Polylaser глянц.) | 4 375 |
 | `/labels/round` | круглые | `shape:round` | 3 325 |
 | `/labels/paper` | бумажные | `paperId:17` | 1 907 |
 | `/labels/transparent` | прозрачные | `paperId:23` | 1 605 |
 | `/labels/metallic` | металлизированные | `paperId:24` | 1 238 |
+| `/labels/barcode` | со штрихкодом | `paperId:18` (матовая — скан) | — |
 | `/labels/urgent` | срочные | ➖ срочности нет в `CalcPreset` | 1 009 |
 
-> ⚠️ **Канибализация:** `bottle` и `film` открывают калькулятор в ОДИНАКОВОМ состоянии
-> (`paperId:21`). Развести при аудите раздела — см. `cluster-preset-audit.md`.
+> ✅ Дубль `bottle`/`film` устранён 2026-07-11 (`film` → Polylaser глянцевая).
+> Материал — `paperId`. Аудит раздела — `cluster-preset-audit.md`.
 
 ## Tier‑2 — назначение‑ниши (`show_as_tile=false`, без пресета)
 `/labels/wine` вино · `/labels/beer` пиво · `/labels/drinks` напитки/алкоголь · `/labels/cosmetics` косметика · `/labels/food` продукты (масло/мёд/еда) · `/labels/coffee` кофе/чай.
