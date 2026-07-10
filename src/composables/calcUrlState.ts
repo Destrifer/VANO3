@@ -14,7 +14,8 @@ export type CalcPreset = {
   quantity?: number;
   sizeIndex?: number; // индекс размера (product.sizes) — листовой
   foldTypeIndex?: number; // индекс типа фальцовки (product.foldTypes) — буклеты/листовки
-  paperIndex?: number;
+  paperId?: number; // id материала (стабилен к сортировке/скрытию) — предпочтителен
+  paperIndex?: number; // устаревшее: позиция в product.papers; съезжает при правке каталога
   foil?: boolean;
   foilColorIndex?: number;
   laminationIndex?: number;
@@ -29,6 +30,29 @@ export type CalcPreset = {
 
 const clampIndex = (i: number, len: number) =>
   Number.isInteger(i) && i >= 0 && i < len ? i : null;
+
+// Материал пресета → индекс в product.papers (уже отфильтрованном по status).
+// paperId стабилен к сортировке и скрытию. Устаревший paperIndex — позиция в
+// ИСХОДНОМ порядке каталога (paperOrder), поэтому переводим его через id: иначе
+// скрытие любого материала молча сдвинуло бы все пресеты правее него.
+// null — материал недоступен (скрыт/удалён): вызывающий оставляет дефолт.
+export function resolvePaperIndex(
+  papers: readonly { id: number }[],
+  p: Pick<CalcPreset, "paperId" | "paperIndex">,
+  paperOrder?: readonly number[],
+): number | null {
+  const byId = (id: number) => {
+    const i = papers.findIndex((x) => x.id === id);
+    return i >= 0 ? i : null;
+  };
+  if (p.paperId != null) return byId(p.paperId);
+  if (p.paperIndex == null) return null;
+  if (paperOrder?.length) {
+    const i = clampIndex(p.paperIndex, paperOrder.length);
+    return i == null ? null : byId(paperOrder[i]);
+  }
+  return clampIndex(p.paperIndex, papers.length);
+}
 
 // Применить пресет к реактивному состоянию (с защитой диапазонов/доступности).
 export function applyPreset(calc: CalculatorState, p: CalcPreset): void {
@@ -48,10 +72,8 @@ export function applyPreset(calc: CalculatorState, p: CalcPreset): void {
     const i = clampIndex(p.foldTypeIndex, calc.foldTypes.length);
     if (i != null) calc.foldTypeIndex = i;
   }
-  if (p.paperIndex != null) {
-    const i = clampIndex(p.paperIndex, calc.product.papers.length);
-    if (i != null) calc.paperIndex = i;
-  }
+  const paperIdx = resolvePaperIndex(calc.product.papers, p, calc.product.paperOrder);
+  if (paperIdx != null) calc.paperIndex = paperIdx;
   if (p.foil != null && calc.foilOption) calc.foilOn = p.foil;
   if (p.foilColorIndex != null && calc.foilOption) {
     const i = clampIndex(p.foilColorIndex, calc.foilOption.colors.length);

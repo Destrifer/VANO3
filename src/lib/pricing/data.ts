@@ -1,4 +1,5 @@
 import { directusFetch, assetUrl, responsiveAsset, responsiveAssetFluid, type ResponsiveImage } from "../directus";
+import { resolvePaperIndex, type CalcPreset } from "../../composables/calcUrlState";
 
 // Миниатюры плиток — 16:9 под единый OptionTile (с запасом под retina).
 const TILE_THUMB_W = 240;
@@ -111,7 +112,11 @@ export type ProductPricing = {
   allowContourCut: boolean; // предлагать контурную резку (наклейки)
   foldTypes: FoldType[]; // варианты фальцовки (буклеты); фальцовка считается per_fold
   sizes: SizePreset[]; // для multipage это форматы (с pagesPerSheet)
-  papers: PaperOption[];
+  papers: PaperOption[]; // только published
+  // id материалов в исходном порядке Directus, включая скрытые. Нужен ровно для
+  // одного: перевести устаревший preset.paperIndex в id, чтобы скрытие черновика
+  // не сдвинуло пресеты кластерных страниц. Новые пресеты используют paperId.
+  paperOrder: number[];
   finishing: FinishingOption[];
   // только multipage:
   coverPapers: PaperOption[];
@@ -247,7 +252,7 @@ export function minPrice(p: ProductPricing, pricing: PricingData): number | null
 export function presetPrice(
   p: ProductPricing,
   pricing: PricingData,
-  preset: import("../../composables/calcUrlState").CalcPreset | null | undefined,
+  preset: CalcPreset | null | undefined,
 ): number | null {
   if (p.strategy !== "sheet" || !preset) return defaultPrice(p, pricing);
   const round = preset.shape === "round";
@@ -263,13 +268,8 @@ export function presetPrice(
   const ROUND_D = 40;
   const width = round ? ROUND_D : size?.width ?? 0;
   const height = round ? ROUND_D : size?.height ?? 0;
-  const idx =
-    preset.paperIndex != null &&
-    preset.paperIndex >= 0 &&
-    preset.paperIndex < p.papers.length
-      ? preset.paperIndex
-      : 0;
-  const paper = p.papers[idx];
+  // Материал недоступен (скрыт/удалён) → дефолтный, как и в конфигураторе.
+  const paper = p.papers[resolvePaperIndex(p.papers, preset, p.paperOrder) ?? 0];
   if (!paper || width < 1 || height < 1) return null;
   const sides: Sides = preset.sides ?? (p.doubleSided ? "4+4" : "4+0");
   const quantity = preset.quantity && preset.quantity > 0 ? preset.quantity : HOME_BASE_QTY;
@@ -322,6 +322,7 @@ export async function getProductPricing(
   // поля бумаги (переиспользуем для papers / cover_papers / inner_papers)
   const paperFields = (rel: string) => [
     `${rel}.papers_id.id`,
+    `${rel}.papers_id.status`,
     `${rel}.papers_id.name`,
     `${rel}.papers_id.price`,
     `${rel}.papers_id.group`,
@@ -395,6 +396,18 @@ export async function getProductPricing(
   const p = res.data?.[0];
   if (!p) return null;
 
+  // Directus отдаёт связанные материалы без оглядки на их status — черновики
+  // иначе попадают и в калькулятор, и в цену «от». Отсутствующий status (нет
+  // права чтения у роли) НЕ прячет материал: пустой список бумаг сломал бы
+  // расчёт продукта целиком, а это хуже лишней плитки.
+  const isPublished = (x: any): boolean => {
+    const s = x.papers_id.status;
+    return s == null || s === "published";
+  };
+  // осиротевшие junction-строки (материал удалён) отсекаем до всего остального,
+  // иначе они сдвинут paperOrder и уронят mapPaper
+  const rawPapers = (p.papers ?? []).filter((x: any) => x?.papers_id);
+
   // junction-строка бумаги (x.papers_id) → PaperOption
   const mapPaper = (x: any): PaperOption => {
     const pp = x.papers_id;
@@ -447,9 +460,10 @@ export async function getProductPricing(
       shape: s.shape ?? "rectangular",
       pagesPerSheet: s.pages_per_sheet == null ? undefined : num(s.pages_per_sheet),
     })),
-    papers: (p.papers ?? []).map(mapPaper),
-    coverPapers: (p.cover_papers ?? []).map(mapPaper),
-    innerPapers: (p.inner_papers ?? []).map(mapPaper),
+    paperOrder: rawPapers.map((x: any) => num(x.papers_id.id)),
+    papers: rawPapers.filter(isPublished).map(mapPaper),
+    coverPapers: (p.cover_papers ?? []).filter((x: any) => x?.papers_id && isPublished(x)).map(mapPaper),
+    innerPapers: (p.inner_papers ?? []).filter((x: any) => x?.papers_id && isPublished(x)).map(mapPaper),
     bindings: (p.bindings ?? []).map((x: any) => {
       const b = x.bindings_id;
       return {
