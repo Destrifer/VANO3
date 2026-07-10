@@ -37,6 +37,9 @@ const matSignature = computed(
 );
 const isTransparent = computed(() => /прозрач/i.test(matSignature.value));
 const isMetallic = computed(() => /серебр|металл|световозвр|золот/i.test(matSignature.value));
+// Наклейки — вид «вырезанной» наклейки: узкое белое поле реза вокруг печати +
+// тонкий пунктир-контур по внешнему краю. Только для previewKind='sticker'.
+const isSticker = computed(() => calc.product.previewKind === "sticker");
 
 // «Шахматка» прозрачности (конвенция редакторов) поверх основы, приглушённо —
 // чтобы читалась и подложка-цвет, и сквозной характер плёнки.
@@ -104,17 +107,26 @@ function draw() {
     : cornersRounded.value ? minSide * 0.12 : minSide * 0.03;
   const r: Rect = { x, y, w: cw, h: ch };
 
-  // тень под карточкой
+  // Наклейка: внешний контур r — линия реза; печать вписана в mr с узким белым
+  // полем (die-cut margin). У прочих продуктов mr = r (поле нулевое).
+  const margin = isSticker.value ? minSide * 0.06 : 0;
+  const mr: Rect = { x: r.x + margin, y: r.y + margin, w: r.w - 2 * margin, h: r.h - 2 * margin };
+  const mMin = Math.min(mr.w, mr.h);
+  const mRadius = isRound.value
+    ? mMin / 2
+    : cornersRounded.value ? mMin * 0.12 : mMin * 0.03;
+
+  // тень под наклейкой + подложка (у наклейки поле реза белое, печать — внутри mr)
   ctx.save();
   ctx.shadowColor = "rgba(0,0,0,.25)";
   ctx.shadowBlur = minSide * 0.12;
   ctx.shadowOffsetY = minSide * 0.05;
   shapePath(ctx, r, radius, isRound.value);
-  ctx.fillStyle = baseColor.value;
+  ctx.fillStyle = isSticker.value ? "#ffffff" : baseColor.value;
   ctx.fill();
   ctx.restore();
 
-  // материя + содержимое внутри контура: текстура → «рыба» → глянец → фольга
+  // материя + содержимое внутри mr: текстура → «рыба» → глянец → фольга
   const env = {
     round: isRound.value,
     ink: inkColor(baseColor.value),
@@ -123,34 +135,47 @@ function draw() {
     foldCount: foldCount.value,
   };
   ctx.save();
-  shapePath(ctx, r, radius, isRound.value);
+  shapePath(ctx, mr, mRadius, isRound.value);
   ctx.clip();
-  if (isTransparent.value) drawTransparencyGrid(ctx, r);
-  paperTexture(ctx, r, laminated.value ? 22 : 46, laminated.value ? 0.35 : 0.7);
-  mockup.value.content(ctx, r, env);
-  if (isMetallic.value) drawMetallicSheen(ctx, r);
-  if (glossStrength.value > 0) laminationGloss(ctx, r, glossStrength.value);
-  if (calc.foilOn && mockup.value.foil) mockup.value.foil(ctx, r, env);
+  if (isSticker.value) { ctx.fillStyle = baseColor.value; ctx.fillRect(mr.x, mr.y, mr.w, mr.h); }
+  if (isTransparent.value) drawTransparencyGrid(ctx, mr);
+  paperTexture(ctx, mr, laminated.value ? 22 : 46, laminated.value ? 0.35 : 0.7);
+  mockup.value.content(ctx, mr, env);
+  if (isMetallic.value) drawMetallicSheen(ctx, mr);
+  if (glossStrength.value > 0) laminationGloss(ctx, mr, glossStrength.value);
+  if (calc.foilOn && mockup.value.foil) mockup.value.foil(ctx, mr, env);
   // линии сгиба (буклеты): пунктир, делит лист на панели foldCount+1
   if (foldCount.value > 0) {
     ctx.strokeStyle = "rgba(0,0,0,.4)";
     ctx.setLineDash([5, 4]);
     ctx.lineWidth = 1;
-    const pw = r.w / (foldCount.value + 1);
+    const pw = mr.w / (foldCount.value + 1);
     for (let i = 1; i <= foldCount.value; i++) {
-      const fx = r.x + i * pw;
+      const fx = mr.x + i * pw;
       ctx.beginPath();
-      ctx.moveTo(fx, r.y);
-      ctx.lineTo(fx, r.y + r.h);
+      ctx.moveTo(fx, mr.y);
+      ctx.lineTo(fx, mr.y + mr.h);
       ctx.stroke();
     }
     ctx.setLineDash([]);
   }
   ctx.restore();
 
-  // тонкий контур
+  // контур реза наклейки — пунктир по внешнему краю
+  if (isSticker.value) {
+    ctx.save();
+    shapePath(ctx, r, radius, isRound.value);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = "rgba(0,0,0,.3)";
+    ctx.setLineDash([4, 3]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+
+  // тонкий контур печати
   ctx.save();
-  shapePath(ctx, r, radius, isRound.value);
+  shapePath(ctx, mr, mRadius, isRound.value);
   ctx.lineWidth = 1;
   ctx.strokeStyle = "rgba(0,0,0,.15)";
   ctx.stroke();
