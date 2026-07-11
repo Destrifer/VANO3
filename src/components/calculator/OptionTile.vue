@@ -3,9 +3,10 @@
 // ламинация, фольга, фальцовка, переплёт): один размер и стиль. Миниатюра 16:9 —
 // картинка (avif/webp), либо глиф-фолбэк, либо цвет-заливка (фольга без фото),
 // либо слот #thumb (напр. SizeGlyph). Подпись + опциональная вторая строка.
+import { onBeforeUnmount, ref } from "vue";
 import type { ResponsiveImage } from "../../lib/directus";
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     label: string;
     sub?: string;
@@ -17,13 +18,64 @@ withDefaults(
     title?: string;
     icon?: boolean; // компактный вариант для рядов без фото: иконка слева, текст
                     // справа, активная — киноварью (без серой заливки-миниатюры)
-    zoom?: boolean; // миниатюра кликабельна: клик по фото шлёт zoom (lightbox —
-                    // забота родителя), клик по остальной плитке — выбор. На
-                    // ховере — затенение, подпись «Увеличить» и параллакс-зум.
+    zoom?: boolean; // ТАЧ: миниатюра кликабельна — тап по фото шлёт zoom
+                    // (lightbox — забота родителя), тап по остальной плитке —
+                    // выбор. На десктопе клик по фото ТОЖЕ выбор (см. full).
+    full?: ResponsiveImage; // ДЕСКТОП: крупное фото для ховер-превью — карточка
+                            // через Teleport в body (fixed — не режется
+                            // overflow-контейнерами вроде списка материалов).
   }>(),
   { active: false, disabled: false, icon: false, zoom: false },
 );
 const emit = defineEmits<{ select: []; zoom: [] }>();
+
+// Ховер есть — превью по наведению, клик всюду = выбор; тача — старое
+// поведение (тап по фото = lightbox). SSR-safe: на сервере ховера «нет».
+const canHover =
+  typeof window !== "undefined" && window.matchMedia("(hover: hover)").matches;
+
+function thumbClick(e: MouseEvent) {
+  if (!props.zoom || canHover) return; // десктоп: всплывает до плитки → select
+  e.stopPropagation();
+  emit("zoom");
+}
+
+// ── Ховер-превью: fixed-карточка рядом с плиткой (над ней, либо под — где
+// больше места), центр по плитке с прижатием к краям вьюпорта. Задержка
+// против мельтешения при проводке мыши по ряду; прячем при скролле (позиция
+// становится неверной) и при уходе курсора. pointer-events: none — карточка
+// не перехватывает ховер и не мигает. ─────────────────────────────────────
+const PV_W = 20; // ширина карточки, rem (совпадает с width в стилях)
+const pvStyle = ref<Record<string, string> | null>(null);
+let pvTimer: ReturnType<typeof setTimeout> | undefined;
+function hidePreview() {
+  clearTimeout(pvTimer);
+  if (pvStyle.value) {
+    pvStyle.value = null;
+    window.removeEventListener("scroll", hidePreview, true);
+  }
+}
+function tileEnter(e: MouseEvent) {
+  if (!props.full || !canHover || props.disabled) return;
+  const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+  clearTimeout(pvTimer);
+  pvTimer = setTimeout(() => {
+    const rem = parseFloat(getComputedStyle(document.documentElement).fontSize);
+    const w = PV_W * rem;
+    const gap = 0.4 * rem;
+    const left = Math.min(
+      Math.max(r.left + r.width / 2 - w / 2, gap),
+      window.innerWidth - w - gap,
+    );
+    const style: Record<string, string> = { left: `${left}px` };
+    if (r.top >= window.innerHeight - r.bottom)
+      style.bottom = `${window.innerHeight - r.top + gap}px`;
+    else style.top = `${r.bottom + gap}px`;
+    pvStyle.value = style;
+    window.addEventListener("scroll", hidePreview, true);
+  }, 120);
+}
+onBeforeUnmount(hidePreview);
 
 // Параллакс миниатюры: фото слегка увеличено и «плывёт» за курсором в пределах
 // рамки. Смещение — CSS-переменные на элементе, transform считает CSS.
@@ -52,6 +104,8 @@ function thumbLeave(e: MouseEvent) {
     class="otile"
     :class="{ 'otile--on': active, 'otile--off': disabled, 'otile--icon': icon }"
     @click="emit('select')"
+    @mouseenter="tileEnter"
+    @mouseleave="hidePreview"
   >
     <span
       class="otile__thumb"
@@ -60,7 +114,7 @@ function thumbLeave(e: MouseEvent) {
       :role="zoom ? 'button' : undefined"
       :tabindex="zoom ? 0 : undefined"
       :aria-label="zoom ? 'Увеличить фото' : undefined"
-      @click="zoom && ($event.stopPropagation(), emit('zoom'))"
+      @click="thumbClick"
       @keydown.enter="zoom && ($event.stopPropagation(), $event.preventDefault(), emit('zoom'))"
       @mousemove="zoom && thumbMove($event)"
       @mouseleave="zoom && thumbLeave($event)"
@@ -72,11 +126,6 @@ function thumbLeave(e: MouseEvent) {
         </picture>
         <svg v-else-if="glyph" viewBox="0 0 24 24" aria-hidden="true" class="otile__glyph" v-html="glyph" />
       </slot>
-      <!-- ховер-подсказка (десктоп): затенение + «Увеличить» -->
-      <span v-if="zoom" class="otile__hint" aria-hidden="true">
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
-        Увеличить
-      </span>
       <!-- метка для тачей (ховера нет): некликабельный значок в углу -->
       <span v-if="zoom" class="otile__badge" aria-hidden="true">
         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
@@ -87,6 +136,18 @@ function thumbLeave(e: MouseEvent) {
       <span v-if="sub" class="otile__sub">{{ sub }}</span>
     </span>
   </button>
+
+  <!-- Ховер-превью (десктоп): fixed-карточка в body — Teleport выводит её из
+       overflow-контейнеров (список материалов режет absolute-потомков). -->
+  <Teleport to="body">
+    <div v-if="pvStyle && full" class="otile-preview" :style="pvStyle" aria-hidden="true">
+      <picture>
+        <source v-for="s in full.sources" :key="s.type" :type="s.type" :srcset="s.srcset" sizes="20rem" />
+        <img :src="full.src" :alt="label" sizes="20rem" class="otile-preview__img" />
+      </picture>
+      <span class="otile-preview__cap">{{ label }}</span>
+    </div>
+  </Teleport>
 </template>
 
 <style scoped>
@@ -126,27 +187,12 @@ function thumbLeave(e: MouseEvent) {
 .otile__img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .otile__glyph { width: 2.2rem; height: 2.2rem; opacity: 0.45; }
 
-/* ── Кликабельная миниатюра (zoom): клик по фото — lightbox, по плитке — выбор.
-   Ховер: лёгкий зум + параллакс за курсором (--px/--py ставит JS), затенение
-   и подпись «Увеличить». На тачах ховера нет — постоянный значок-метка. ── */
-.otile__thumb--zoom { cursor: zoom-in; }
+/* ── Миниатюра с фото (zoom/full): десктоп — ховер-превью карточкой + лёгкий
+   зум с параллаксом за курсором (--px/--py ставит JS), клик всюду = выбор.
+   Тач — тап по фото открывает lightbox, в углу постоянный значок-метка. ── */
 .otile__thumb--zoom .otile__img {
   transition: transform 0.25s ease;
   will-change: transform;
-}
-.otile__hint {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.3rem;
-  font-size: 0.68rem;
-  color: #fff;
-  background: rgba(0, 0, 0, 0.35);
-  opacity: 0;
-  transition: opacity 0.15s ease;
-  pointer-events: none;
 }
 .otile__badge {
   display: none;
@@ -165,11 +211,38 @@ function thumbLeave(e: MouseEvent) {
   .otile__thumb--zoom:hover .otile__img {
     transform: scale(1.12) translate(var(--px, 0%), var(--py, 0%));
   }
-  .otile__thumb--zoom:hover .otile__hint,
-  .otile__thumb--zoom:focus-visible .otile__hint { opacity: 1; }
 }
 @media (hover: none) {
+  .otile__thumb--zoom { cursor: zoom-in; }
   .otile__thumb--zoom .otile__badge { display: grid; }
+}
+
+/* ── Ховер-превью: карточка в body (Teleport), позицию (left/top|bottom)
+   ставит JS от рамки плитки. Ширина = PV_W в скрипте — менять парой. ── */
+.otile-preview {
+  position: fixed;
+  z-index: 60;
+  width: 20rem;
+  padding: 0.25rem;
+  border: 1px solid var(--color-base-300, #d6d3cd);
+  border-radius: var(--radius-box, 0.75rem);
+  background: var(--color-base-100, #fff);
+  box-shadow: 0 0.75rem 2rem rgb(0 0 0 / 0.18);
+  pointer-events: none;
+}
+.otile-preview__img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 22rem;
+  object-fit: contain;
+  border-radius: calc(var(--radius-box, 0.75rem) - 0.25rem);
+}
+.otile-preview__cap {
+  display: block;
+  padding: 0.35rem 0.25rem 0.15rem;
+  text-align: center;
+  font-size: 0.8rem;
 }
 /* глиф/иконка, переданные через слот #thumb (напр. SizeGlyph) */
 .otile__thumb :slotted(svg) { width: 2.2rem; height: 2.2rem; opacity: 0.45; }

@@ -146,6 +146,7 @@ function onTrackDown(e: PointerEvent) {
           :glyph="MAT_GLYPH"
           :active="o.index === index"
           :zoom="!!o.full"
+          :full="o.full"
           @select="emit('update:index', o.index)"
           @zoom="lightbox?.open(o.name, o.full ?? null)"
         />

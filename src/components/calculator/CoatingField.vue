@@ -68,6 +68,7 @@ const lightbox = ref<InstanceType<typeof ImageLightbox> | null>(null);
         :active="laminationIndex === i"
         :disabled="laminationLocked"
         :zoom="!!o.full"
+        :full="o.full"
         @select="emit('update:laminationIndex', i)"
         @zoom="lightbox?.open(o.name, o.full ?? null)"
       />
@@ -99,6 +100,7 @@ const lightbox = ref<InstanceType<typeof ImageLightbox> | null>(null);
         :active="foilOn && foilColorIndex === i"
         :title="c.name + (c.code ? ' · ' + c.code : '')"
         :zoom="!!c.full"
+        :full="c.full"
         @select="emit('update:foilColorIndex', i); emit('update:foilOn', true)"
         @zoom="lightbox?.open(c.name, c.full)"
       />
