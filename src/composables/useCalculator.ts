@@ -128,9 +128,9 @@ export function useCalculator(props: {
   const cutTypes = computed(() => {
     const img = pricing.cutImages;
     return [
-      { id: "none" as CutType, label: "На листе", sub: "без реза", thumb: img?.none ?? undefined },
-      { id: "kiss" as CutType, label: "С надсечкой", sub: "легко отделить", thumb: img?.kiss ?? undefined },
-      { id: "die" as CutType, label: "Вырубка", sub: "+50%", thumb: img?.die ?? undefined },
+      { id: "none" as CutType, label: "На листе", sub: "без реза", thumb: img?.none?.thumb ?? undefined, full: img?.none?.full ?? undefined },
+      { id: "kiss" as CutType, label: "С надсечкой", sub: "легко отделить", thumb: img?.kiss?.thumb ?? undefined, full: img?.kiss?.full ?? undefined },
+      { id: "die" as CutType, label: "Вырубка", sub: "+50%", thumb: img?.die?.thumb ?? undefined, full: img?.die?.full ?? undefined },
     ];
   });
 

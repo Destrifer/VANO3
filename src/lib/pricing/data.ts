@@ -172,9 +172,18 @@ export async function getPricingData(): Promise<PricingData> {
     manualCuttingRate: num(s.manual_cutting_rate),
     // Плитки реза наклеек — общие для всех наклеек (грузятся из pricing_settings).
     cutImages: {
-      none: responsiveAsset(s.cut_none_image, TILE_THUMB_W, TILE_THUMB_H),
-      kiss: responsiveAsset(s.cut_kiss_image, TILE_THUMB_W, TILE_THUMB_H),
-      die: responsiveAsset(s.cut_die_image, TILE_THUMB_W, TILE_THUMB_H),
+      none: {
+        thumb: responsiveAsset(s.cut_none_image, TILE_THUMB_W, TILE_THUMB_H),
+        full: responsiveAssetFluid(s.cut_none_image, FULL_WIDTHS, FULL_SIZES),
+      },
+      kiss: {
+        thumb: responsiveAsset(s.cut_kiss_image, TILE_THUMB_W, TILE_THUMB_H),
+        full: responsiveAssetFluid(s.cut_kiss_image, FULL_WIDTHS, FULL_SIZES),
+      },
+      die: {
+        thumb: responsiveAsset(s.cut_die_image, TILE_THUMB_W, TILE_THUMB_H),
+        full: responsiveAssetFluid(s.cut_die_image, FULL_WIDTHS, FULL_SIZES),
+      },
     },
   };
 }

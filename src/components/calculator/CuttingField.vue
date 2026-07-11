@@ -4,11 +4,16 @@
 //   С надсечкой — kiss-cut: прорезан только винил, подложку легко отделить (по умолчанию, без наценки);
 //   Вырубка    — die-cut: рез насквозь по контуру, наклейки отделены от листа (+50% к резке).
 // Картинки — глобальные (pricing_settings.cut_*_image); нет фото → глиф-фолбэк.
-import { inject } from "vue";
+import { inject, ref } from "vue";
 import { calcKey } from "../../composables/useCalculator";
 import OptionTile from "./OptionTile.vue";
+import ImageLightbox from "./ImageLightbox.vue";
 
 const calc = inject(calcKey)!;
+
+// Lightbox фото реза (тач) — как в CoatingField/PaperSelect: лупа на плитке
+// открывает крупную картинку, на десктопе фото показывается ховер-превью.
+const lightbox = ref<InstanceType<typeof ImageLightbox> | null>(null);
 
 // Глифы-фолбэки (viewBox 0 0 24 24), пока картинки не загружены:
 // лист без реза / лист с пунктирным контуром (надсечка) / вырезанная фигура.
@@ -32,8 +37,12 @@ const CUT_GLYPH: Record<string, string> = {
         :glyph="CUT_GLYPH[c.id]"
         :active="calc.cutType === c.id"
         :title="`${c.label} — ${c.sub}`"
+        :zoom="!!c.full"
+        :full="c.full"
         @select="calc.cutType = c.id"
+        @zoom="lightbox?.open(c.label, c.full ?? null)"
       />
     </div>
+    <ImageLightbox ref="lightbox" />
   </div>
 </template>

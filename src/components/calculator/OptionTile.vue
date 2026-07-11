@@ -45,7 +45,7 @@ function thumbClick(e: MouseEvent) {
 // против мельтешения при проводке мыши по ряду; прячем при скролле (позиция
 // становится неверной) и при уходе курсора. pointer-events: none — карточка
 // не перехватывает ховер и не мигает. ─────────────────────────────────────
-const PV_W = 20; // ширина карточки, rem (совпадает с width в стилях)
+const PV_W = 26; // ширина карточки, rem (совпадает с width в стилях)
 const pvStyle = ref<Record<string, string> | null>(null);
 let pvTimer: ReturnType<typeof setTimeout> | undefined;
 function hidePreview() {
@@ -145,8 +145,8 @@ function thumbLeave(e: MouseEvent) {
   <Teleport v-if="pvStyle && full" to="body">
     <div class="otile-preview" :style="pvStyle" aria-hidden="true">
       <picture>
-        <source v-for="s in full.sources" :key="s.type" :type="s.type" :srcset="s.srcset" sizes="20rem" />
-        <img :src="full.src" :alt="label" sizes="20rem" class="otile-preview__img" />
+        <source v-for="s in full.sources" :key="s.type" :type="s.type" :srcset="s.srcset" sizes="26rem" />
+        <img :src="full.src" :alt="label" sizes="26rem" class="otile-preview__img" />
       </picture>
       <span class="otile-preview__cap">{{ label }}</span>
     </div>
@@ -225,7 +225,7 @@ function thumbLeave(e: MouseEvent) {
 .otile-preview {
   position: fixed;
   z-index: 60;
-  width: 20rem;
+  width: 26rem;
   padding: 0.25rem;
   border: 1px solid var(--color-base-300, #d6d3cd);
   border-radius: var(--radius-box, 0.75rem);
@@ -237,7 +237,7 @@ function thumbLeave(e: MouseEvent) {
   display: block;
   width: 100%;
   height: auto;
-  max-height: 22rem;
+  max-height: 29rem;
   object-fit: contain;
   border-radius: calc(var(--radius-box, 0.75rem) - 0.25rem);
 }

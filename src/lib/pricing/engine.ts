@@ -47,8 +47,9 @@ export type PricingData = {
   plotterCutting: CuttingBracket[]; // ступени резки на плоттере (по числу листов)
   manualCuttingRate: number; // доля от заказа при ручной резке (напр. 0.15)
   // Картинки плиток реза наклеек (глобальные, одни на все наклейки) — из
-  // pricing_settings. Нет фото → плитка падает на глиф-фолбэк.
-  cutImages?: Record<CutType, ResponsiveImage | null>;
+  // pricing_settings. thumb — миниатюра плитки, full — крупное фото для
+  // ховер-превью/lightbox. Нет фото → плитка падает на глиф-фолбэк.
+  cutImages?: Record<CutType, { thumb: ResponsiveImage; full: ResponsiveImage } | null>;
 };
 
 export type OrderConfig = {
