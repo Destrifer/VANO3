@@ -465,3 +465,29 @@ Goal: turn the current technical prototype into a coherent first public site ske
 - Add unresolved issues to the tech debt/open questions section.
 - Content & images are authored in PROD Directus (`admin.printmos.ru`), not locally. Never assume `git push` moves data/images — it ships code (and, semi-manually, schema) only. Do not seed/overwrite prod content from local test data.
 - Keep code changes small and explain the TypeScript/Astro/Vue concept being practiced.
+- Before touching deploy, tokens, or Directus schema, read **Ops & Deploy Runbook** below — it is the single source of truth, do not re-derive it.
+
+## Ops & Deploy Runbook
+
+Операционная память проекта — чтобы в новой ветке/сессии НЕ проходить эти «открытия» заново (доступы, CI/CD, снапшот). Всё проверено 2026-07-11.
+
+### Доступы и токены — агент МОЖЕТ править прод сам
+- `.env` (в корне, локальный) содержит `DIRECTUS_ADMIN_TOKEN` — он **валиден и на ПРОДЕ** `https://admin.printmos.ru` (чтение И запись через REST). Значит агент может сам инспектировать и чинить прод-Directus (схема/поля/права/контент) — **отдельный токен просить НЕ нужно** (в прошлый раз я зря решил, что без него никак).
+- В `.env` `DIRECTUS_URL=http://localhost:8055` — это локальный dev-Directus (Docker-контейнер `vano3-directus-1`, образ `directus/directus:12.1.1`). Прод-адрес в `.env` НЕ прописан — он `admin.printmos.ru`.
+- Directus CLI внутри контейнера: `/directus/node_modules/.pnpm/node_modules/.bin/directus` (в образе 12 нет `npx`). Из Git Bash оборачивать `export MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*'`, иначе пути `/directus/...` мангулятся.
+
+### CI/CD — деплой полностью автоматический, токен для деплоя не нужен
+- `git push origin master` → GitHub Actions `.github/workflows/deploy.yml`. Шаги: по SSH (ключ/хост в **GitHub Secrets**, локально не нужны) копирует `directus/snapshot.yaml` на сервер и делает `directus schema apply --yes` на прод-Directus **ДО** сборки → собирает Astro-образ (ghcr) → перезапускает `astro`+`caddy` (⚠️ `directus` НЕ рестартит).
+- `paths-ignore`: `**.md`, `docs/**`, `seo/**`, `ops/**` — коммит ТОЛЬКО из этих путей деплой не триггерит (нужен хоть один код-файл/снапшот).
+- Ручной прогон/пересборка: GitHub → Actions → «Build & Deploy» → Run workflow (`workflow_dispatch`). Публикация контента шлёт `repository_dispatch: deploy-site` через Directus Flow.
+
+### Схема Directus — источник истины ПРОД
+- Схему меняем **на проде** (в admin.printmos.ru или прод-API токеном), потом `ops/schema-snapshot.sh` тянет прод→`directus/snapshot.yaml`, и коммитим. **НЕ** генерировать снапшот из локали (`docker exec … schema snapshot`): если локаль дрейфнула, `apply --yes` в CI **снесёт** на проде всё, чего нет в снапшоте (apply приводит схему в ТОЧНОЕ соответствие; контент и права не трогает).
+- Проверка «снапшот == прод, apply будет no-op» (read-only): `POST https://admin.printmos.ru/schema/diff` с `-F file=@directus/snapshot.yaml;type=application/yaml` → **пустой ответ = разницы нет**.
+- Cyrillic в curl из Git Bash бьётся в mojibake → payload писать файлом и слать `--data-binary @file` (`Content-Type: application/json; charset=utf-8`).
+
+### Данные ≠ код, страницы пререндерятся
+- Контент и картинки — только в ПРОД-Directus; `git push` возит код (и полу-ручно схему), НЕ данные. Публичные страницы — SSG (`getStaticPaths`, `output` hybrid), Directus читается на СБОРКЕ. Загруженная в Directus картинка/контент видна на сайте только **после пересборки** (re-run деплоя / `repository_dispatch`).
+
+### Ловушка: `schema apply` может применяться ПОЛУ-путём (было 2026-07-11)
+Для новых **file-полей** CI-шный `apply` создал `relations`, но НЕ физические колонки и не fields-мету. Симптом: `GET /fields/{coll}/{f}` отдаёт мету, но `schema:null`; список полей, `/items` и админка поля НЕ видят; `POST /utils/cache/clear` не помогает (колонок реально нет). Диагностика (read-only): `GET /schema/snapshot?export=yaml` — если поля нет в fields-секции, колонки нет. Починка (деструктивная запись в прод-схему → спросить владельца): `DELETE /fields/{coll}/{f}` (снять осиротевшую мету) → пересоздать через ЖИВОЙ API `POST /fields` (со `schema.is_nullable` — создаёт колонку) + `POST /relations` → при нужде допатчить мету `PATCH /fields/{coll}/{f}`.
