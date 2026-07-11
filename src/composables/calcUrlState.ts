@@ -27,6 +27,8 @@ export type CalcPreset = {
   formatIndex?: number; // индекс размера (product.sizes)
   bindingId?: number; // id переплёта (стабильнее индекса)
   pages?: number; // число полос (кратно PAGE_STEP, клампится)
+  coverPaperId?: number; // id бумаги обложки (product.coverPapers) — multipage
+  innerPaperId?: number; // id бумаги блока (product.innerPapers) — multipage
 };
 
 const clampIndex = (i: number, len: number) =>
@@ -113,6 +115,15 @@ export function applyMultipagePreset(calc: MultipageCalcState, p: CalcPreset): v
   if (p.bindingId != null) {
     const i = calc.product.bindings.findIndex((b) => b.id === p.bindingId);
     if (i >= 0) calc.bindingIndex = i;
+  }
+  // Бумага обложки/блока по id (стабильно к сортировке; см. paperId у листовых).
+  if (p.coverPaperId != null) {
+    const i = calc.product.coverPapers.findIndex((x) => x.id === p.coverPaperId);
+    if (i >= 0) calc.coverPaperIndex = i;
+  }
+  if (p.innerPaperId != null) {
+    const i = calc.product.innerPapers.findIndex((x) => x.id === p.innerPaperId);
+    if (i >= 0) calc.innerPaperIndex = i;
   }
   if (p.quantity != null && p.quantity > 0) calc.quantity = Math.floor(p.quantity);
   if (p.laminationIndex != null) {
