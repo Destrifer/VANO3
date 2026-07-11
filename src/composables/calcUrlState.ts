@@ -14,6 +14,7 @@ export type CalcPreset = {
   quantity?: number;
   sizeIndex?: number; // индекс размера (product.sizes) — листовой
   foldTypeIndex?: number; // индекс типа фальцовки (product.foldTypes) — буклеты/листовки
+  cutType?: "none" | "kiss" | "die"; // резка наклеек (страницы вырубки → 'die')
   paperId?: number; // id материала (стабилен к сортировке/скрытию) — предпочтителен
   paperIndex?: number; // устаревшее: позиция в product.papers; съезжает при правке каталога
   foil?: boolean;
@@ -72,6 +73,7 @@ export function applyPreset(calc: CalculatorState, p: CalcPreset): void {
     const i = clampIndex(p.foldTypeIndex, calc.foldTypes.length);
     if (i != null) calc.foldTypeIndex = i;
   }
+  if (p.cutType && calc.allowContourCut) calc.cutType = p.cutType;
   const paperIdx = resolvePaperIndex(calc.product.papers, p, calc.product.paperOrder);
   if (paperIdx != null) calc.paperIndex = paperIdx;
   if (p.foil != null && calc.foilOption) calc.foilOn = p.foil;
@@ -138,6 +140,8 @@ export function presetFromSearch(search: string): CalcPreset {
   if (fc != null && fc !== "") out.foilColorIndex = Number(fc);
   const lam = q.get("lam");
   if (lam != null && lam !== "") out.laminationIndex = Number(lam);
+  const cut = q.get("cut");
+  if (cut === "none" || cut === "kiss" || cut === "die") out.cutType = cut;
   return out;
 }
 
@@ -153,6 +157,8 @@ export function searchFromCalc(calc: CalculatorState): string {
     if (calc.foilColorIndex) q.set("fc", String(calc.foilColorIndex));
   }
   if (calc.laminationIndex >= 0) q.set("lam", String(calc.laminationIndex));
+  // Резка наклеек — пишем, только если отходит от дефолта (надсечка).
+  if (calc.allowContourCut && calc.cutType !== "kiss") q.set("cut", calc.cutType);
   const s = q.toString();
   return s ? `?${s}` : "";
 }

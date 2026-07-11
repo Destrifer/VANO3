@@ -38,8 +38,12 @@ const matSignature = computed(
 const isTransparent = computed(() => /прозрач/i.test(matSignature.value));
 const isMetallic = computed(() => /серебр|металл|световозвр|золот/i.test(matSignature.value));
 // Наклейки — вид «вырезанной» наклейки: узкое белое поле реза вокруг печати +
-// тонкий пунктир-контур по внешнему краю. Только для previewKind='sticker'.
-const isSticker = computed(() => calc.product.previewKind === "sticker");
+// тонкий пунктир-контур по внешнему краю. Только для previewKind='sticker' И
+// когда выбран рез по контуру (надсечка/вырубка). «На листе» (cutType='none') —
+// печать во весь лист, без белого поля и пунктира.
+const isSticker = computed(
+  () => calc.product.previewKind === "sticker" && (!calc.allowContourCut || calc.cutType !== "none"),
+);
 
 // «Шахматка» прозрачности (конвенция редакторов) поверх основы, приглушённо —
 // чтобы читалась и подложка-цвет, и сквозной характер плёнки.

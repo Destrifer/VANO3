@@ -5580,6 +5580,135 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
+  - collection: pricing_settings
+    field: cut_none_image
+    type: uuid
+    meta:
+      collection: pricing_settings
+      conditions: null
+      display: null
+      display_options: null
+      field: cut_none_image
+      group: null
+      hidden: false
+      interface: file-image
+      note: Плитка резки наклеек — на листе (без реза)
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 26
+      special:
+        - file
+      translations:
+        - language: ru-RU
+          translation: 'Рез: на листе (картинка)'
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: cut_none_image
+      table: pricing_settings
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: directus_files
+      foreign_key_column: id
+  - collection: pricing_settings
+    field: cut_kiss_image
+    type: uuid
+    meta:
+      collection: pricing_settings
+      conditions: null
+      display: null
+      display_options: null
+      field: cut_kiss_image
+      group: null
+      hidden: false
+      interface: file-image
+      note: Плитка резки наклеек — надсечка (kiss-cut)
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 27
+      special:
+        - file
+      translations:
+        - language: ru-RU
+          translation: 'Рез: надсечка (картинка)'
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: cut_kiss_image
+      table: pricing_settings
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: directus_files
+      foreign_key_column: id
+  - collection: pricing_settings
+    field: cut_die_image
+    type: uuid
+    meta:
+      collection: pricing_settings
+      conditions: null
+      display: null
+      display_options: null
+      field: cut_die_image
+      group: null
+      hidden: false
+      interface: file-image
+      note: Плитка резки наклеек — вырубка (die-cut)
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 28
+      special:
+        - file
+      translations:
+        - language: ru-RU
+          translation: 'Рез: вырубка (картинка)'
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: cut_die_image
+      table: pricing_settings
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: directus_files
+      foreign_key_column: id
   - collection: print_tiers
     field: id
     type: integer
@@ -10288,6 +10417,69 @@ relations:
       constraint_name: papers_image_foreign
       on_update: NO ACTION
       on_delete: SET NULL
+  - collection: pricing_settings
+    field: cut_none_image
+    related_collection: directus_files
+    meta:
+      junction_field: null
+      many_collection: pricing_settings
+      many_field: cut_none_image
+      one_allowed_collections: null
+      one_collection: directus_files
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: pricing_settings
+      column: cut_none_image
+      foreign_key_table: directus_files
+      foreign_key_column: id
+      constraint_name: pricing_settings_cut_none_image_foreign
+      on_update: NO ACTION
+      on_delete: NO ACTION
+  - collection: pricing_settings
+    field: cut_kiss_image
+    related_collection: directus_files
+    meta:
+      junction_field: null
+      many_collection: pricing_settings
+      many_field: cut_kiss_image
+      one_allowed_collections: null
+      one_collection: directus_files
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: pricing_settings
+      column: cut_kiss_image
+      foreign_key_table: directus_files
+      foreign_key_column: id
+      constraint_name: pricing_settings_cut_kiss_image_foreign
+      on_update: NO ACTION
+      on_delete: NO ACTION
+  - collection: pricing_settings
+    field: cut_die_image
+    related_collection: directus_files
+    meta:
+      junction_field: null
+      many_collection: pricing_settings
+      many_field: cut_die_image
+      one_allowed_collections: null
+      one_collection: directus_files
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: pricing_settings
+      column: cut_die_image
+      foreign_key_table: directus_files
+      foreign_key_column: id
+      constraint_name: pricing_settings_cut_die_image_foreign
+      on_update: NO ACTION
+      on_delete: NO ACTION
   - collection: product_sizes
     field: product
     related_collection: products

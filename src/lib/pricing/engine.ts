@@ -2,6 +2,7 @@
 // Архитектура: линейный конвейер стадий + один поиск по ступеням (tierRate)
 // + таблица единиц постпечати. Никаких ветвлений «на каждый случай» —
 // разнообразие живёт в данных.
+import type { ResponsiveImage } from "../directus"; // только тип (картинки плиток реза)
 
 export type Sheet = { width: number; height: number; margin: number };
 export type Tier = { minSheets: number; price: number };
@@ -45,6 +46,9 @@ export type PricingData = {
   printTiers: Record<Sides, Tier[]>;
   plotterCutting: CuttingBracket[]; // ступени резки на плоттере (по числу листов)
   manualCuttingRate: number; // доля от заказа при ручной резке (напр. 0.15)
+  // Картинки плиток реза наклеек (глобальные, одни на все наклейки) — из
+  // pricing_settings. Нет фото → плитка падает на глиф-фолбэк.
+  cutImages?: Record<CutType, ResponsiveImage | null>;
 };
 
 export type OrderConfig = {
@@ -57,9 +61,16 @@ export type OrderConfig = {
   quantity: number; // тираж
   paper: Paper;
   urgent: boolean;
-  contourCut?: boolean; // контурная надсечка (наклейки): +50% к резке
+  cutType?: CutType; // резка наклеек: на листе / надсечка / вырубка (die-cut +50%)
   finishing: { option: Finishing; count?: number }[];
 };
+
+// Пост-обработка наклеек (плоттер): три варианта реза.
+//   none — на листе как есть (без надсечки/вырубки);
+//   kiss — надсечка (kiss-cut): прорезан только винил, подложка целая (по умолчанию);
+//   die  — вырубка (die-cut): рез насквозь по контуру, наклейки отделены (+50% к резке).
+// none и kiss идут по базовой ставке резки, наценку даёт только die.
+export type CutType = "none" | "kiss" | "die";
 
 // Многостраничная (брошюры/каталоги/…): блок + обложка + переплёт.
 // Цена переплёта — по тиражу (брекеты ₽/экз). Диапазон полос (min/max) задаёт
@@ -271,10 +282,12 @@ export function computeSheet(c: OrderConfig, d: PricingData): PriceResult {
       // итог — ставка × число листов.
       const cutRate = bracketRate(d.plotterCutting, fit);
       let cut = cutRate * sheets;
-      if (c.contourCut) cut *= 1.5; // контурная надсечка дороже на 50%
+      if (c.cutType === "die") cut *= 1.5; // вырубка (die-cut) дороже на 50%
       if (cut > 0) {
+        const cutLabel =
+          c.cutType === "die" ? " (вырубка)" : c.cutType === "kiss" ? " (надсечка)" : "";
         lines.push({
-          label: `Резка на плоттере${c.contourCut ? " (контур)" : ""} (${sheets} л. × ${cutRate})`,
+          label: `Резка на плоттере${cutLabel} (${sheets} л. × ${cutRate})`,
           amount: cut,
         });
       }

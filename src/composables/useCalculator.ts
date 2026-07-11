@@ -2,7 +2,7 @@
 // Компонент Calculator.vue создаёт это состояние и раздаёт полям через provide/inject,
 // поэтому поля остаются «тупыми» (только отображение), без проброса десятков пропсов.
 import { reactive, ref, computed, watch, type InjectionKey } from "vue";
-import { computePrice, type OrderConfig, type AnyConfig, type Sides } from "../lib/pricing/engine";
+import { computePrice, type OrderConfig, type AnyConfig, type Sides, type CutType } from "../lib/pricing/engine";
 import type { PricingData, Sheet } from "../lib/pricing/engine";
 import type { ProductPricing, PaperOption } from "../lib/pricing/data";
 import { isLaminationLocked, forcedLaminationIndex } from "../lib/pricing/rules";
@@ -122,7 +122,17 @@ export function useCalculator(props: {
   const singleSided = product.singleSided; // печать только 4+0
   const doubleSided = product.doubleSided; // печать всегда 4+4 (буклеты)
   const allowContourCut = product.allowContourCut;
-  const contourCut = ref(product.allowContourCut); // по умолчанию вкл, если доступно
+  // Резка наклеек: на листе / надсечка / вырубка. По умолчанию — надсечка (kiss):
+  // самый ходовой вариант, наценки нет. Наценку (+50%) даёт только вырубка (die).
+  const cutType = ref<CutType>("kiss");
+  const cutTypes = computed(() => {
+    const img = pricing.cutImages;
+    return [
+      { id: "none" as CutType, label: "На листе", sub: "без реза", thumb: img?.none ?? undefined },
+      { id: "kiss" as CutType, label: "С надсечкой", sub: "легко отделить", thumb: img?.kiss ?? undefined },
+      { id: "die" as CutType, label: "Вырубка", sub: "+50%", thumb: img?.die ?? undefined },
+    ];
+  });
 
   // Фальцовка: тип → число сгибов; цена через per_fold-отделку (биговка).
   const foldTypes = product.foldTypes;
@@ -358,7 +368,7 @@ export function useCalculator(props: {
       quantity: total,
       paper,
       urgent: false,
-      contourCut: contourCut.value,
+      cutType: allowContourCut ? cutType.value : undefined,
       finishing,
     };
   }
@@ -407,7 +417,10 @@ export function useCalculator(props: {
     d.push({ label: "Размер", value: sizeStr });
     if (!singleSided) d.push({ label: "Печать", value: sides.value });
     if (foldTypes.length && selectedFold.value) d.push({ label: "Фальцовка", value: selectedFold.value.name });
-    if (contourCut.value) d.push({ label: "Резка", value: "контурная" });
+    if (allowContourCut) {
+      const v = cutType.value === "die" ? "вырубка" : cutType.value === "kiss" ? "надсечка" : "на листе";
+      d.push({ label: "Резка", value: v });
+    }
     const paper = currentPaper.value?.name;
     const col = colors.value[selectedColorIndex.value]?.name;
     if (paper) d.push({ label: "Материал", value: col ? `${paper} (${col})` : paper });
@@ -439,7 +452,7 @@ export function useCalculator(props: {
     quantity: totalQty.value,
     paperId: currentPaper.value?.id ?? 0,
     paperColorId: colors.value[selectedColorIndex.value]?.id ?? null,
-    contourCut: contourCut.value,
+    cutType: allowContourCut ? cutType.value : undefined,
     laminationId:
       laminationIndex.value >= 0
         ? laminationOptions.value[laminationIndex.value]?.id ?? null
@@ -473,8 +486,8 @@ export function useCalculator(props: {
     onSizeChange, backToList,
     // плитки-иконки выбора размера/формы
     sizeTiles, activeTileId, sizeInput, selectTile,
-    // стороны / контурная резка / фальцовка
-    singleSided, doubleSided, allowContourCut, contourCut,
+    // стороны / резка наклеек (на листе/надсечка/вырубка) / фальцовка
+    singleSided, doubleSided, allowContourCut, cutType, cutTypes,
     foldTypes, foldTypeIndex, selectedFold,
     // тираж
     sides, presets, quantity, views, totalQty, selectQty, incViews, decViews,

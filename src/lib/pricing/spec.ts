@@ -2,7 +2,7 @@
 // Сервер по этим id достаёт АКТУАЛЬНЫЕ цены из Directus и пересчитывает —
 // клиентским ценам не доверяем. Чистые функции, без фреймворка.
 import { computePrice } from "./engine";
-import type { AnyConfig, OrderConfig, PricingData, PriceResult, Sides } from "./engine";
+import type { AnyConfig, OrderConfig, PricingData, PriceResult, Sides, CutType } from "./engine";
 import type { ProductPricing } from "./data";
 
 export type FinishingPick = { id: number; count: number };
@@ -18,7 +18,8 @@ export type SheetSpec = {
   quantity: number;
   paperId: number;
   paperColorId: number | null; // на цену не влияет, но нужен для производства
-  contourCut?: boolean; // контурная резка (наклейки)
+  cutType?: CutType; // резка наклеек: на листе / надсечка / вырубка
+  contourCut?: boolean; // legacy: старые позиции корзины (true = вырубка)
   laminationId: number | null;
   foil: { id: number; colorId: number | null } | null;
   finishing: FinishingPick[];
@@ -121,7 +122,8 @@ function buildSheetConfig(spec: SheetSpec, product: ProductPricing): AnyConfig |
     quantity: spec.quantity,
     paper,
     urgent: false,
-    contourCut: spec.contourCut ?? false,
+    // Новые позиции несут cutType; старые — только булев contourCut (true = вырубка).
+    cutType: spec.cutType ?? (spec.contourCut ? "die" : "kiss"),
     finishing,
   };
 }
@@ -181,7 +183,10 @@ function describeSheet(spec: SheetSpec, product: ProductPricing): string {
   const parts: string[] = [];
   parts.push(spec.form === "round" ? `⌀${spec.width} мм` : `${spec.width}×${spec.height} мм`);
   parts.push(spec.sides);
-  if (spec.contourCut) parts.push("контурная резка");
+  if (product.allowContourCut) {
+    const ct = spec.cutType ?? (spec.contourCut ? "die" : "kiss");
+    parts.push(ct === "die" ? "вырубка" : ct === "kiss" ? "надсечка" : "на листе");
+  }
 
   const paper = product.papers.find((p) => p.id === spec.paperId);
   if (paper) {

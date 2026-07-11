@@ -170,6 +170,12 @@ export async function getPricingData(): Promise<PricingData> {
       .map((b: any) => ({ to: num(b.to), price: num(b.price) }))
       .sort((a: CuttingBracket, b: CuttingBracket) => a.to - b.to),
     manualCuttingRate: num(s.manual_cutting_rate),
+    // Плитки реза наклеек — общие для всех наклеек (грузятся из pricing_settings).
+    cutImages: {
+      none: responsiveAsset(s.cut_none_image, TILE_THUMB_W, TILE_THUMB_H),
+      kiss: responsiveAsset(s.cut_kiss_image, TILE_THUMB_W, TILE_THUMB_H),
+      die: responsiveAsset(s.cut_die_image, TILE_THUMB_W, TILE_THUMB_H),
+    },
   };
 }
 
@@ -287,6 +293,8 @@ export function presetPrice(
     quantity,
     paper,
     urgent: false,
+    // Кластер вырубки (preset.cutType='die') → +50% к резке отражаем в «от».
+    cutType: p.allowContourCut ? preset.cutType : undefined,
     finishing,
   };
   return computePrice(cfg, pricing).total;
