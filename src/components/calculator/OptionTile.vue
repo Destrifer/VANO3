@@ -138,9 +138,12 @@ function thumbLeave(e: MouseEvent) {
   </button>
 
   <!-- Ховер-превью (десктоп): fixed-карточка в body — Teleport выводит её из
-       overflow-контейнеров (список материалов режет absolute-потомков). -->
-  <Teleport to="body">
-    <div v-if="pvStyle && full" class="otile-preview" :style="pvStyle" aria-hidden="true">
+       overflow-контейнеров (список материалов режет absolute-потомков).
+       v-if на САМОМ Teleport: при SSR/гидрации его нет в дереве вовсе — иначе
+       его якоря-комментарии ломаются об hydration-мисматчи страницы, и после
+       первого же ре-рендера insertBefore падает на null (было на проде). -->
+  <Teleport v-if="pvStyle && full" to="body">
+    <div class="otile-preview" :style="pvStyle" aria-hidden="true">
       <picture>
         <source v-for="s in full.sources" :key="s.type" :type="s.type" :srcset="s.srcset" sizes="20rem" />
         <img :src="full.src" :alt="label" sizes="20rem" class="otile-preview__img" />
