@@ -6,7 +6,7 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 import { getCategories } from "../../lib/categories";
 import { getProducts } from "../../lib/products";
 import { getProductPricing, getPricingData, minPrice, presetPrice } from "../../lib/pricing/data";
-import { getWorks, type Work } from "../../lib/works";
+import { getWorks, getClusterWorks, type Work } from "../../lib/works";
 import { getPromotedPages } from "../../lib/promotedPages";
 import { productOffer, faqPage } from "../../lib/seo/jsonld";
 import ProductConfigurator from "../../components/ProductConfigurator.vue";
@@ -33,7 +33,9 @@ export async function getStaticPaths() {
     if (!product) continue; // продукт удалён/не опубликован — страницы нет
     const parent = categoryById.get(product.category) ?? null;
     const productPricing = await getProductPricing(page.productSlug);
-    const works = await getWorks({ product: page.productSlug });
+    // Галерея: своя у кластера (напр. прозрачные наклейки), иначе — с хаба-продукта.
+    const clusterWorks = await getClusterWorks({ product: page.productSlug, cluster: page.slug });
+    const works = clusterWorks.length ? clusterWorks : await getWorks({ product: page.productSlug });
     // Сегменты: ВСЕ Tier-1-кластеры продукта, включая текущий (он подсветится в
     // ряду как активный) — латеральная перелинковка + навигатор (06 §43).
     // Tier-2 (без плитки) → ссылки «Смотрите также» (без самого себя).
