@@ -7153,17 +7153,19 @@ fields:
       collection: products
       conditions:
         - hidden: true
-          name: Только «sheet»
+          name: Только «sheet» и «fixed»
           rule:
             strategy:
-              _neq: sheet
+              _nin:
+                - sheet
+                - fixed
       display: null
       display_options: null
       field: preview_kind
       group: null
       hidden: false
       interface: input
-      note: Макет превью (card/sticker/leaflet/letterhead)
+      note: Макет превью (card/sticker/leaflet/letterhead/envelope)
       options: null
       readonly: false
       required: false
