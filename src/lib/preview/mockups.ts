@@ -201,7 +201,86 @@ const letterhead: Mockup = {
   },
 };
 
-export const mockups: Record<string, Mockup> = { card, sticker, leaflet, letterhead };
+// Макет «конверт» (лицевая сторона): кромка клапана, лого + обратный адрес
+// слева вверху, рамка под марку справа вверху, адрес получателя справа внизу.
+// Все форматы конвертов (Евро/DL, C6, C5, C4) — альбомные, композиция одна.
+// Шрифты масштабируются от МЕНЬШЕЙ стороны: у DL пропорция 2:1, и масштаб от
+// ширины разнёс бы текст за края (тот же баг, что у `card` на бланках).
+const envelope: Mockup = {
+  content(ctx, r, env) {
+    const { x, y, w, h } = r;
+    const ink = env.ink;
+    const u = Math.min(w, h);
+    const p = u * 0.09;
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+
+    // кромка клапана: линия нахлёста по верхнему краю + мягкая тень под ней —
+    // без неё лицо конверта читается просто как карточка
+    const flapY = y + h * 0.1;
+    const shade = ctx.createLinearGradient(0, flapY, 0, flapY + h * 0.07);
+    shade.addColorStop(0, "rgba(0,0,0,.12)");
+    shade.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = shade;
+    ctx.fillRect(x, flapY, w, h * 0.07);
+    ctx.strokeStyle = ink;
+    ctx.globalAlpha = 0.28;
+    ctx.lineWidth = Math.max(1, u * 0.008);
+    ctx.beginPath();
+    ctx.moveTo(x, flapY);
+    ctx.lineTo(x + w, flapY);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    const topY = y + h * 0.17;
+
+    // лого PM (если фольга — его рисует foil-слой)
+    if (!env.foilOn) {
+      ctx.fillStyle = ink;
+      ctx.font = `700 ${Math.round(u * 0.2)}px Georgia, serif`;
+      ctx.fillText("PM", x + p, topY);
+    }
+
+    // обратный адрес отправителя под лого
+    ctx.fillStyle = ink;
+    ctx.globalAlpha = 0.5;
+    ctx.font = `400 ${Math.round(u * 0.075)}px system-ui, sans-serif`;
+    ["ООО «Принтмос»", "Москва, ул. Примерная, 1"].forEach((t, i) =>
+      ctx.fillText(t, x + p, topY + u * 0.24 + i * u * 0.1),
+    );
+    ctx.globalAlpha = 1;
+
+    // рамка под марку — правый верхний угол
+    const mw = w * 0.12;
+    const mh = Math.min(mw * 1.3, h * 0.26);
+    ctx.strokeStyle = ink;
+    ctx.globalAlpha = 0.3;
+    ctx.lineWidth = Math.max(1, u * 0.006);
+    ctx.setLineDash([u * 0.03, u * 0.02]);
+    ctx.strokeRect(x + w - p - mw, topY, mw, mh);
+    ctx.setLineDash([]);
+    ctx.globalAlpha = 1;
+
+    // адрес получателя — строки в правой нижней четверти (нечитаемо, обозначает блок)
+    const bx = x + w * 0.5;
+    const bw = w * 0.5 - p;
+    const lh = h * 0.09;
+    const lastY = y + h - p - h * 0.03;
+    ctx.fillStyle = ink;
+    [0.62, 0.9, 0.75, 0.5].forEach((ww, i) => {
+      ctx.globalAlpha = i === 0 ? 0.55 : 0.28;
+      ctx.fillRect(bx, lastY - (3 - i) * lh, bw * ww, Math.max(1, h * 0.03));
+    });
+    ctx.globalAlpha = 1;
+  },
+  foil(ctx, r, env) {
+    const { x, y, w, h } = r;
+    const u = Math.min(w, h);
+    drawFoilText(ctx, "PM", x + u * 0.09, y + h * 0.17, Math.round(u * 0.2), "left", env.foilHex);
+  },
+};
+
+export const mockups: Record<string, Mockup> = { card, sticker, leaflet, letterhead, envelope };
 
 export function getMockup(kind?: string | null): Mockup {
   return (kind && mockups[kind]) || card;

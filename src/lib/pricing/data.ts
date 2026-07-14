@@ -332,6 +332,14 @@ function defaultMultipagePrice(p: ProductPricing, pricing: PricingData): number 
   return computePrice(cfg, pricing).total;
 }
 
+// Фолбэк макета превью для продуктов, у которых поле `products.preview_kind`
+// в админке недоступно: оно скрыто условием `strategy = sheet`, а конверты —
+// `fixed`. Заполненное поле всегда в приоритете; после снятия условия в схеме
+// значение переезжает в Directus, и запись отсюда убирается.
+const PREVIEW_KIND_BY_SLUG: Record<string, string> = {
+  envelopes: "envelope",
+};
+
 // Ценовой конфиг продукта (размеры, бумаги, постпечать) → типы движка.
 export async function getProductPricing(
   slug: string,
@@ -456,7 +464,7 @@ export async function getProductPricing(
     strategy: (p.strategy ?? "sheet") as Strategy,
     production: p.production ?? "sheet",
     leadDays: p.lead_days != null ? num(p.lead_days) : 2,
-    previewKind: p.preview_kind ?? null,
+    previewKind: p.preview_kind ?? PREVIEW_KIND_BY_SLUG[slug] ?? null,
     allowRound: !!p.allow_round,
     allowComplex: !!p.allow_complex,
     allowCustom: !!p.allow_custom,
