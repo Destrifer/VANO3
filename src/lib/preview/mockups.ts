@@ -2,7 +2,7 @@
 // («рыбу»), а универсальные слои (контур, материя, глянец) даёт Preview.vue.
 // Новый продукт со своей сценой = +1 запись здесь, движок не трогаем.
 import type { Rect } from "./primitives";
-import { drawFoilText } from "./primitives";
+import { drawFoilText, roundRect } from "./primitives";
 
 export type MockupEnv = {
   round: boolean;
@@ -280,7 +280,209 @@ const envelope: Mockup = {
   },
 };
 
-export const mockups: Record<string, Mockup> = { card, sticker, leaflet, letterhead, envelope };
+// Макет «крупноформат» (плакат/баннер/холст/роллап/афиша): большое поле
+// изображения сверху, крупный заголовок, подзаголовок и акцентная плашка снизу.
+// Пропорции любые (портрет плаката ↔ ландшафт баннера) — всё от меньшей стороны.
+const poster: Mockup = {
+  content(ctx, r, env) {
+    const { x, y, w, h } = r;
+    const ink = env.ink;
+    const u = Math.min(w, h);
+    const p = u * 0.08;
+    const iw = w - 2 * p;
+
+    // поле изображения — верхние ~55%
+    ctx.fillStyle = ink;
+    ctx.globalAlpha = 0.12;
+    ctx.fillRect(x + p, y + p, iw, h * 0.5);
+    // диагональ-«слэш» внутри поля, чтобы читалось как макет-плейсхолдер
+    ctx.globalAlpha = 0.08;
+    ctx.lineWidth = Math.max(1, u * 0.01);
+    ctx.strokeStyle = ink;
+    ctx.beginPath();
+    ctx.moveTo(x + p, y + p);
+    ctx.lineTo(x + p + iw, y + p + h * 0.5);
+    ctx.moveTo(x + p + iw, y + p);
+    ctx.lineTo(x + p, y + p + h * 0.5);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    // крупный заголовок
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    if (!env.foilOn) {
+      ctx.fillStyle = ink;
+      ctx.font = `800 ${Math.round(u * 0.16)}px system-ui, sans-serif`;
+      ctx.fillText("PRINTMOS", x + p, y + h * 0.6);
+    }
+    // подзаголовок + строка
+    ctx.fillStyle = ink;
+    ctx.globalAlpha = 0.5;
+    ctx.font = `500 ${Math.round(u * 0.07)}px system-ui, sans-serif`;
+    ctx.fillText("Широкоформатная печать", x + p, y + h * 0.6 + u * 0.19);
+    ctx.globalAlpha = 1;
+    // акцентная плашка снизу
+    ctx.fillStyle = ink;
+    ctx.globalAlpha = 0.85;
+    ctx.fillRect(x + p, y + h - p - u * 0.06, iw * 0.4, u * 0.06);
+    ctx.globalAlpha = 1;
+  },
+  foil(ctx, r, env) {
+    const { x, y, h } = r;
+    const u = Math.min(r.w, h);
+    drawFoilText(ctx, "PRINTMOS", x + u * 0.08, y + h * 0.6, Math.round(u * 0.16), "left", env.foilHex, "system-ui, sans-serif");
+  },
+};
+
+// Макет «бирка/ярлык» (hang-tag): люверс-отверстие со шнурком у верхнего края,
+// лого и «цена»/строки ниже. Форму (в т.ч. скруглённую) задаёт Preview.
+const tag: Mockup = {
+  content(ctx, r, env) {
+    const { x, y, w, h } = r;
+    const ink = env.ink;
+    const u = Math.min(w, h);
+    const cx = x + w / 2;
+    ctx.textAlign = "center";
+
+    // люверс: кольцо у верхнего края + короткий шнурок
+    const holeY = y + h * 0.13;
+    const rad = u * 0.06;
+    ctx.strokeStyle = ink;
+    ctx.globalAlpha = 0.5;
+    ctx.lineWidth = Math.max(1.5, u * 0.02);
+    ctx.beginPath();
+    ctx.arc(cx, holeY, rad, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = 0.35;
+    ctx.beginPath();
+    ctx.moveTo(cx, holeY - rad);
+    ctx.lineTo(cx - u * 0.05, y + u * 0.01);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    // лого
+    ctx.textBaseline = "middle";
+    if (!env.foilOn) {
+      ctx.fillStyle = ink;
+      ctx.font = `800 ${Math.round(u * 0.24)}px Georgia, serif`;
+      ctx.fillText("PM", cx, y + h * 0.45);
+    }
+    // подпись/строки
+    ctx.fillStyle = ink;
+    ctx.globalAlpha = 0.5;
+    ctx.font = `600 ${Math.round(u * 0.09)}px system-ui, sans-serif`;
+    ctx.fillText("PRINTMOS", cx, y + h * 0.68);
+    ctx.globalAlpha = 0.3;
+    ctx.font = `400 ${Math.round(u * 0.07)}px system-ui, sans-serif`;
+    ctx.fillText("артикул · размер", cx, y + h * 0.82);
+    ctx.globalAlpha = 1;
+  },
+  foil(ctx, r, env) {
+    const { x, y, w, h } = r;
+    const u = Math.min(w, h);
+    const size = Math.round(u * 0.24);
+    drawFoilText(ctx, "PM", x + w / 2, y + h * 0.45 - size / 2, size, "center", env.foilHex);
+  },
+};
+
+// Макет «табличка/знак» (кабинетная/информационная/указатель/безопасности):
+// рамка по краю, пиктограмма-плейсхолдер сверху, 1–2 центрированные строки.
+const sign: Mockup = {
+  content(ctx, r, env) {
+    const { x, y, w, h } = r;
+    const ink = env.ink;
+    const u = Math.min(w, h);
+    const cx = x + w / 2;
+    const p = u * 0.12;
+
+    // внутренняя рамка
+    ctx.strokeStyle = ink;
+    ctx.globalAlpha = 0.3;
+    ctx.lineWidth = Math.max(1.5, u * 0.015);
+    ctx.strokeRect(x + p * 0.5, y + p * 0.5, w - p, h - p);
+    ctx.globalAlpha = 1;
+
+    // пиктограмма — скруглённый квадрат по центру-верху
+    const ic = u * 0.28;
+    ctx.fillStyle = ink;
+    ctx.globalAlpha = 0.16;
+    roundRect(ctx, cx - ic / 2, y + h * 0.2, ic, ic, ic * 0.16);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    // две центрированные строки
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+    if (!env.foilOn) {
+      ctx.fillStyle = ink;
+      ctx.font = `700 ${Math.round(u * 0.14)}px system-ui, sans-serif`;
+      ctx.fillText("101", cx, y + h * 0.56);
+    }
+    ctx.fillStyle = ink;
+    ctx.globalAlpha = 0.55;
+    ctx.font = `500 ${Math.round(u * 0.08)}px system-ui, sans-serif`;
+    ctx.fillText("Кабинет", cx, y + h * 0.56 + u * 0.16);
+    ctx.globalAlpha = 1;
+  },
+  foil(ctx, r, env) {
+    const { x, y, w, h } = r;
+    const u = Math.min(w, h);
+    drawFoilText(ctx, "101", x + w / 2, y + h * 0.56, Math.round(u * 0.14), "center", env.foilHex, "system-ui, sans-serif");
+  },
+};
+
+// Макет «папка» (presentation folder): лого на обложке + диагональ кармана
+// поперёк нижней трети и линия нижней кромки — читается как папка, не документ.
+const folder: Mockup = {
+  content(ctx, r, env) {
+    const { x, y, w, h } = r;
+    const ink = env.ink;
+    const u = Math.min(w, h);
+    const p = u * 0.1;
+
+    // лого на обложке
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    if (!env.foilOn) {
+      ctx.fillStyle = ink;
+      ctx.font = `700 ${Math.round(u * 0.16)}px Georgia, serif`;
+      ctx.fillText("PM", x + p, y + p);
+    }
+    ctx.fillStyle = ink;
+    ctx.globalAlpha = 0.5;
+    ctx.font = `500 ${Math.round(u * 0.06)}px system-ui, sans-serif`;
+    ctx.fillText("PRINTMOS", x + p, y + p + u * 0.19);
+    ctx.globalAlpha = 1;
+
+    // карман: диагональ от левого края к правому низу + кромка
+    ctx.strokeStyle = ink;
+    ctx.globalAlpha = 0.28;
+    ctx.lineWidth = Math.max(1, u * 0.008);
+    ctx.beginPath();
+    ctx.moveTo(x, y + h * 0.62);
+    ctx.lineTo(x + w, y + h * 0.78);
+    ctx.stroke();
+    ctx.globalAlpha = 0.12;
+    ctx.beginPath();
+    ctx.moveTo(x, y + h * 0.62);
+    ctx.lineTo(x + w, y + h * 0.78);
+    ctx.lineTo(x + w, y + h);
+    ctx.lineTo(x, y + h);
+    ctx.closePath();
+    ctx.fillStyle = ink;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  },
+  foil(ctx, r, env) {
+    const { x, y } = r;
+    const u = Math.min(r.w, r.h);
+    drawFoilText(ctx, "PM", x + u * 0.1, y + u * 0.1, Math.round(u * 0.16), "left", env.foilHex);
+  },
+};
+
+export const mockups: Record<string, Mockup> = {
+  card, sticker, leaflet, letterhead, envelope, poster, tag, sign, folder,
+};
 
 export function getMockup(kind?: string | null): Mockup {
   return (kind && mockups[kind]) || card;
