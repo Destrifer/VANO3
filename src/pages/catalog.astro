@@ -1,0 +1,91 @@
+---
+// Общий каталог: все опубликованные продукты, сгруппированные по категориям.
+// Плитки и сетка переиспользуют разметку/стили главной (.product-grid /
+// .product-tile) — визуал живёт в .product-tile__media (пока иконка astro-icon;
+// следующий шаг — заменить на SVG-мокап сцены продукта, точечно в этом слоте).
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { Icon } from "astro-icon/components";
+import Breadcrumbs from "../components/Breadcrumbs.astro";
+import { getCategories } from "../lib/categories";
+import { getProducts } from "../lib/products";
+import { getPricingData, getProductPricing, defaultPrice } from "../lib/pricing/data";
+
+const [categories, products, pricing] = await Promise.all([
+  getCategories(),
+  getProducts(),
+  getPricingData(),
+]);
+
+// Цена «от» — тем же движком, что на главной (дефолтный конфиг калькулятора).
+// Пересборка при правке цен в Directus пересчитает все плитки.
+const priceBySlug = new Map<string, number | null>(
+  await Promise.all(
+    products.map(async (p): Promise<[string, number | null]> => {
+      const cfg = await getProductPricing(p.slug);
+      return [p.slug, cfg ? defaultPrice(cfg, pricing) : null];
+    }),
+  ),
+);
+
+// Категории в ручном порядке, каждая — со своими опубликованными продуктами.
+// Пустые категории (все продукты в черновиках, напр. широкоформат) не выводим.
+const groups = categories
+  .map((category) => ({
+    category,
+    items: products.filter((p) => p.category === category.id),
+  }))
+  .filter((g) => g.items.length > 0);
+
+const totalCount = products.length;
+
+const pageTitle = "Каталог продукции — Printmos";
+const pageDescription =
+  "Полный каталог цифровой типографии Printmos в Москве: визитки, листовки, буклеты, наклейки, таблички, бланки, конверты и другая печать.";
+
+const lead = "1–3 дня";
+const money = (n: number) => n.toLocaleString("ru-RU", { maximumFractionDigits: 0 });
+---
+
+<BaseLayout title={pageTitle} description={pageDescription}>
+  <Breadcrumbs
+    items={[
+      { name: "Главная", href: "/" },
+      { name: "Каталог", href: "/catalog" },
+    ]}
+  />
+
+  <h1 class="home-title">Каталог продукции</h1>
+  <p class="catalog-intro">{totalCount} видов печати — по категориям.</p>
+
+  {
+    groups.map((group) => (
+      <section class="catalog-section">
+        <h2 class="catalog-section__title" id={group.category.slug}>
+          {group.category.name}
+        </h2>
+        <ul class="product-grid">
+          {group.items.map((product) => (
+            <li>
+              <a class="product-tile" href={`/${product.slug}`}>
+                <span class="product-tile__media">
+                  {product.icon && (
+                    <Icon name={product.icon} class="product-tile__icon" />
+                  )}
+                </span>
+                <span class="product-tile__body">
+                  <span class="product-tile__name">{product.name}</span>
+                  <span class="product-tile__price">
+                    {priceBySlug.get(product.slug) != null
+                      ? `от ${money(priceBySlug.get(product.slug)!)} ₽`
+                      : "Рассчитать"}
+                  </span>
+                  <span class="product-tile__lead">{lead}</span>
+                </span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </section>
+    ))
+  }
+</BaseLayout>
