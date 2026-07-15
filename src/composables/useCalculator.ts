@@ -17,10 +17,15 @@ export function useCalculator(props: {
   const pricing = props.pricing;
 
   // — Форма и размер —
+  // Метка режима произвольного контура зависит от продукта: у плоттерных наклеек
+  // это «Сложная форма» (в поле «Резка» уже есть свой режим die-cut «Вырубка»),
+  // у листовых/прочих — профессиональнее звучит «Вырубка» (высечка по контуру).
+  const complexLabel = product.production === "plotter" ? "Сложная форма" : "Вырубка";
+  const complexLabelShort = product.production === "plotter" ? "Сложная" : "Вырубка";
   const shapes = computed(() => {
     const list = [{ value: "rectangular", label: "Прямоугольная" }];
     if (product.allowRound) list.push({ value: "round", label: "Круглая" });
-    if (product.allowComplex) list.push({ value: "complex", label: "Сложная форма" });
+    if (product.allowComplex) list.push({ value: "complex", label: complexLabel });
     return list;
   });
   const shape = ref<"rectangular" | "round" | "complex">("rectangular");
@@ -60,7 +65,7 @@ export function useCalculator(props: {
       });
     if (product.allowComplex)
       tiles.push({
-        id: "complex", glyph: "complex", label: "Сложная",
+        id: "complex", glyph: "complex", label: complexLabelShort,
         sub: shape.value === "complex" ? wh : undefined,
       });
     if (product.allowCustom)
