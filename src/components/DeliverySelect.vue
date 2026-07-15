@@ -214,19 +214,19 @@ function pick(m: DeliveryMethod) {
 .ds__promo-fill { display: block; height: 100%; background: var(--color-primary, #3b82f6); }
 .ds__promo-hint { font-size: 0.78rem; font-weight: 600; color: var(--color-primary, #3b82f6); }
 
-/* — Плитки перевозчиков — */
-.ds__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+/* — Плитки перевозчиков: 3 колонки × 2 ряда, квадратное лого — */
+.ds__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.4rem; }
 .ds__tile {
-  display: flex; flex-direction: column; gap: 0.4rem; text-align: left;
-  padding: 0.55rem 0.65rem; border: 1.5px solid var(--color-base-300);
+  display: flex; flex-direction: column; align-items: center; gap: 0.3rem; text-align: center;
+  padding: 0.45rem 0.3rem; border: 1.5px solid var(--color-base-300);
   border-radius: var(--radius-field, 0.4rem); background: var(--color-base-100); cursor: pointer;
 }
 .ds__tile--sel { border-color: var(--color-primary, #3b82f6); }
-.ds__tile-label { font-weight: 600; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ds__tile-logo { display: flex; align-items: center; justify-content: center; width: 100%; height: 2.2rem; }
+.ds__tile-label { max-width: 100%; font-weight: 600; font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ds__tile-logo { display: flex; align-items: center; justify-content: center; height: 1.9rem; }
 .ds__tile-logo img { max-width: 100%; max-height: 100%; object-fit: contain; }
-.ds__tile-logo-ph { width: 100%; height: 100%; border-radius: 0.3rem; background: var(--color-base-200); }
-.ds__tile-meta { font-size: 0.8rem; color: color-mix(in oklch, var(--color-base-content) 65%, transparent); }
+.ds__tile-logo-ph { width: 1.9rem; height: 1.9rem; border-radius: 0.3rem; background: var(--color-base-200); }
+.ds__tile-meta { font-size: 0.7rem; line-height: 1.25; color: color-mix(in oklch, var(--color-base-content) 65%, transparent); }
 
 .ds__foot { margin: 0.1rem 0 0; font-size: 0.72rem; color: color-mix(in oklch, var(--color-base-content) 55%, transparent); }
 </style>
