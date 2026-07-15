@@ -482,6 +482,14 @@ Goal: turn the current technical prototype into a coherent first public site ske
 - `paths-ignore`: `**.md`, `docs/**`, `seo/**`, `ops/**` — коммит ТОЛЬКО из этих путей деплой не триггерит (нужен хоть один код-файл/снапшот).
 - Ручной прогон/пересборка: GitHub → Actions → «Build & Deploy» → Run workflow (`workflow_dispatch`). Публикация контента шлёт `repository_dispatch: deploy-site` через Directus Flow.
 
+### Правки прод-Directus через API — агент ДЕЛАЕТ САМ, не просит владельца
+> Не перекладывать на пользователя «добавьте поле/значение в админке». Токен есть — сделать самому. (Ошибка этой практики: 2026-07-15 зря попросил владельца вручную завести `settings.free_delivery_threshold`, хотя мог сам.)
+- **Как:** прод-API `https://admin.printmos.ru`, заголовок `Authorization: Bearer $DIRECTUS_ADMIN_TOKEN` (токен из корневого `.env`; сам `.env` `DIRECTUS_URL` указывает на локаль — прод-URL брать явно). Читать токен из `.env`, в команды его не хардкодить/не логировать.
+- **Не-деструктивные правки (агент делает без спроса):** добавить поле/коллекцию, поменять значение синглтона/строки контента, править права. Новое поле — через ЖИВОЙ API `POST /fields/{collection}` (с `schema.is_nullable:true` — создаёт колонку); M2O/file — плюс `POST /relations`. Изменить значение — `PATCH /items/{coll}/{id}` (синглтон — `PATCH /items/{coll}`).
+- **После ЛЮБОЙ правки схемы на проде:** `ops/schema-snapshot.sh` (тянет прод→`directus/snapshot.yaml`) → закоммитить снапшот. Иначе следующий CI `apply --yes` откатит поле (снапшот = приказ схеме). Значения контента в снапшот НЕ входят — только структура.
+- **Деструктивное (спросить владельца):** `DELETE` поля/коллекции, смена типа с потерей данных, массовое удаление строк. См. ловушку полу-apply ниже.
+- Cyrillic/JSON из Git Bash → писать payload файлом и слать `--data-binary @file` (`Content-Type: application/json; charset=utf-8`), иначе mojibake.
+
 ### Схема Directus — источник истины ПРОД
 - Схему меняем **на проде** (в admin.printmos.ru или прод-API токеном), потом `ops/schema-snapshot.sh` тянет прод→`directus/snapshot.yaml`, и коммитим. **НЕ** генерировать снапшот из локали (`docker exec … schema snapshot`): если локаль дрейфнула, `apply --yes` в CI **снесёт** на проде всё, чего нет в снапшоте (apply приводит схему в ТОЧНОЕ соответствие; контент и права не трогает).
 - Проверка «снапшот == прод, apply будет no-op» (read-only): `POST https://admin.printmos.ru/schema/diff` с `-F file=@directus/snapshot.yaml;type=application/yaml` → **пустой ответ = разницы нет**.
