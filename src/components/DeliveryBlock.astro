@@ -1,0 +1,94 @@
+---
+// Компактный блок «Доставка и оплата» на карточке товара. Числа/способы строго из
+// checkout.ts + settings (синхронно с корзиной и /dostavka-oplata). Прогресс «сколько
+// осталось до бесплатной» — динамический, в плашке заказа (OrderPlate); здесь статика.
+import { Icon } from "astro-icon/components";
+import { getSettings } from "../lib/settings";
+import { DELIVERY_METHODS, PVZ_NETWORKS, FREE_DELIVERY_DEFAULT } from "../lib/checkout";
+
+const settings = await getSettings();
+const threshold = settings.free_delivery_threshold ?? FREE_DELIVERY_DEFAULT;
+const address = settings.address ?? "Москва, ул. Садовники";
+const money = (n: number) => n.toLocaleString("ru-RU");
+const courierCost = DELIVERY_METHODS.find((m) => m.id === "courier_msk")?.cost ?? 790;
+const pvzList = PVZ_NETWORKS.map((n) => n.label).join(", ");
+---
+
+<section class="deliv">
+  <h2 class="deliv__title">Доставка и оплата</h2>
+  <ul class="deliv__list">
+    <li>
+      <Icon name="tabler:building-store" aria-hidden="true" />
+      <span><strong>Самовывоз — бесплатно.</strong> {address}. Вторая точка — по согласованию с менеджером.</span>
+    </li>
+    <li>
+      <Icon name="tabler:truck-delivery" aria-hidden="true" />
+      <span><strong>Курьер по Москве — {money(courierCost)} ₽.</strong> Бесплатно при заказе от {money(threshold)} ₽.</span>
+    </li>
+    <li>
+      <Icon name="tabler:package" aria-hidden="true" />
+      <span><strong>По России — {pvzList}.</strong> По тарифу перевозчика, оформит менеджер.</span>
+    </li>
+    <li>
+      <Icon name="tabler:cash" aria-hidden="true" />
+      <span><strong>Оплата.</strong> При получении (наличные/карта) или счёт для юрлиц.</span>
+    </li>
+  </ul>
+  <a class="deliv__link" href="/dostavka-oplata">
+    Подробнее о доставке и оплате
+    <Icon name="tabler:arrow-right" aria-hidden="true" />
+  </a>
+</section>
+
+<style>
+  .deliv {
+    padding: 1.4rem 1.5rem;
+    border: var(--border, 1px) solid var(--color-base-300);
+    border-radius: var(--radius-box, 0.5rem);
+    background: var(--color-base-100);
+  }
+  .deliv__title {
+    margin: 0 0 0.9rem;
+    font-size: 1.15rem;
+    font-weight: 700;
+  }
+  .deliv__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.7rem;
+  }
+  @media (min-width: 700px) {
+    .deliv__list { grid-template-columns: 1fr 1fr; }
+  }
+  .deliv__list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    font-size: 0.92rem;
+    line-height: 1.4;
+    color: color-mix(in oklch, var(--color-base-content) 80%, transparent);
+  }
+  .deliv__list svg {
+    width: 1.3rem;
+    height: 1.3rem;
+    flex: none;
+    margin-top: 0.05rem;
+    color: var(--color-primary, currentColor);
+  }
+  .deliv__list strong { color: var(--color-base-content); font-weight: 600; }
+  .deliv__link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-top: 1rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--color-primary, currentColor);
+    text-decoration: none;
+  }
+  .deliv__link:hover { text-decoration: underline; }
+  .deliv__link svg { width: 1rem; height: 1rem; }
+</style>

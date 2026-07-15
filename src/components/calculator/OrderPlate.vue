@@ -2,8 +2,10 @@
 // Плашка заказа: срок готовности + итог + «В корзину». Кладёт позицию (полная
 // спецификация + снимок цены) в стор корзины. Серверный заказ — этап 2.
 import { inject, ref, computed, onMounted, onUnmounted } from "vue";
+import { useStore } from "@nanostores/vue";
 import { sharedKey } from "../../composables/calcShared";
-import { addToCart } from "../../stores/cart";
+import { addToCart, cartTotal } from "../../stores/cart";
+import { freeDeliveryProgress, FREE_DELIVERY_DEFAULT } from "../../lib/checkout";
 import { formatLead, msToNextLeadBoundary } from "../../lib/leadtime";
 import type { CartSpec } from "../../lib/pricing/spec";
 
@@ -20,14 +22,29 @@ const tick = () => {
   now.value = new Date();
   timer = setTimeout(tick, msToNextLeadBoundary(now.value, cutoff.value));
 };
+// Порог бесплатной доставки (из мета-тега; сервер пересчитает авторитетно при заказе).
+// mounted-гейт: блок зависит от корзины (localStorage), которой нет на SSR — рендерим
+// только на клиенте, иначе hydration mismatch.
+const threshold = ref(FREE_DELIVERY_DEFAULT);
+const cartSum = useStore(cartTotal);
+const mounted = ref(false);
 onMounted(() => {
   const meta = document.querySelector('meta[name="lead-cutoff"]')?.getAttribute("content");
   if (meta) cutoff.value = Number(meta) || 14;
+  const th = document.querySelector('meta[name="free-delivery-threshold"]')?.getAttribute("content");
+  if (th) threshold.value = Number(th) || FREE_DELIVERY_DEFAULT;
+  mounted.value = true;
   tick();
 });
 onUnmounted(() => timer && clearTimeout(timer));
 const lead = computed(() =>
   formatLead(now.value, calc.product.leadDays ?? 2, cutoff.value),
+);
+
+// Прогресс до бесплатной доставки: считаем от суммы корзины + текущего расчёта
+// (как если бы товар добавили) — согласовано с механикой корзины.
+const freeProgress = computed(() =>
+  freeDeliveryProgress(cartSum.value + (calc.result?.total ?? 0), threshold.value),
 );
 
 function add() {
@@ -77,6 +94,10 @@ function add() {
             {{ added ? "Добавлено ✓" : "В корзину" }}
           </button>
         </div>
+        <p v-if="mounted && freeProgress.active" class="plate__free">
+          <template v-if="freeProgress.qualified">🎉 Доставка курьером по Москве — бесплатно</template>
+          <template v-else>До бесплатной доставки по Москве — ещё {{ calc.money(freeProgress.remaining) }} ₽</template>
+        </p>
         <p class="plate__note">Предварительный расчёт. Точная цена — после проверки макета.</p>
         <!-- доп. действие (напр. «Получить ссылку») — только десктоп -->
         <div class="plate__extra"><slot name="extra" /></div>
@@ -107,6 +128,13 @@ function add() {
 .plate__price { font-size: 1.875rem; font-weight: 700; line-height: 1.1; }
 .plate__sub { font-size: 0.875rem; color: var(--color-base-content); opacity: 0.6; }
 .plate__btn { width: 100%; }
+.plate__free {
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.35rem 0.6rem;
+  border-radius: var(--radius-field, 0.25rem);
+  background: var(--color-base-200);
+}
 .plate__note { font-size: 0.75rem; color: var(--color-base-content); opacity: 0.6; }
 .plate__empty { font-size: 0.875rem; color: var(--color-base-content); opacity: 0.6; }
 .plate__extra:empty { display: none; }
@@ -149,6 +177,7 @@ function add() {
   .plate__price { font-size: 1.4rem; }
   .plate__btn { width: auto; flex: none; }
   .ready-plate,
+  .plate__free,
   .plate__note,
   .plate__extra { display: none; }
 }

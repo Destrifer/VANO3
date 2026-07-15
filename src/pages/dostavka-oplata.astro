@@ -2,7 +2,7 @@
 import BaseLayout from "../layouts/BaseLayout.astro";
 import { Icon } from "astro-icon/components";
 import { getSettings } from "../lib/settings";
-import { DELIVERY_METHODS, PVZ_NETWORKS } from "../lib/checkout";
+import { DELIVERY_METHODS, PVZ_NETWORKS, FREE_DELIVERY_DEFAULT } from "../lib/checkout";
 import { faqPage } from "../lib/seo/jsonld";
 
 // Страница «Доставка и оплата». Условия строго синхронны с корзиной
@@ -14,7 +14,8 @@ const address = settings.address ?? "Москва";
 const hours = settings.hours ?? null;
 const cutoff = settings.cutoff_hour ?? 14;
 const courierMsk = DELIVERY_METHODS.find((m) => m.id === "courier_msk");
-const courierCost = courierMsk?.cost ?? 400;
+const courierCost = courierMsk?.cost ?? 790;
+const freeThreshold = settings.free_delivery_threshold ?? FREE_DELIVERY_DEFAULT;
 const money = (n: number) => n.toLocaleString("ru-RU");
 const pvzList = PVZ_NETWORKS.map((n) => n.label).join(", ");
 
@@ -24,20 +25,20 @@ const delivery = [
     icon: "tabler:building-store",
     title: "Самовывоз",
     price: "Бесплатно",
-    desc: `Заберите заказ у нас: ${address}.${hours ? ` Часы работы: ${hours}.` : ""}`,
+    desc: `Заберите заказ у нас: ${address}.${hours ? ` Часы работы: ${hours}.` : ""} Возможен самовывоз со второй точки — по предварительному согласованию с менеджером.`,
     link: { href: "/contacts", label: "Как добраться" },
   },
   {
     icon: "tabler:truck-delivery",
     title: "Курьер по Москве",
     price: `${money(courierCost)} ₽`,
-    desc: "Привезём по адресу в день готовности заказа или на следующий день.",
+    desc: `Привезём по адресу в день готовности заказа или на следующий день. Бесплатно при заказе от ${money(freeThreshold)} ₽.`,
   },
   {
     icon: "tabler:package",
     title: "ПВЗ и доставка по России",
     price: "По тарифу перевозчика",
-    desc: `Отправляем через ${pvzList} и другие службы. Стоимость и срок рассчитает менеджер.`,
+    desc: `Отправляем через ${pvzList} и другие службы. Ориентировочный срок и стоимость подскажем при оформлении, точную сумму подтвердит менеджер.`,
   },
 ];
 
@@ -76,7 +77,11 @@ const faqItems = [
   },
   {
     question: "Сколько стоит курьер по Москве?",
-    answer: `${money(courierCost)} ₽ фиксированно, в пределах города.`,
+    answer: `${money(courierCost)} ₽ фиксированно, в пределах города. При заказе от ${money(freeThreshold)} ₽ курьер по Москве бесплатно.`,
+  },
+  {
+    question: "Есть ли бесплатная доставка?",
+    answer: `Да: самовывоз всегда бесплатный, а курьер по Москве — бесплатно при сумме заказа от ${money(freeThreshold)} ₽. По России отправляем по тарифу перевозчика.`,
   },
   {
     question: "Дадите документы для бухгалтерии?",

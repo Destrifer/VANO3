@@ -1,15 +1,30 @@
 <script setup lang="ts">
 // Корзина + оформление: позиции, доставка (с адресом для курьера/РФ), оплата,
 // контакты. Создание заказа на сервере (он пересчитывает цену и доставку).
-import { computed, reactive, ref } from "vue";
+import { computed, reactive, ref, onMounted } from "vue";
 import { useStore } from "@nanostores/vue";
 import { cartItems, cartTotal, removeFromCart, clearCart } from "../stores/cart";
-import { DELIVERY_METHODS, PAYMENT_METHODS, PVZ_NETWORKS, COURIER_SERVICES, findDelivery, deliveryCost, pvzLabel, courierLabel } from "../lib/checkout";
+import { DELIVERY_METHODS, PAYMENT_METHODS, PVZ_NETWORKS, COURIER_SERVICES, findDelivery, effectiveDeliveryCost, freeDeliveryProgress, FREE_DELIVERY_DEFAULT, pvzLabel, courierLabel, type DeliveryMethod } from "../lib/checkout";
 import AddressField from "./AddressField.vue";
 
 const items = useStore(cartItems);
 const goodsTotal = useStore(cartTotal);
 const money = (n: number) => n.toLocaleString("ru-RU", { maximumFractionDigits: 0 });
+
+// Порог бесплатной доставки — из мета-тега (авторитетно сервер пересчитает при заказе).
+const threshold = ref(FREE_DELIVERY_DEFAULT);
+onMounted(() => {
+  const m = document.querySelector('meta[name="free-delivery-threshold"]')?.getAttribute("content");
+  if (m) threshold.value = Number(m) || FREE_DELIVERY_DEFAULT;
+});
+const freeProgress = computed(() => freeDeliveryProgress(goodsTotal.value, threshold.value));
+// Подпись стоимости способа с учётом порога (курьер по Москве бесплатнеет от суммы).
+function methodCostLabel(m: DeliveryMethod): string {
+  const c = effectiveDeliveryCost(m.id, goodsTotal.value, threshold.value);
+  if (c === null) return "уточнит менеджер";
+  return c === 0 ? "бесплатно" : `${money(c)} ₽`;
+}
+const selectedPvzHint = computed(() => PVZ_NETWORKS.find((n) => n.id === delivery.pvzNetwork));
 
 const delivery = reactive({
   method: "pickup",
@@ -55,7 +70,9 @@ const error = ref("");
 const orderNumber = ref<string | null>(null);
 
 const selectedDelivery = computed(() => findDelivery(delivery.method));
-const delCost = computed(() => deliveryCost(delivery.method)); // null = уточнит менеджер
+const delCost = computed(() =>
+  effectiveDeliveryCost(delivery.method, goodsTotal.value, threshold.value),
+); // null = уточнит менеджер
 const grandTotal = computed(() => goodsTotal.value + (delCost.value ?? 0));
 
 function onAddressSelect(s: { value: string; data: Record<string, any> }) {
@@ -198,11 +215,21 @@ async function submit() {
         <!-- Доставка -->
         <div class="flex flex-col gap-2">
           <span class="text-base font-semibold">Доставка</span>
+          <!-- Прогресс до бесплатной доставки по Москве -->
+          <div v-if="freeProgress.active" class="rounded-box bg-base-200 px-3 py-2 text-sm">
+            <template v-if="freeProgress.qualified">
+              🎉 Курьер по Москве — <span class="font-semibold">бесплатно</span> (заказ от {{ money(freeProgress.threshold) }} ₽)
+            </template>
+            <template v-else>
+              До бесплатного курьера по Москве — ещё
+              <span class="font-semibold">{{ money(freeProgress.remaining) }} ₽</span>
+            </template>
+          </div>
           <label v-for="m in DELIVERY_METHODS" :key="m.id" class="flex items-center gap-2">
             <input type="radio" class="radio radio-sm" :value="m.id" v-model="delivery.method" />
             <span>{{ m.label }}</span>
             <span class="text-sm text-base-content/60">
-              {{ m.costType === "free" ? "бесплатно" : m.costType === "fixed" ? `${money(m.cost)} ₽` : "уточнит менеджер" }}
+              {{ methodCostLabel(m) }}
               <template v-if="m.note">· {{ m.note }}</template>
             </span>
           </label>
@@ -227,7 +254,12 @@ async function submit() {
               <option v-for="n in PVZ_NETWORKS" :key="n.id" :value="n.id">{{ n.label }}</option>
             </select>
             <AddressField v-model="delivery.address" @select="onAddressSelect" placeholder="Адрес ПВЗ или постамата" />
-            <span class="text-xs text-base-content/60">Укажите адрес пункта выдачи. Стоимость уточнит менеджер.</span>
+            <span class="text-xs text-base-content/60">
+              <template v-if="selectedPvzHint">
+                {{ selectedPvzHint.label }}: {{ selectedPvzHint.price ?? "по тарифу перевозчика" }}, срок {{ selectedPvzHint.term }} (ориентировочно).
+              </template>
+              Укажите адрес пункта выдачи — точную стоимость подтвердит менеджер.
+            </span>
           </div>
         </div>
 

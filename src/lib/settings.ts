@@ -12,6 +12,7 @@ export type Settings = {
   map_lng: number | null;
   map_zoom: number | null;
   cutoff_hour: number | null; // час отсечки приёма в работу (для «срока готовности»)
+  free_delivery_threshold: number | null; // ₽: от этой суммы курьер по Москве бесплатно (0/null → выкл)
 };
 
 // Синглтон: /items/settings возвращает ОДИН объект (не массив).

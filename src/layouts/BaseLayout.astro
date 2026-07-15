@@ -64,6 +64,7 @@ const businessLd = localBusiness(settings, siteUrl);
     <meta name="generator" content={Astro.generator} />
     <meta name="description" content={description} />
     <meta name="lead-cutoff" content={String(settings.cutoff_hour ?? 14)} />
+    <meta name="free-delivery-threshold" content={String(settings.free_delivery_threshold ?? 20000)} />
     <title>{title}</title>
 
     <link rel="canonical" href={canonical} />
