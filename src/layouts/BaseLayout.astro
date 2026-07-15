@@ -5,6 +5,7 @@ import { Picture } from "astro:assets";
 import officeMap from "../assets/office-map.png";
 import { getMenu } from "../lib/categories";
 import { getSettings } from "../lib/settings";
+import { getDeliveryMethods } from "../lib/delivery";
 import CartButton from "../components/CartButton.vue";
 import JsonLd from "../components/seo/JsonLd.astro";
 import YandexMetrika from "../components/seo/YandexMetrika.astro";
@@ -12,6 +13,9 @@ import { localBusiness } from "../lib/seo/jsonld";
 
 const menu = await getMenu();
 const settings = await getSettings();
+// Способы доставки — глобально, для островов (плашка товара + корзина) читают JSON
+// из #delivery-methods на маунте (как мета lead-cutoff), без prop-drilling.
+const deliveryMethods = await getDeliveryMethods();
 const year = new Date().getFullYear();
 // jsonLd: массив объектов Schema.org для конкретной страницы (Product/Breadcrumb/FAQ).
 const {
@@ -65,6 +69,7 @@ const businessLd = localBusiness(settings, siteUrl);
     <meta name="description" content={description} />
     <meta name="lead-cutoff" content={String(settings.cutoff_hour ?? 14)} />
     <meta name="free-delivery-threshold" content={String(settings.free_delivery_threshold ?? 20000)} />
+    <script type="application/json" id="delivery-methods" is:inline set:html={JSON.stringify(deliveryMethods)}></script>
     <title>{title}</title>
 
     <link rel="canonical" href={canonical} />

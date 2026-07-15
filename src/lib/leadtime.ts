@@ -44,6 +44,24 @@ export function formatLead(now: Date, leadDays: number, cutoffHour: number): Lea
   return { text: `${day} ${time}`, title: `Готово ${day} ${time}` };
 }
 
+// День доставки способа: готово (leadDays раб. дней) + транзит (etaDays раб. дней).
+// Короткая метка «завтра»/день недели (пн..сб) для плиток доставки; на дальнем
+// горизонте (день неоднозначен) — «от N дн.». Считается на клиенте (живой пересчёт).
+export function deliveryDayLabel(
+  now: Date,
+  leadDays: number,
+  etaDays: number,
+  _cutoffHour: number,
+): string {
+  const lead = Math.max(1, Math.round(leadDays || 1));
+  const ready = addWorkdays(now, lead);
+  const eta = Math.max(0, Math.round(etaDays || 0));
+  const arrival = eta > 0 ? addWorkdays(ready, eta) : ready;
+  const delta = dayDelta(now, arrival);
+  if (delta > 8) return `от ${lead + eta} дн.`;
+  return delta <= 1 ? "завтра" : WD[arrival.getDay()];
+}
+
 // Через сколько мс вывод изменится: ближайшая отсечка (сегодня) или полночь.
 export function msToNextLeadBoundary(now: Date, cutoffHour: number): number {
   const cutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate(), cutoffHour, 0, 0, 0);

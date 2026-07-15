@@ -5,8 +5,8 @@ import { inject, ref, computed, onMounted, onUnmounted } from "vue";
 import { useStore } from "@nanostores/vue";
 import { sharedKey } from "../../composables/calcShared";
 import { addToCart, cartTotal } from "../../stores/cart";
-import { freeDeliveryProgress, FREE_DELIVERY_DEFAULT } from "../../lib/checkout";
 import { formatLead, msToNextLeadBoundary } from "../../lib/leadtime";
+import DeliverySelect from "../DeliverySelect.vue";
 import type { CartSpec } from "../../lib/pricing/spec";
 
 const props = defineProps<{ name: string; slug: string }>();
@@ -22,17 +22,13 @@ const tick = () => {
   now.value = new Date();
   timer = setTimeout(tick, msToNextLeadBoundary(now.value, cutoff.value));
 };
-// Порог бесплатной доставки (из мета-тега; сервер пересчитает авторитетно при заказе).
-// mounted-гейт: блок зависит от корзины (localStorage), которой нет на SSR — рендерим
-// только на клиенте, иначе hydration mismatch.
-const threshold = ref(FREE_DELIVERY_DEFAULT);
+// Сумма корзины — для порога/прогресса в селекторе доставки. mounted-гейт: селектор
+// зависит от корзины (localStorage), которой нет на SSR — рендерим только на клиенте.
 const cartSum = useStore(cartTotal);
 const mounted = ref(false);
 onMounted(() => {
   const meta = document.querySelector('meta[name="lead-cutoff"]')?.getAttribute("content");
   if (meta) cutoff.value = Number(meta) || 14;
-  const th = document.querySelector('meta[name="free-delivery-threshold"]')?.getAttribute("content");
-  if (th) threshold.value = Number(th) || FREE_DELIVERY_DEFAULT;
   mounted.value = true;
   tick();
 });
@@ -41,11 +37,8 @@ const lead = computed(() =>
   formatLead(now.value, calc.product.leadDays ?? 2, cutoff.value),
 );
 
-// Прогресс до бесплатной доставки: считаем от суммы корзины + текущего расчёта
-// (как если бы товар добавили) — согласовано с механикой корзины.
-const freeProgress = computed(() =>
-  freeDeliveryProgress(cartSum.value + (calc.result?.total ?? 0), threshold.value),
-);
+// База для порога/прогресса: сумма корзины + текущий расчёт (как если бы добавили).
+const deliveryBase = computed(() => cartSum.value + (calc.result?.total ?? 0));
 
 function add() {
   if (!calc.result) return;
@@ -94,11 +87,9 @@ function add() {
             {{ added ? "Добавлено ✓" : "В корзину" }}
           </button>
         </div>
-        <p v-if="mounted && freeProgress.active" class="plate__free">
-          <template v-if="freeProgress.qualified">🎉 Доставка курьером по Москве — бесплатно</template>
-          <template v-else>До бесплатной доставки по Москве — ещё {{ calc.money(freeProgress.remaining) }} ₽</template>
-        </p>
         <p class="plate__note">Предварительный расчёт. Точная цена — после проверки макета.</p>
+        <!-- Выбор доставки (свёрнут; выбор шарится с корзиной) — только клиент -->
+        <DeliverySelect v-if="mounted" :goods-subtotal="deliveryBase" :lead-days="calc.product.leadDays ?? 2" />
         <!-- доп. действие (напр. «Получить ссылку») — только десктоп -->
         <div class="plate__extra"><slot name="extra" /></div>
       </template>
@@ -128,13 +119,6 @@ function add() {
 .plate__price { font-size: 1.875rem; font-weight: 700; line-height: 1.1; }
 .plate__sub { font-size: 0.875rem; color: var(--color-base-content); opacity: 0.6; }
 .plate__btn { width: 100%; }
-.plate__free {
-  font-size: 0.8rem;
-  font-weight: 600;
-  padding: 0.35rem 0.6rem;
-  border-radius: var(--radius-field, 0.25rem);
-  background: var(--color-base-200);
-}
 .plate__note { font-size: 0.75rem; color: var(--color-base-content); opacity: 0.6; }
 .plate__empty { font-size: 0.875rem; color: var(--color-base-content); opacity: 0.6; }
 .plate__extra:empty { display: none; }
@@ -162,8 +146,9 @@ function add() {
     left: 0;
     right: 0;
     width: auto;
-    max-height: none;
-    overflow: visible;
+    /* селектор доставки может разворачиваться — ограничиваем высоту и скроллим */
+    max-height: calc(100dvh - var(--mobile-bar-h, 5rem) - 1rem);
+    overflow-y: auto;
     /* над глобальной контакт-панелью (.mobile-bar), а не поверх неё */
     bottom: var(--mobile-bar-h, 5rem);
     z-index: 40;
@@ -177,7 +162,6 @@ function add() {
   .plate__price { font-size: 1.4rem; }
   .plate__btn { width: auto; flex: none; }
   .ready-plate,
-  .plate__free,
   .plate__note,
   .plate__extra { display: none; }
 }

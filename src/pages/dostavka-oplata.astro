@@ -2,22 +2,23 @@
 import BaseLayout from "../layouts/BaseLayout.astro";
 import { Icon } from "astro-icon/components";
 import { getSettings } from "../lib/settings";
-import { DELIVERY_METHODS, PVZ_NETWORKS, FREE_DELIVERY_DEFAULT } from "../lib/checkout";
+import { getDeliveryMethods, FREE_DELIVERY_DEFAULT } from "../lib/delivery";
 import { faqPage } from "../lib/seo/jsonld";
 
-// Страница «Доставка и оплата». Условия строго синхронны с корзиной
-// (src/lib/checkout.ts): способы, стоимость курьера и т.п. берём оттуда, чтобы
-// не разойтись с тем, что человек видит при оформлении. Реквизиты — из settings.
+// Страница «Доставка и оплата». Условия строго синхронны с корзиной/плашкой —
+// способы и цены берём из тех же Directus-данных (delivery_methods), чтобы не
+// разойтись с тем, что человек видит при оформлении. Реквизиты — из settings.
 const settings = await getSettings();
+const methods = await getDeliveryMethods();
 
 const address = settings.address ?? "Москва";
 const hours = settings.hours ?? null;
 const cutoff = settings.cutoff_hour ?? 14;
-const courierMsk = DELIVERY_METHODS.find((m) => m.id === "courier_msk");
-const courierCost = courierMsk?.cost ?? 790;
+const courierMsk = methods.find((m) => m.freeOverThreshold);
+const courierCost = courierMsk?.priceFrom ?? 790;
 const freeThreshold = settings.free_delivery_threshold ?? FREE_DELIVERY_DEFAULT;
 const money = (n: number) => n.toLocaleString("ru-RU");
-const pvzList = PVZ_NETWORKS.map((n) => n.label).join(", ");
+const pvzList = methods.filter((m) => m.type === "pvz").map((m) => m.label).join(", ");
 
 // — Доставка — (описания свои; числа/способы — из checkout) —
 const delivery = [

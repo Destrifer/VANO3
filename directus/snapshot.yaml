@@ -80,6 +80,32 @@ collections:
       versioning: false
     schema:
       name: categories
+  - collection: delivery_methods
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: active
+      archive_value: 'false'
+      autosave_revision_interval: null
+      collapse: open
+      collection: delivery_methods
+      color: null
+      display_template: '{{label}} ({{type}})'
+      group: null
+      hidden: false
+      icon: local_shipping
+      item_duplication_fields: null
+      note: 'Способы доставки: витрина в плашке товара + выбор в корзине'
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: sort
+      status: active
+      translations: null
+      unarchive_value: 'true'
+      versioning: false
+    schema:
+      name: delivery_methods
   - collection: faq_items
     meta:
       accountability: all
@@ -1523,6 +1549,544 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
+  - collection: delivery_methods
+    field: id
+    type: integer
+    meta:
+      collection: delivery_methods
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: null
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 1
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: delivery_methods
+      data_type: integer
+      default_value: nextval('delivery_methods_id_seq'::regclass)
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: true
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: delivery_methods
+    field: sort
+    type: integer
+    meta:
+      collection: delivery_methods
+      conditions: null
+      display: null
+      display_options: null
+      field: sort
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 2
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: sort
+      table: delivery_methods
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: delivery_methods
+    field: active
+    type: boolean
+    meta:
+      collection: delivery_methods
+      conditions: null
+      display: null
+      display_options: null
+      field: active
+      group: null
+      hidden: false
+      interface: boolean
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 3
+      special:
+        - cast-boolean
+      translations: null
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: active
+      table: delivery_methods
+      data_type: boolean
+      default_value: true
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: delivery_methods
+    field: code
+    type: string
+    meta:
+      collection: delivery_methods
+      conditions: null
+      display: null
+      display_options: null
+      field: code
+      group: null
+      hidden: false
+      interface: input
+      note: стабильный слаг (pickup_main, cdek, ...)
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 4
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: code
+      table: delivery_methods
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: delivery_methods
+    field: label
+    type: string
+    meta:
+      collection: delivery_methods
+      conditions: null
+      display: null
+      display_options: null
+      field: label
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 5
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: label
+      table: delivery_methods
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: delivery_methods
+    field: type
+    type: string
+    meta:
+      collection: delivery_methods
+      conditions: null
+      display: null
+      display_options: null
+      field: type
+      group: null
+      hidden: false
+      interface: select-dropdown
+      note: null
+      options:
+        choices:
+          - text: Самовывоз
+            value: pickup
+          - text: Курьер
+            value: courier
+          - text: ПВЗ / постамат
+            value: pvz
+      readonly: false
+      required: false
+      searchable: true
+      sort: 6
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: type
+      table: delivery_methods
+      data_type: character varying
+      default_value: pvz
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: delivery_methods
+    field: price_from
+    type: integer
+    meta:
+      collection: delivery_methods
+      conditions: null
+      display: null
+      display_options: null
+      field: price_from
+      group: null
+      hidden: false
+      interface: input
+      note: 0 = бесплатно; пусто = уточнит менеджер; число = ориентировочно
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 7
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: price_from
+      table: delivery_methods
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: delivery_methods
+    field: price_prefix
+    type: string
+    meta:
+      collection: delivery_methods
+      conditions: null
+      display: null
+      display_options: null
+      field: price_prefix
+      group: null
+      hidden: false
+      interface: select-dropdown
+      note: null
+      options:
+        choices:
+          - text: от
+            value: от
+          - text: '~'
+            value: '~'
+          - text: (без префикса)
+            value: ''
+      readonly: false
+      required: false
+      searchable: true
+      sort: 8
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: price_prefix
+      table: delivery_methods
+      data_type: character varying
+      default_value: от
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: delivery_methods
+    field: eta_days
+    type: integer
+    meta:
+      collection: delivery_methods
+      conditions: null
+      display: null
+      display_options: null
+      field: eta_days
+      group: null
+      hidden: false
+      interface: input
+      note: транзит в рабочих днях (для дня доставки)
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 9
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: eta_days
+      table: delivery_methods
+      data_type: integer
+      default_value: 0
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: delivery_methods
+    field: note
+    type: string
+    meta:
+      collection: delivery_methods
+      conditions: null
+      display: null
+      display_options: null
+      field: note
+      group: null
+      hidden: false
+      interface: input
+      note: напр. «по согласованию», «стоимость уточнит менеджер»
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 10
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: note
+      table: delivery_methods
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: delivery_methods
+    field: needs_address
+    type: boolean
+    meta:
+      collection: delivery_methods
+      conditions: null
+      display: null
+      display_options: null
+      field: needs_address
+      group: null
+      hidden: false
+      interface: boolean
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 11
+      special:
+        - cast-boolean
+      translations: null
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: needs_address
+      table: delivery_methods
+      data_type: boolean
+      default_value: false
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: delivery_methods
+    field: free_over_threshold
+    type: boolean
+    meta:
+      collection: delivery_methods
+      conditions: null
+      display: null
+      display_options: null
+      field: free_over_threshold
+      group: null
+      hidden: false
+      interface: boolean
+      note: бесплатно при заказе от settings.free_delivery_threshold
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 12
+      special:
+        - cast-boolean
+      translations: null
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: free_over_threshold
+      table: delivery_methods
+      data_type: boolean
+      default_value: false
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: delivery_methods
+    field: logo
+    type: uuid
+    meta:
+      collection: delivery_methods
+      conditions: null
+      display: null
+      display_options: null
+      field: logo
+      group: null
+      hidden: false
+      interface: file-image
+      note: лого перевозчика (SVG/PNG)
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 13
+      special:
+        - file
+      translations: null
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: logo
+      table: delivery_methods
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: directus_files
+      foreign_key_column: id
   - collection: faq_items
     field: id
     type: integer
@@ -10545,6 +11109,27 @@ systemFields:
     schema:
       is_indexed: true
 relations:
+  - collection: delivery_methods
+    field: logo
+    related_collection: directus_files
+    meta:
+      junction_field: null
+      many_collection: delivery_methods
+      many_field: logo
+      one_allowed_collections: null
+      one_collection: directus_files
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: delivery_methods
+      column: logo
+      foreign_key_table: directus_files
+      foreign_key_column: id
+      constraint_name: delivery_methods_logo_foreign
+      on_update: NO ACTION
+      on_delete: SET NULL
   - collection: finishing_colors
     field: image
     related_collection: directus_files

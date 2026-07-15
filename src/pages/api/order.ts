@@ -1,7 +1,8 @@
 import type { APIRoute } from "astro";
 import { getPricingData, getProductPricing, type ProductPricing } from "../../lib/pricing/data";
 import { priceFromSpec, describeSpec, type CartSpec } from "../../lib/pricing/spec";
-import { findDelivery, effectiveDeliveryCost, findPayment, FREE_DELIVERY_DEFAULT } from "../../lib/checkout";
+import { findPayment } from "../../lib/checkout";
+import { getDeliveryMethods, findMethod, methodCost, FREE_DELIVERY_DEFAULT } from "../../lib/delivery";
 import { getSettings } from "../../lib/settings";
 
 // Создание заказа: сервер ПЕРЕСЧИТЫВАЕТ цену из спека (id) по актуальным данным
@@ -66,7 +67,8 @@ export const POST: APIRoute = async ({ request }) => {
 
   // Доставка и оплата (валидация + авторитетная стоимость на сервере).
   const delivery = body.delivery ?? {};
-  const dMethod = findDelivery(delivery.method);
+  const deliveryMethods = await getDeliveryMethods();
+  const dMethod = findMethod(deliveryMethods, delivery.method);
   if (!dMethod) return json({ error: "Выберите способ доставки" }, 400);
   if (dMethod.needsAddress && !delivery.address?.trim()) {
     return json({ error: "Укажите адрес доставки" }, 400);
@@ -119,7 +121,7 @@ export const POST: APIRoute = async ({ request }) => {
   const discount_total = 0;
   const goodsForThreshold = subtotal - discount_total;
   const delivery_cost =
-    effectiveDeliveryCost(dMethod.id, goodsForThreshold, threshold) ?? 0; // manual → 0
+    methodCost(dMethod, goodsForThreshold, threshold) ?? 0; // null (уточнит менеджер) → 0
 
   const payload = {
     number: orderNumber(),
@@ -131,7 +133,7 @@ export const POST: APIRoute = async ({ request }) => {
     subtotal,
     discount_total,
     total: subtotal + delivery_cost,
-    delivery_method: dMethod.id,
+    delivery_method: dMethod.code,
     delivery_cost,
     delivery_address: delivery.address?.trim() || dMethod.note || null,
     delivery_data: delivery.data ?? null,

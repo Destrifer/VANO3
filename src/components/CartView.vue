@@ -1,41 +1,48 @@
 <script setup lang="ts">
-// Корзина + оформление: позиции, доставка (с адресом для курьера/РФ), оплата,
-// контакты. Создание заказа на сервере (он пересчитывает цену и доставку).
+// Корзина + оформление: позиции, доставка (тот же селектор, что в плашке товара —
+// выбор шарится через стор), адрес по выбранному способу, оплата, контакты.
+// Заказ создаётся на сервере (он пересчитывает цену и доставку авторитетно).
 import { computed, reactive, ref, onMounted } from "vue";
 import { useStore } from "@nanostores/vue";
 import { cartItems, cartTotal, removeFromCart, clearCart } from "../stores/cart";
-import { DELIVERY_METHODS, PAYMENT_METHODS, PVZ_NETWORKS, COURIER_SERVICES, findDelivery, effectiveDeliveryCost, freeDeliveryProgress, FREE_DELIVERY_DEFAULT, pvzLabel, courierLabel, type DeliveryMethod } from "../lib/checkout";
+import { selectedDeliveryCode } from "../stores/delivery";
+import { PAYMENT_METHODS } from "../lib/checkout";
+import { findMethod, methodCost, FREE_DELIVERY_DEFAULT, type DeliveryMethod } from "../lib/delivery";
+import DeliverySelect from "./DeliverySelect.vue";
 import AddressField from "./AddressField.vue";
 
 const items = useStore(cartItems);
 const goodsTotal = useStore(cartTotal);
 const money = (n: number) => n.toLocaleString("ru-RU", { maximumFractionDigits: 0 });
 
-// Порог бесплатной доставки — из мета-тега (авторитетно сервер пересчитает при заказе).
+// Порог + способы доставки — из мета/JSON (авторитет — сервер при заказе).
 const threshold = ref(FREE_DELIVERY_DEFAULT);
+const methods = ref<DeliveryMethod[]>([]);
+const deliveryCode = useStore(selectedDeliveryCode);
 onMounted(() => {
   const m = document.querySelector('meta[name="free-delivery-threshold"]')?.getAttribute("content");
   if (m) threshold.value = Number(m) || FREE_DELIVERY_DEFAULT;
+  try {
+    const el = document.getElementById("delivery-methods");
+    if (el?.textContent) methods.value = JSON.parse(el.textContent) as DeliveryMethod[];
+  } catch {
+    /* нет данных — селектор просто не покажет способы */
+  }
 });
-const freeProgress = computed(() => freeDeliveryProgress(goodsTotal.value, threshold.value));
-// Подпись стоимости способа с учётом порога (курьер по Москве бесплатнеет от суммы).
-function methodCostLabel(m: DeliveryMethod): string {
-  const c = effectiveDeliveryCost(m.id, goodsTotal.value, threshold.value);
-  if (c === null) return "уточнит менеджер";
-  return c === 0 ? "бесплатно" : `${money(c)} ₽`;
-}
-const selectedPvzHint = computed(() => PVZ_NETWORKS.find((n) => n.id === delivery.pvzNetwork));
 
-const delivery = reactive({
-  method: "pickup",
+const selectedMethod = computed(() => findMethod(methods.value, deliveryCode.value));
+const delCost = computed(() =>
+  methodCost(selectedMethod.value, goodsTotal.value, threshold.value),
+); // null = уточнит менеджер
+const grandTotal = computed(() => goodsTotal.value + (delCost.value ?? 0));
+
+const addr = reactive({
   address: "",
   data: null as Record<string, any> | null,
   apartment: "",
   entrance: "",
   floor: "",
   intercom: "",
-  courierService: "", // предпочтительная служба курьера (по желанию)
-  pvzNetwork: "yandex", // сеть ПВЗ/постаматов
 });
 const payment = reactive({ method: "on_receipt", requisitesFileId: null as string | null, requisitesName: "" });
 const reqStatus = ref<"idle" | "uploading" | "error">("idle");
@@ -69,33 +76,18 @@ const submitting = ref(false);
 const error = ref("");
 const orderNumber = ref<string | null>(null);
 
-const selectedDelivery = computed(() => findDelivery(delivery.method));
-const delCost = computed(() =>
-  effectiveDeliveryCost(delivery.method, goodsTotal.value, threshold.value),
-); // null = уточнит менеджер
-const grandTotal = computed(() => goodsTotal.value + (delCost.value ?? 0));
-
 function onAddressSelect(s: { value: string; data: Record<string, any> }) {
-  delivery.data = s.data;
+  addr.data = s.data;
 }
 function composeAddress() {
-  const m = selectedDelivery.value;
+  const m = selectedMethod.value;
   if (!m?.needsAddress) return "";
-  const parts: string[] = [];
+  const parts: string[] = [m.label, addr.address];
   if (m.type === "courier") {
-    const svc = courierLabel(delivery.courierService);
-    if (svc) parts.push(svc);
-    parts.push(delivery.address);
-    if (delivery.apartment) parts.push(`кв./офис ${delivery.apartment}`);
-    if (delivery.entrance) parts.push(`подъезд ${delivery.entrance}`);
-    if (delivery.floor) parts.push(`этаж ${delivery.floor}`);
-    if (delivery.intercom) parts.push(`домофон ${delivery.intercom}`);
-  } else if (m.type === "pvz") {
-    const net = pvzLabel(delivery.pvzNetwork);
-    if (net) parts.push(net);
-    parts.push(delivery.address);
-  } else {
-    parts.push(delivery.address);
+    if (addr.apartment) parts.push(`кв./офис ${addr.apartment}`);
+    if (addr.entrance) parts.push(`подъезд ${addr.entrance}`);
+    if (addr.floor) parts.push(`этаж ${addr.floor}`);
+    if (addr.intercom) parts.push(`домофон ${addr.intercom}`);
   }
   return parts.filter(Boolean).join(", ");
 }
@@ -106,7 +98,7 @@ async function submit() {
     error.value = "Укажите имя и телефон";
     return;
   }
-  if (selectedDelivery.value?.needsAddress && !delivery.address.trim()) {
+  if (selectedMethod.value?.needsAddress && !addr.address.trim()) {
     error.value = "Укажите адрес доставки";
     return;
   }
@@ -122,16 +114,14 @@ async function submit() {
         })),
         customer: { ...contact },
         delivery: {
-          method: delivery.method,
+          method: deliveryCode.value,
           address: composeAddress(),
           data: {
-            ...(delivery.data ?? {}),
-            courier_service: delivery.courierService || null,
-            pvz_network: delivery.pvzNetwork || null,
-            apartment: delivery.apartment || null,
-            entrance: delivery.entrance || null,
-            floor: delivery.floor || null,
-            intercom: delivery.intercom || null,
+            ...(addr.data ?? {}),
+            apartment: addr.apartment || null,
+            entrance: addr.entrance || null,
+            floor: addr.floor || null,
+            intercom: addr.intercom || null,
           },
         },
         payment: { method: payment.method, requisitesFileId: payment.requisitesFileId },
@@ -212,54 +202,23 @@ async function submit() {
     <!-- Правая колонка: оформление (доставка + оплата + контакты + итог) -->
     <aside class="card card-border border-base-content">
       <div class="card-body gap-5">
-        <!-- Доставка -->
+        <!-- Доставка: общий селектор (тот же, что в плашке) + адрес по способу -->
         <div class="flex flex-col gap-2">
           <span class="text-base font-semibold">Доставка</span>
-          <!-- Прогресс до бесплатной доставки по Москве -->
-          <div v-if="freeProgress.active" class="rounded-box bg-base-200 px-3 py-2 text-sm">
-            <template v-if="freeProgress.qualified">
-              🎉 Курьер по Москве — <span class="font-semibold">бесплатно</span> (заказ от {{ money(freeProgress.threshold) }} ₽)
-            </template>
-            <template v-else>
-              До бесплатного курьера по Москве — ещё
-              <span class="font-semibold">{{ money(freeProgress.remaining) }} ₽</span>
-            </template>
-          </div>
-          <label v-for="m in DELIVERY_METHODS" :key="m.id" class="flex items-center gap-2">
-            <input type="radio" class="radio radio-sm" :value="m.id" v-model="delivery.method" />
-            <span>{{ m.label }}</span>
-            <span class="text-sm text-base-content/60">
-              {{ methodCostLabel(m) }}
-              <template v-if="m.note">· {{ m.note }}</template>
-            </span>
-          </label>
-          <!-- курьер: служба (по желанию) + адрес + детали дома -->
-          <div v-if="selectedDelivery?.type === 'courier'" class="mt-1 flex flex-col gap-2">
-            <select v-model="delivery.courierService" class="select select-sm w-full max-w-xs">
-              <option value="">Служба — без предпочтения</option>
-              <option v-for="c in COURIER_SERVICES" :key="c.id" :value="c.id">{{ c.label }}</option>
-            </select>
-            <AddressField v-model="delivery.address" @select="onAddressSelect" />
-            <div class="flex flex-wrap gap-2">
-              <input v-model="delivery.apartment" class="input input-sm w-28" placeholder="Кв./офис" />
-              <input v-model="delivery.entrance" class="input input-sm w-28" placeholder="Подъезд" />
-              <input v-model="delivery.floor" class="input input-sm w-24" placeholder="Этаж" />
-              <input v-model="delivery.intercom" class="input input-sm w-32" placeholder="Домофон" />
+          <DeliverySelect :goods-subtotal="goodsTotal" :lead-days="1" :start-open="true" />
+          <div v-if="selectedMethod?.needsAddress" class="mt-1 flex flex-col gap-2">
+            <AddressField
+              v-model="addr.address"
+              @select="onAddressSelect"
+              :placeholder="selectedMethod.type === 'pvz' ? 'Адрес ПВЗ или постамата' : 'Адрес доставки'"
+            />
+            <div v-if="selectedMethod.type === 'courier'" class="flex flex-wrap gap-2">
+              <input v-model="addr.apartment" class="input input-sm w-28" placeholder="Кв./офис" />
+              <input v-model="addr.entrance" class="input input-sm w-28" placeholder="Подъезд" />
+              <input v-model="addr.floor" class="input input-sm w-24" placeholder="Этаж" />
+              <input v-model="addr.intercom" class="input input-sm w-32" placeholder="Домофон" />
             </div>
-          </div>
-
-          <!-- ПВЗ/постамат: сеть + адрес пункта -->
-          <div v-else-if="selectedDelivery?.type === 'pvz'" class="mt-1 flex flex-col gap-2">
-            <select v-model="delivery.pvzNetwork" class="select select-sm w-full max-w-xs">
-              <option v-for="n in PVZ_NETWORKS" :key="n.id" :value="n.id">{{ n.label }}</option>
-            </select>
-            <AddressField v-model="delivery.address" @select="onAddressSelect" placeholder="Адрес ПВЗ или постамата" />
-            <span class="text-xs text-base-content/60">
-              <template v-if="selectedPvzHint">
-                {{ selectedPvzHint.label }}: {{ selectedPvzHint.price ?? "по тарифу перевозчика" }}, срок {{ selectedPvzHint.term }} (ориентировочно).
-              </template>
-              Укажите адрес пункта выдачи — точную стоимость подтвердит менеджер.
-            </span>
+            <span class="text-xs text-base-content/60">Точную стоимость и срок доставки подтвердит менеджер.</span>
           </div>
         </div>
 
