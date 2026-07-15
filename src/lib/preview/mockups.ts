@@ -1246,10 +1246,47 @@ const ticket: Mockup = {
     const { x, y, w, h } = r;
     const ink = env.ink;
     const u = Math.min(w, h);
-    const px = x + w * 0.72; // линия перфорации
-    const m = u * 0.16;
+    const cx = x + w / 2;
 
-    // перфорация
+    // ПОРТРЕТ (напр. Евро 99×210): перфорация горизонтально снизу, корешок с
+    // номером — в отрывной части. Шрифты от ширины (=меньшая сторона).
+    if (h > w * 1.15) {
+      ctx.textAlign = "center";
+      ctx.textBaseline = "top";
+      ctx.fillStyle = ink;
+      ctx.font = `800 ${Math.round(w * 0.17)}px system-ui, sans-serif`;
+      ctx.fillText("ВХОД", cx, y + h * 0.08);
+      // событие + дата
+      ctx.globalAlpha = 0.4;
+      ctx.fillRect(cx - w * 0.3, y + h * 0.24, w * 0.6, Math.max(1, w * 0.035));
+      ctx.globalAlpha = 0.25;
+      ctx.fillRect(cx - w * 0.2, y + h * 0.31, w * 0.4, Math.max(1, w * 0.028));
+      ctx.globalAlpha = 1;
+      // перфорация горизонтально
+      const perfY = y + h * 0.64;
+      ctx.strokeStyle = ink;
+      ctx.globalAlpha = 0.45;
+      ctx.lineWidth = Math.max(1, w * 0.02);
+      ctx.setLineDash([w * 0.06, w * 0.045]);
+      ctx.beginPath();
+      ctx.moveTo(x, perfY); ctx.lineTo(x + w, perfY); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.globalAlpha = 1;
+      // отрывной корешок: «№» + номер
+      ctx.fillStyle = ink;
+      ctx.globalAlpha = 0.5;
+      ctx.font = `500 ${Math.round(w * 0.1)}px system-ui, sans-serif`;
+      ctx.fillText("№", cx, y + h * 0.71);
+      ctx.globalAlpha = 0.85;
+      ctx.font = `800 ${Math.round(w * 0.2)}px system-ui, sans-serif`;
+      ctx.fillText("0042", cx, y + h * 0.79);
+      ctx.globalAlpha = 1;
+      return;
+    }
+
+    // ЛАНДШАФТ: перфорация вертикально, корешок справа. Шрифты от высоты (=меньшая).
+    const px = x + w * 0.72;
+    const m = u * 0.16;
     ctx.strokeStyle = ink;
     ctx.globalAlpha = 0.45;
     ctx.lineWidth = Math.max(1, u * 0.01);
@@ -1260,27 +1297,25 @@ const ticket: Mockup = {
     ctx.setLineDash([]);
     ctx.globalAlpha = 1;
 
-    // левая зона: ВХОД + событие + дата
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
     ctx.fillStyle = ink;
-    ctx.font = `800 ${Math.round(h * 0.2)}px system-ui, sans-serif`;
+    ctx.font = `800 ${Math.round(u * 0.2)}px system-ui, sans-serif`;
     ctx.fillText("ВХОД", x + m, y + m);
     ctx.globalAlpha = 0.4;
-    ctx.fillRect(x + m, y + h * 0.5, w * 0.4, Math.max(1, h * 0.05)); // событие
+    ctx.fillRect(x + m, y + h * 0.5, w * 0.4, Math.max(1, h * 0.05));
     ctx.globalAlpha = 0.25;
-    ctx.fillRect(x + m, y + h * 0.66, w * 0.28, Math.max(1, h * 0.04)); // дата
+    ctx.fillRect(x + m, y + h * 0.66, w * 0.28, Math.max(1, h * 0.04));
     ctx.globalAlpha = 1;
 
-    // корешок: «№» + номер
     const sx = px + (x + w - px) / 2;
     ctx.textAlign = "center";
     ctx.fillStyle = ink;
     ctx.globalAlpha = 0.5;
-    ctx.font = `500 ${Math.round(h * 0.1)}px system-ui, sans-serif`;
+    ctx.font = `500 ${Math.round(u * 0.1)}px system-ui, sans-serif`;
     ctx.fillText("№", sx, y + h * 0.28);
     ctx.globalAlpha = 0.8;
-    ctx.font = `800 ${Math.round(h * 0.2)}px system-ui, sans-serif`;
+    ctx.font = `800 ${Math.round(u * 0.2)}px system-ui, sans-serif`;
     ctx.fillText("0042", sx, y + h * 0.44);
     ctx.globalAlpha = 1;
   },
