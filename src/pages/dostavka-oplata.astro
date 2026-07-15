@@ -18,7 +18,18 @@ const courierMsk = methods.find((m) => m.freeOverThreshold);
 const courierCost = courierMsk?.priceFrom ?? 790;
 const freeThreshold = settings.free_delivery_threshold ?? FREE_DELIVERY_DEFAULT;
 const money = (n: number) => n.toLocaleString("ru-RU");
-const pvzList = methods.filter((m) => m.type === "pvz").map((m) => m.label).join(", ");
+// В плитках витрины названия короткие (GO, ПВЗ, Почта), но в описательном тексте
+// нужны полные имена перевозчиков. Маппинг коротких → полных для читаемой прозы.
+const pvzFull: Record<string, string> = {
+  cdek: "СДЭК",
+  yandex_pvz: "Яндекс ПВЗ",
+  "5post": "5Post",
+  post: "Почта России",
+};
+const pvzList = methods
+  .filter((m) => m.type === "pvz")
+  .map((m) => pvzFull[m.code] ?? m.label)
+  .join(", ");
 
 // — Доставка — (описания свои; числа/способы — из checkout) —
 const delivery = [
