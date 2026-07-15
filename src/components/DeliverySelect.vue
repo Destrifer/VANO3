@@ -223,9 +223,9 @@ function pick(m: DeliveryMethod) {
 }
 .ds__tile--sel { border-color: var(--color-primary, #3b82f6); }
 .ds__tile-label { max-width: 100%; font-weight: 600; font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ds__tile-logo { display: flex; align-items: center; justify-content: center; height: 1.9rem; }
+.ds__tile-logo { display: flex; align-items: center; justify-content: center; height: 2.85rem; }
 .ds__tile-logo img { max-width: 100%; max-height: 100%; object-fit: contain; }
-.ds__tile-logo-ph { width: 1.9rem; height: 1.9rem; border-radius: 0.3rem; background: var(--color-base-200); }
+.ds__tile-logo-ph { width: 2.85rem; height: 2.85rem; border-radius: 0.3rem; background: var(--color-base-200); }
 .ds__tile-meta { font-size: 0.7rem; line-height: 1.25; color: color-mix(in oklch, var(--color-base-content) 65%, transparent); }
 
 .ds__foot { margin: 0.1rem 0 0; font-size: 0.72rem; color: color-mix(in oklch, var(--color-base-content) 55%, transparent); }
