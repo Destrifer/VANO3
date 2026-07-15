@@ -594,8 +594,121 @@ const forms: Mockup = {
   },
 };
 
+// Макет «визитка» (business-card): двухзонная композиция — брендовая шапка
+// (монограмма + вордмарк + тэглайн) над разделителем, персона + контакты под ним,
+// плюс тонкая кайма-рамка. Различия кластеров (ламинация/УФ/фольга/металл/пластик/
+// круглая) даёт движок материалом и формой — кукла одна. Только ink-контент.
+const businessCard: Mockup = {
+  content(ctx, r, env) {
+    const { x, y, w, h } = r;
+    const ink = env.ink;
+    const round = env.round;
+    const u = Math.min(w, h);
+    const pd = u * (round ? 0.14 : 0.11);
+    const cx = x + w / 2;
+
+    // Круглая визитка — центрированная композиция.
+    if (round) {
+      ctx.textAlign = "center";
+      if (!env.foilOn) {
+        ctx.fillStyle = ink;
+        ctx.textBaseline = "top";
+        ctx.font = `700 ${Math.round(u * 0.2)}px Georgia, serif`;
+        ctx.fillText("PM", cx, y + h * 0.2);
+      }
+      ctx.fillStyle = ink;
+      ctx.textBaseline = "alphabetic";
+      ctx.font = `700 ${Math.round(u * 0.1)}px system-ui, sans-serif`;
+      ctx.fillText("Иван Петров", cx, y + h * 0.56);
+      ctx.globalAlpha = 0.6;
+      ctx.font = `400 ${Math.round(u * 0.06)}px system-ui, sans-serif`;
+      ctx.fillText("Менеджер по печати", cx, y + h * 0.65);
+      ctx.globalAlpha = 0.3;
+      ctx.strokeStyle = ink;
+      ctx.lineWidth = Math.max(1, u * 0.004);
+      ctx.beginPath();
+      ctx.moveTo(cx - w * 0.18, y + h * 0.7);
+      ctx.lineTo(cx + w * 0.18, y + h * 0.7);
+      ctx.stroke();
+      ctx.globalAlpha = 0.55;
+      ctx.font = `400 ${Math.round(u * 0.055)}px system-ui, sans-serif`;
+      ctx.fillText("+7 495 000-00-00", cx, y + h * 0.79);
+      ctx.globalAlpha = 1;
+      return;
+    }
+
+    // Прямоугольная: тонкая кайма-рамка (премиальность).
+    ctx.strokeStyle = ink;
+    ctx.globalAlpha = 0.18;
+    ctx.lineWidth = Math.max(1, u * 0.008);
+    roundRect(ctx, x + pd * 0.55, y + pd * 0.55, w - pd * 1.1, h - pd * 1.1, u * 0.04);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    // Верх: монограмма слева (при фольге рисует foil-слой) + бренд справа.
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    if (!env.foilOn) {
+      ctx.fillStyle = ink;
+      ctx.font = `700 ${Math.round(h * 0.2)}px Georgia, serif`;
+      ctx.fillText("PM", x + pd, y + pd);
+    }
+    ctx.textAlign = "right";
+    ctx.fillStyle = ink;
+    ctx.globalAlpha = 0.75;
+    ctx.font = `600 ${Math.round(h * 0.07)}px system-ui, sans-serif`;
+    ctx.fillText("P R I N T M O S", x + w - pd, y + pd + h * 0.02);
+    ctx.globalAlpha = 0.4;
+    ctx.font = `400 ${Math.round(h * 0.05)}px system-ui, sans-serif`;
+    ctx.fillText("типография", x + w - pd, y + pd + h * 0.12);
+    ctx.globalAlpha = 1;
+
+    // Разделитель.
+    const dy = y + h * 0.52;
+    ctx.strokeStyle = ink;
+    ctx.globalAlpha = 0.25;
+    ctx.lineWidth = Math.max(1, u * 0.005);
+    ctx.beginPath();
+    ctx.moveTo(x + pd, dy);
+    ctx.lineTo(x + w - pd, dy);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    // Низ: имя + должность слева.
+    ctx.textAlign = "left";
+    ctx.textBaseline = "alphabetic";
+    ctx.fillStyle = ink;
+    ctx.font = `700 ${Math.round(h * 0.125)}px system-ui, sans-serif`;
+    ctx.fillText("Иван Петров", x + pd, dy + h * 0.17);
+    ctx.globalAlpha = 0.6;
+    ctx.font = `400 ${Math.round(h * 0.072)}px system-ui, sans-serif`;
+    ctx.fillText("Менеджер по печати", x + pd, dy + h * 0.3);
+    ctx.globalAlpha = 1;
+
+    // Контакты справа: 3 строки в пределах нижнего поля.
+    ctx.textAlign = "right";
+    ctx.globalAlpha = 0.7;
+    ctx.fillStyle = ink;
+    ctx.font = `400 ${Math.round(h * 0.06)}px system-ui, sans-serif`;
+    ["+7 495 000-00-00", "mail@printmos.ru", "printmos.ru"].forEach((t, i) =>
+      ctx.fillText(t, x + w - pd, dy + h * 0.15 + i * h * 0.095),
+    );
+    ctx.globalAlpha = 1;
+  },
+  foil(ctx, r, env) {
+    const { x, y, w, h } = r;
+    const u = Math.min(w, h);
+    if (env.round) {
+      drawFoilText(ctx, "PM", x + w / 2, y + h * 0.2, Math.round(u * 0.2), "center", env.foilHex);
+    } else {
+      drawFoilText(ctx, "PM", x + u * 0.11, y + u * 0.11, Math.round(h * 0.2), "left", env.foilHex);
+    }
+  },
+};
+
 export const mockups: Record<string, Mockup> = {
   card, sticker, leaflet, letterhead, envelope, poster, tag, sign, folder, forms,
+  "business-card": businessCard,
 };
 
 export function getMockup(kind?: string | null): Mockup {
