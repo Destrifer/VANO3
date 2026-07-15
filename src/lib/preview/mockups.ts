@@ -480,8 +480,122 @@ const folder: Mockup = {
   },
 };
 
+// Макет «бланк/БСО» (forms): условное лого + серия/№ строгой отчётности в рамке,
+// заголовок, поля «метка → линия», компактная таблица, подпись и «М.П.». Один
+// образ закрывает кластеры БСО / самокопир. / фирменные. Рисуем ТОЛЬКО ink-
+// контент — бумага/текстура/глянец/фольга едины для всех сцен (даёт Preview.vue).
+// Пропорция A4-портрет: шрифты от меньшей стороны (= ширина), как у letterhead.
+const forms: Mockup = {
+  content(ctx, r, env) {
+    const { x, y, w, h } = r;
+    const ink = env.ink;
+    const u = Math.min(w, h);
+    const m = w * 0.09;
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+
+    // лого PM (условное — «фирменные»); при фольге рисует foil-слой
+    if (!env.foilOn) {
+      ctx.fillStyle = ink;
+      ctx.font = `700 ${Math.round(w * 0.1)}px Georgia, serif`;
+      ctx.fillText("PM", x + m, y + m);
+    }
+
+    // серия/№ строгой отчётности в рамке — правый верх (главный признак БСО)
+    const bw = w * 0.34, bh = h * 0.055, bx = x + w - m - bw, by = y + m;
+    ctx.strokeStyle = ink;
+    ctx.globalAlpha = 0.4;
+    ctx.lineWidth = Math.max(1, u * 0.006);
+    roundRect(ctx, bx, by, bw, bh, bh * 0.15);
+    ctx.stroke();
+    ctx.globalAlpha = 0.7;
+    ctx.fillStyle = ink;
+    ctx.font = `600 ${Math.round(w * 0.032)}px system-ui, sans-serif`;
+    ctx.fillText("Серия АА  № 000123", bx + bw * 0.06, by + bh * 0.28);
+    ctx.globalAlpha = 1;
+
+    // заголовок-плашка по центру + подзаголовок
+    const ty = y + h * 0.17;
+    ctx.fillStyle = ink;
+    ctx.globalAlpha = 0.75;
+    ctx.fillRect(x + w / 2 - w * 0.22, ty, w * 0.44, h * 0.022);
+    ctx.globalAlpha = 0.3;
+    ctx.fillRect(x + w / 2 - w * 0.13, ty + h * 0.035, w * 0.26, h * 0.012);
+    ctx.globalAlpha = 1;
+
+    // разделитель
+    const dy = ty + h * 0.075;
+    ctx.strokeStyle = ink;
+    ctx.globalAlpha = 0.3;
+    ctx.lineWidth = Math.max(1, u * 0.005);
+    ctx.beginPath();
+    ctx.moveTo(x + m, dy);
+    ctx.lineTo(x + w - m, dy);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    // поля бланка: метка + линия
+    const rows = 5, rh = h * 0.062, ry0 = dy + h * 0.04;
+    for (let i = 0; i < rows; i++) {
+      const ry = ry0 + i * rh;
+      ctx.fillStyle = ink;
+      ctx.globalAlpha = 0.5;
+      ctx.fillRect(x + m, ry, w * (i % 2 ? 0.16 : 0.2), Math.max(1, h * 0.014));
+      ctx.globalAlpha = 0.28;
+      ctx.beginPath();
+      ctx.moveTo(x + m + w * 0.26, ry + h * 0.02);
+      ctx.lineTo(x + w - m, ry + h * 0.02);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+
+    // компактная таблица 3×2 (сумма/кол-во) — усиливает «бланк»
+    const tx = x + m, tw = w - 2 * m, tY = ry0 + rows * rh + h * 0.01, tH = h * 0.11;
+    ctx.strokeStyle = ink;
+    ctx.globalAlpha = 0.28;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(tx, tY, tw, tH);
+    for (let c = 1; c < 3; c++) {
+      ctx.beginPath();
+      ctx.moveTo(tx + (tw * c) / 3, tY);
+      ctx.lineTo(tx + (tw * c) / 3, tY + tH);
+      ctx.stroke();
+    }
+    ctx.beginPath();
+    ctx.moveTo(tx, tY + tH / 2);
+    ctx.lineTo(tx + tw, tY + tH / 2);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    // подвал: линия подписи слева + «М.П.» справа
+    const fy = y + h - m - h * 0.02;
+    ctx.strokeStyle = ink;
+    ctx.globalAlpha = 0.35;
+    ctx.beginPath();
+    ctx.moveTo(x + m, fy);
+    ctx.lineTo(x + m + w * 0.34, fy);
+    ctx.stroke();
+    ctx.globalAlpha = 0.3;
+    ctx.setLineDash([u * 0.02, u * 0.015]);
+    ctx.beginPath();
+    ctx.arc(x + w - m - w * 0.09, fy - h * 0.01, w * 0.075, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.globalAlpha = 0.5;
+    ctx.fillStyle = ink;
+    ctx.textAlign = "center";
+    ctx.font = `500 ${Math.round(w * 0.03)}px system-ui, sans-serif`;
+    ctx.fillText("М.П.", x + w - m - w * 0.09, fy - h * 0.022);
+    ctx.globalAlpha = 1;
+  },
+  foil(ctx, r, env) {
+    const { x, y, w } = r;
+    drawFoilText(ctx, "PM", x + w * 0.09, y + w * 0.09, Math.round(w * 0.1), "left", env.foilHex);
+  },
+};
+
 export const mockups: Record<string, Mockup> = {
-  card, sticker, leaflet, letterhead, envelope, poster, tag, sign, folder,
+  card, sticker, leaflet, letterhead, envelope, poster, tag, sign, folder, forms,
 };
 
 export function getMockup(kind?: string | null): Mockup {
