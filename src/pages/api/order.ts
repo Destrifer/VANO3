@@ -3,7 +3,7 @@ import { getPricingData, getProductPricing, type ProductPricing } from "../../li
 import { priceFromSpec, describeSpec, type CartSpec } from "../../lib/pricing/spec";
 import { findPayment } from "../../lib/checkout";
 import { getDeliveryMethods, findMethod, methodCost, FREE_DELIVERY_DEFAULT } from "../../lib/delivery";
-import { getSettings } from "../../lib/settings";
+import { getSettings, MIN_ORDER_DEFAULT } from "../../lib/settings";
 
 // Создание заказа: сервер ПЕРЕСЧИТЫВАЕТ цену из спека (id) по актуальным данным
 // Directus (клиентским суммам не доверяем), затем создаёт order + order_items
@@ -120,6 +120,19 @@ export const POST: APIRoute = async ({ request }) => {
   const threshold = settings.free_delivery_threshold ?? FREE_DELIVERY_DEFAULT;
   const discount_total = 0;
   const goodsForThreshold = subtotal - discount_total;
+
+  // Минимальная сумма заказа — по ТОВАРАМ, без доставки (иначе доставка «дотянет»
+  // корзину до порога). Порог из settings; клиент блокирует кнопку сам, но это
+  // проверка авторитетная — на случай прямого POST мимо корзины.
+  const minOrder = settings.min_order_total ?? MIN_ORDER_DEFAULT;
+  if (minOrder > 0 && goodsForThreshold < minOrder) {
+    return json(
+      {
+        error: `Минимальная сумма заказа — ${minOrder} ₽ (без доставки). Сейчас в корзине ${goodsForThreshold} ₽.`,
+      },
+      400,
+    );
+  }
   const delivery_cost =
     methodCost(dMethod, goodsForThreshold, threshold) ?? 0; // null (уточнит менеджер) → 0
 

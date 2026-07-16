@@ -8,6 +8,7 @@ import { cartItems, cartTotal, removeFromCart, clearCart } from "../stores/cart"
 import { selectedDeliveryCode } from "../stores/delivery";
 import { PAYMENT_METHODS } from "../lib/checkout";
 import { findMethod, methodCost, FREE_DELIVERY_DEFAULT, type DeliveryMethod } from "../lib/delivery";
+import { MIN_ORDER_DEFAULT } from "../lib/settings";
 import DeliverySelect from "./DeliverySelect.vue";
 import AddressField from "./AddressField.vue";
 
@@ -17,11 +18,14 @@ const money = (n: number) => n.toLocaleString("ru-RU", { maximumFractionDigits: 
 
 // Порог + способы доставки — из мета/JSON (авторитет — сервер при заказе).
 const threshold = ref(FREE_DELIVERY_DEFAULT);
+const minOrder = ref(MIN_ORDER_DEFAULT);
 const methods = ref<DeliveryMethod[]>([]);
 const deliveryCode = useStore(selectedDeliveryCode);
 onMounted(() => {
   const m = document.querySelector('meta[name="free-delivery-threshold"]')?.getAttribute("content");
   if (m) threshold.value = Number(m) || FREE_DELIVERY_DEFAULT;
+  const mo = document.querySelector('meta[name="min-order-total"]')?.getAttribute("content");
+  if (mo !== null && mo !== undefined) minOrder.value = Number(mo) || 0;
   try {
     const el = document.getElementById("delivery-methods");
     if (el?.textContent) methods.value = JSON.parse(el.textContent) as DeliveryMethod[];
@@ -35,6 +39,11 @@ const delCost = computed(() =>
   methodCost(selectedMethod.value, goodsTotal.value, threshold.value),
 ); // null = уточнит менеджер
 const grandTotal = computed(() => goodsTotal.value + (delCost.value ?? 0));
+
+// Минимальная сумма заказа — по товарам, БЕЗ доставки (сервер проверяет так же).
+// Не ограничивает корзину: положить одну книгу можно, нельзя только оформить.
+const shortfall = computed(() => Math.max(0, minOrder.value - goodsTotal.value));
+const belowMin = computed(() => minOrder.value > 0 && items.value.length > 0 && shortfall.value > 0);
 
 const addr = reactive({
   address: "",
@@ -271,7 +280,16 @@ async function submit() {
             <span class="text-base-content/70">Итого</span>
             <span class="text-3xl font-bold">{{ money(grandTotal) }} ₽</span>
           </div>
-          <button class="btn btn-primary btn-lg btn-block" :disabled="submitting" @click="submit">
+          <p v-if="belowMin" class="rounded-box bg-base-200 px-3 py-2 text-sm">
+            Минимальный заказ — <span class="font-semibold">{{ money(minOrder) }} ₽</span> без доставки.
+            Добавьте позиций ещё на <span class="font-semibold">{{ money(shortfall) }} ₽</span> —
+            сумма считается по всей корзине, позиции могут быть разными.
+          </p>
+          <button
+            class="btn btn-primary btn-lg btn-block"
+            :disabled="submitting || belowMin"
+            @click="submit"
+          >
             {{ submitting ? "Оформляем…" : "Оформить заказ" }}
           </button>
           <p v-if="error" class="text-sm text-error">{{ error }}</p>
