@@ -23,6 +23,9 @@ export type SheetSpec = {
   laminationId: number | null;
   foil: { id: number; colorId: number | null } | null;
   finishing: FinishingPick[];
+  // Макета нет — нужен дизайн. На цену НЕ влияет (стоимость согласует менеджер),
+  // это флаг для заказа: попадает в summary позиции.
+  needsDesign?: boolean;
 };
 
 // Многостраничная стратегия (брошюры, каталоги, …).
@@ -44,6 +47,7 @@ export type MultipageSpec = {
   laminationId: number | null;
   foil: { id: number; colorId: number | null } | null;
   finishing: FinishingPick[]; // прочая отделка обложки
+  needsDesign?: boolean; // см. SheetSpec.needsDesign
 };
 
 // Фикс-цена за лист (наклейки на спецплёнке/пластике).
@@ -54,6 +58,7 @@ export type FixedSpec = {
   width: number;
   height: number;
   quantity: number;
+  needsDesign?: boolean; // см. SheetSpec.needsDesign
 };
 
 export type CartSpec = SheetSpec | MultipageSpec | FixedSpec;
@@ -168,13 +173,18 @@ function buildMultipageConfig(
 }
 
 // Человекочитаемое описание спека (по id → имена) для менеджера в админке.
+// Метка «нужен дизайн» в описании позиции — по ней менеджер видит, что макета нет.
+export const NEEDS_DESIGN_LABEL = "макета нет — нужен дизайн";
+
 export function describeSpec(spec: CartSpec, product: ProductPricing): string {
   const k = specKind(spec);
   if (k === "multipage") return describeMultipage(spec as MultipageSpec, product);
   if (k === "fixed") {
     const s = spec as FixedSpec;
     const sz = s.form === "round" ? `⌀${s.width} мм` : `${s.width}×${s.height} мм`;
-    return `${sz} · ${s.quantity} шт`;
+    const parts = [sz, `${s.quantity} шт`];
+    if (s.needsDesign) parts.push(NEEDS_DESIGN_LABEL);
+    return parts.join(" · ");
   }
   return describeSheet(spec as SheetSpec, product);
 }
@@ -206,6 +216,7 @@ function describeSheet(spec: SheetSpec, product: ProductPricing): string {
     const o = product.finishing.find((f) => f.id === pick.id);
     if (o) parts.push(pick.count > 1 ? `${o.name} ×${pick.count}` : o.name);
   }
+  if (spec.needsDesign) parts.push(NEEDS_DESIGN_LABEL);
   return parts.join(" · ");
 }
 
@@ -232,6 +243,7 @@ function describeMultipage(spec: MultipageSpec, product: ProductPricing): string
     const o = product.finishing.find((f) => f.id === pick.id);
     if (o) parts.push(o.name);
   }
+  if (spec.needsDesign) parts.push(NEEDS_DESIGN_LABEL);
   return parts.join(" · ");
 }
 

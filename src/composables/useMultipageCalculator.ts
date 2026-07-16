@@ -129,6 +129,7 @@ export function useMultipageCalculator(props: {
   const selectQty = (q: number) => { quantity.value = q; };
 
   // — Макет —
+  const artworkMode = ref<import("./calcShared").ArtworkMode>("have");
   const artworkId = ref<string | null>(null);
   const artworkName = ref<string | null>(null);
   const artworkPreflight = ref<import("../lib/preflight").Preflight | null>(null);
@@ -203,6 +204,7 @@ export function useMultipageCalculator(props: {
     });
     d.push({ label: "Печать", value: `обложка ${coverSides.value}, блок ${innerSides}` });
     d.push({ label: "Тираж", value: `${totalQty.value} шт` });
+    if (artworkMode.value === "design") d.push({ label: "Макет", value: "нужен дизайн" });
     return d;
   }
 
@@ -228,6 +230,7 @@ export function useMultipageCalculator(props: {
     finishing: coverExtras
       .filter((_, i) => extraChecked.value[i])
       .map((o) => ({ id: o.id, count: 1 })), // per_item — count игнорируется движком
+    needsDesign: artworkMode.value === "design" || undefined,
   });
 
   const money = (n: number) => n.toLocaleString("ru-RU", { maximumFractionDigits: 0 });
@@ -249,7 +252,7 @@ export function useMultipageCalculator(props: {
     laminationOptions, foilOption, laminationIndex, foilOn, foilColorIndex, laminationLocked,
     coverExtras, extraChecked,
     // макет
-    artworkId, artworkName, artworkPreflight,
+    artworkMode, artworkId, artworkName, artworkPreflight,
     // расчёт / контракт
     result, perUnit, money, details, currentSpec, setThumbProvider, captureThumb,
   });

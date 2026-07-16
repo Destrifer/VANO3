@@ -9,6 +9,7 @@ import type { Preflight } from "../lib/preflight";
 // многостраничный) кладёт свой объект под sharedKey, а специфичные поля берут
 // своё состояние через собственный типизированный ключ (calcKey / mpCalcKey).
 export type DetailRow = { label: string; value: string };
+export type ArtworkMode = "have" | "design";
 
 export interface SharedCalc {
   product: ProductPricing;
@@ -19,6 +20,9 @@ export interface SharedCalc {
   money: (n: number) => string;
   details: () => DetailRow[]; // строки параметров для корзины/плашки
   currentSpec: () => SpecInput; // спек без productSlug (его добавит плашка)
+  // Путь по макету: клиент грузит свой ("have") или просит нарисовать ("design").
+  // На цену не влияет — стоимость дизайна согласует менеджер.
+  artworkMode: ArtworkMode;
   artworkId: string | null;
   artworkName: string | null;
   artworkPreflight: Preflight | null;

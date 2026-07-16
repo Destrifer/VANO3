@@ -165,6 +165,7 @@ export function useCalculator(props: {
   const paperIndex = ref(0);
 
   // Загруженный макет (id файла в Directus) — заполняет ArtworkUpload.
+  const artworkMode = ref<import("./calcShared").ArtworkMode>("have");
   const artworkId = ref<string | null>(null);
   const artworkName = ref<string | null>(null);
   const artworkPreflight = ref<import("../lib/preflight").Preflight | null>(null);
@@ -440,13 +441,18 @@ export function useCalculator(props: {
     const others = otherOptions.value.filter((x) => fin[x.i].checked).map((x) => x.o.name);
     if (others.length) d.push({ label: "Обработка", value: others.join(", ") });
     d.push({ label: "Тираж", value: `${totalQty.value} шт` });
+    if (artworkMode.value === "design") d.push({ label: "Макет", value: "нужен дизайн" });
     return d;
   }
 
   // Спек по id (productSlug добавляет вызывающий — он его знает).
   const currentSpec = (): SpecInput => {
     if (product.strategy === "fixed") {
-      return { kind: "fixed", form: shape.value, width: dims.value.w, height: dims.value.h, quantity: totalQty.value };
+      return {
+        kind: "fixed", form: shape.value, width: dims.value.w, height: dims.value.h,
+        quantity: totalQty.value,
+        needsDesign: artworkMode.value === "design" || undefined,
+      };
     }
     return {
     kind: "sheet",
@@ -477,6 +483,7 @@ export function useCalculator(props: {
         ? [{ id: foldFinishing.id, count: selectedFold.value.folds }]
         : []),
     ],
+    needsDesign: artworkMode.value === "design" || undefined,
     };
   };
 
@@ -499,7 +506,7 @@ export function useCalculator(props: {
     // материал
     paperIndex, paperGroups, currentPaper, currentPaperFixed, colors, selectedColorIndex,
     // макет
-    artworkId, artworkName, artworkPreflight,
+    artworkMode, artworkId, artworkName, artworkPreflight,
     // постпечать
     laminationOptions, foilOption, otherOptions,
     laminationIndex, foilOn, foilColorIndex, laminationLocked,
