@@ -111,6 +111,108 @@ const sticker: Mockup = {
   },
 };
 
+// Эпоксидный купол поверх печати: смола преломляет свет у края (тёмный ободок),
+// собирает крупный мягкий блик и даёт узкий пересвет-серп по верхней кромке.
+// Рисуется прямоугольниками — форму (круг/скругление) даёт clip из Preview.vue.
+function resinDome(ctx: CanvasRenderingContext2D, r: Rect, round: boolean) {
+  const { x, y, w, h } = r;
+  const cx = x + w / 2;
+  const cy = y + h / 2;
+  const m = Math.min(w, h);
+
+  // Тело линзы: свет падает сверху-слева, поэтому противоположный край уходит в
+  // тень — без этого купол не читается на белой основе (белый блик по белому).
+  const body = ctx.createLinearGradient(x, y, x + w * 0.75, y + h);
+  body.addColorStop(0, "rgba(255,255,255,0.22)");
+  body.addColorStop(0.45, "rgba(20,26,34,0)");
+  body.addColorStop(1, "rgba(20,26,34,0.28)");
+  ctx.fillStyle = body;
+  ctx.fillRect(x, y, w, h);
+
+  // Край линзы: смола заворачивается и собирает тень по периметру. Форма спада
+  // должна повторять изделие: у круга — кольцом, у прямоугольника — вдоль
+  // четырёх сторон (радиальный градиент на вытянутом изделии даёт не купол, а
+  // грязную виньетку по торцам).
+  if (round) {
+    const rim = ctx.createRadialGradient(cx, cy, m * 0.16, cx, cy, m * 0.5);
+    rim.addColorStop(0, "rgba(0,0,0,0)");
+    rim.addColorStop(0.62, "rgba(20,26,34,0.07)");
+    rim.addColorStop(0.88, "rgba(20,26,34,0.3)");
+    rim.addColorStop(1, "rgba(12,16,22,0.5)");
+    ctx.fillStyle = rim;
+    ctx.fillRect(x, y, w, h);
+  } else {
+    const band = m * 0.22; // ширина заворота смолы у борта
+    const edge = (
+      x0: number, y0: number, x1: number, y1: number, a: number,
+    ) => {
+      const g = ctx.createLinearGradient(x0, y0, x1, y1);
+      g.addColorStop(0, `rgba(12,16,22,${a})`);
+      g.addColorStop(0.55, "rgba(20,26,34,0.05)");
+      g.addColorStop(1, "rgba(20,26,34,0)");
+      ctx.fillStyle = g;
+      ctx.fillRect(x, y, w, h);
+    };
+    edge(x, y, x + band, y, 0.3); // левый борт
+    edge(x + w, y, x + w - band, y, 0.42); // правый (в тени)
+    edge(x, y, x, y + band, 0.22); // верхний
+    edge(x, y + h, x, y + h - band, 0.42); // нижний (в тени)
+  }
+
+  // основной блик — компактный и яркий, смещён вверх-влево
+  const specR = m * 0.34;
+  const spec = ctx.createRadialGradient(
+    cx - w * 0.17, cy - h * 0.19, m * 0.01,
+    cx - w * 0.17, cy - h * 0.19, specR,
+  );
+  spec.addColorStop(0, "rgba(255,255,255,0.92)");
+  spec.addColorStop(0.35, "rgba(255,255,255,0.3)");
+  spec.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = spec;
+  ctx.fillRect(x, y, w, h);
+
+  // Мягкое пятно света: радиальный градиент в сплюснутых координатах — даёт
+  // овал с размытым краем (у ellipse+fill край жёсткий и читается как грязь).
+  const softOval = (
+    ox: number, oy: number, rx: number, ry: number, tilt: number, alpha: number,
+  ) => {
+    ctx.save();
+    ctx.translate(ox, oy);
+    ctx.rotate(tilt);
+    ctx.scale(1, ry / rx);
+    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, rx);
+    g.addColorStop(0, `rgba(255,255,255,${alpha})`);
+    g.addColorStop(0.55, `rgba(255,255,255,${alpha * 0.35})`);
+    g.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(0, 0, rx, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  };
+
+  // Серп-пересвет по верхней кромке и отражённый свет по нижней. Размер вести от
+  // меньшей стороны: от ширины — на вытянутом изделии пятно расплывается во всю
+  // длину и читается как грязь, а не как блик.
+  softOval(cx - m * 0.04, y + h * 0.24, m * 0.4, m * 0.13, -0.3, 0.8);
+  softOval(cx + m * 0.08, y + h * 0.84, m * 0.32, m * 0.08, 0.22, 0.34);
+}
+
+// Макет «объёмная наклейка со смолой»: та же «рыба», что у наклейки, но под
+// эпоксидной линзой — купол и есть продукт, поэтому рисуем его здесь, а не
+// оставляем на слой глянца (ламинация даёт плоский блик, купол — объём).
+const volumeSticker: Mockup = {
+  content(ctx, r, env) {
+    sticker.content(ctx, r, env);
+    resinDome(ctx, r, env.round);
+  },
+  // фольга — под смолой: сначала металл, сверху купол
+  foil(ctx, r, env) {
+    sticker.foil?.(ctx, r, env);
+    resinDome(ctx, r, env.round);
+  },
+};
+
 // Макет «буклет/листовка»: контент колонками по числу панелей (foldCount+1).
 // Каждая панель — плашка изображения сверху, заголовок, строки текста (нечитаемо,
 // но обозначает структуру). Линии сгиба рисует Preview.vue поверх.
@@ -1410,6 +1512,7 @@ export const mockups: Record<string, Mockup> = {
   card, sticker, leaflet, letterhead, envelope, poster, tag, sign, folder, forms,
   "business-card": businessCard, award, badge, blueprint, plan, invite, label,
   map, menu, postcard, ticket, stencil, pricetag,
+  "volume-sticker": volumeSticker,
 };
 
 export function getMockup(kind?: string | null): Mockup {
