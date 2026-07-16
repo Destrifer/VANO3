@@ -4,7 +4,7 @@ import { Icon } from "astro-icon/components";
 import { Picture } from "astro:assets";
 import officeMap from "../assets/office-map.png";
 import { getMenu } from "../lib/categories";
-import { getSettings } from "../lib/settings";
+import { getSettings, MIN_ORDER_DEFAULT } from "../lib/settings";
 import { getDeliveryMethods } from "../lib/delivery";
 import CartButton from "../components/CartButton.vue";
 import JsonLd from "../components/seo/JsonLd.astro";
@@ -69,6 +69,7 @@ const businessLd = localBusiness(settings, siteUrl);
     <meta name="description" content={description} />
     <meta name="lead-cutoff" content={String(settings.cutoff_hour ?? 14)} />
     <meta name="free-delivery-threshold" content={String(settings.free_delivery_threshold ?? 20000)} />
+    <meta name="min-order-total" content={String(settings.min_order_total ?? MIN_ORDER_DEFAULT)} />
     <script type="application/json" id="delivery-methods" is:inline set:html={JSON.stringify(deliveryMethods)}></script>
     <title>{title}</title>
 

@@ -6,6 +6,7 @@ import { reactive, ref, computed, watch, type InjectionKey } from "vue";
 import { computePrice, PAGE_STEP, type MultipageConfig, type Sides } from "../lib/pricing/engine";
 import type { PricingData } from "../lib/pricing/engine";
 import type { ProductPricing, PaperOption } from "../lib/pricing/data";
+import { HOME_BASE_QTY } from "../lib/pricing/data";
 import type { SpecInput } from "../lib/pricing/spec";
 import { isLaminationLocked, forcedLaminationIndex } from "../lib/pricing/rules";
 import { glyphFor, splitLabel, type SizeTile } from "../lib/calculator/sizeGlyph";
@@ -123,8 +124,11 @@ export function useMultipageCalculator(props: {
   const extraChecked = ref<boolean[]>(coverExtras.map(() => false));
 
   // — Тираж —
-  const presets = [50, 100, 250, 500, 1000];
-  const quantity = ref(100);
+  // Плитки — из продукта (Directus `qty_presets`): у фотокниги/книги минимум 1
+  // экз., у тиражных — 50. Это ярлыки, а не ограничение: «Другой тираж» берёт
+  // любое число от 1, нижняя граница заказа — сумма корзины, а не тираж.
+  const presets = product.qtyPresets;
+  const quantity = ref(presets.includes(HOME_BASE_QTY) ? HOME_BASE_QTY : presets[0]);
   const totalQty = computed(() => quantity.value);
   const selectQty = (q: number) => { quantity.value = q; };
 

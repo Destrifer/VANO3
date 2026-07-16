@@ -30,7 +30,7 @@ function mapColor(c: any): PaperColor {
     full: responsiveAssetFluid(c.image, FULL_WIDTHS, FULL_SIZES),
   };
 }
-import { computePrice } from "./engine";
+import { computePrice, PAGE_STEP } from "./engine";
 import type {
   PricingData,
   Finishing,
@@ -110,6 +110,11 @@ export type ProductPricing = {
   singleSided: boolean; // печать только 4+0 (наклейки)
   doubleSided: boolean; // печать всегда 4+4 (буклеты)
   allowContourCut: boolean; // предлагать контурную резку (наклейки)
+  // Плитки тиража в калькуляторе. Задаются на продукте (Directus `qty_presets`):
+  // у визиток осмысленный минимум — 50, у фотокниги/книги — 1 экземпляр. Это
+  // ЯРЛЫКИ, а не ограничение: поле «Другой тираж» принимает любое число от 1, а
+  // нижняя граница заказа — сумма корзины (settings.min_order_total), не тираж.
+  qtyPresets: number[];
   foldTypes: FoldType[]; // варианты фальцовки (буклеты); фальцовка считается per_fold
   sizes: SizePreset[]; // для multipage это форматы (с pagesPerSheet)
   papers: PaperOption[]; // только published
@@ -214,14 +219,14 @@ export function defaultPrice(p: ProductPricing, pricing: PricingData): number | 
   return computePrice(cfg, pricing).total;
 }
 
-function defaultFixedPrice(p: ProductPricing, pricing: PricingData): number | null {
+function fixedPrice(p: ProductPricing, pricing: PricingData, quantity: number): number | null {
   const size = p.sizes[0];
   if (!size || !p.fixedPrice.length) return null;
   const cfg: FixedConfig = {
     strategy: "fixed",
     width: size.width,
     height: size.height,
-    quantity: HOME_BASE_QTY,
+    quantity,
     sheet: p.fixedSheet,
     priceBrackets: p.fixedPrice,
     urgent: false,
@@ -229,15 +234,50 @@ function defaultFixedPrice(p: ProductPricing, pricing: PricingData): number | nu
   return computePrice(cfg, pricing).total;
 }
 
-// Минимальный тираж витрины (для честной цены «от»).
-export const MIN_SHOWCASE_QTY = 50;
+const defaultFixedPrice = (p: ProductPricing, pricing: PricingData) =>
+  fixedPrice(p, pricing, HOME_BASE_QTY);
 
-// Цена «от» = самый дешёвый реальный заказ: минимальный тираж × одна сторона ×
-// самая дешёвая из доступных бумаг. Это честный минимум для title/Offer
-// (дефолт конфигуратора может быть дороже — это нормально, не враньё).
-// Для multipage/fixed «от» = дефолтная конфигурация (там минимум так не считается).
+// Плитки тиража по умолчанию — если у продукта не заданы `qty_presets`.
+// Совпадают с прежним хардкодом в калькуляторах, чтобы поведение не поехало
+// у продуктов, которым пресеты ещё не проставили.
+export const DEFAULT_QTY_PRESETS: Partial<Record<Strategy, number[]>> = {
+  sheet: [50, 100, 250, 500, 1000, 2000],
+  multipage: [50, 100, 250, 500, 1000],
+  fixed: [50, 100, 250, 500, 1000],
+};
+const QTY_PRESETS_FALLBACK = [50, 100, 250, 500, 1000];
+
+// Пресеты из Directus: массив чисел, тихо чистим мусор. Пусто/кривое → дефолт.
+function qtyPresets(raw: unknown, strategy: Strategy): number[] {
+  const list = (Array.isArray(raw) ? raw : [])
+    .map((v) => Math.floor(Number(v)))
+    .filter((v) => Number.isFinite(v) && v >= 1);
+  const uniq = [...new Set(list)].sort((a, b) => a - b);
+  return uniq.length ? uniq : (DEFAULT_QTY_PRESETS[strategy] ?? QTY_PRESETS_FALLBACK);
+}
+
+// Тираж витрины для цены «от» — минимальный пресет продукта: у визиток это 50,
+// у фотокниги/книги — 1 экземпляр. Раньше здесь была общая константа 50, из-за
+// чего «от» у multipage считалось вообще не так (см. ниже).
+function showcaseQty(p: ProductPricing): number {
+  return p.qtyPresets[0] ?? 1;
+}
+
+// Цена «от» = самый дешёвый реальный заказ: минимальный пресет × одна сторона ×
+// самая дешёвая из доступных бумаг. Честный минимум для title/Offer (дефолт
+// конфигуратора может быть дороже — это нормально, не враньё).
+//
+// Было (баг, найден на гэп-аудите фотокниг 2026-07-16): для multipage/fixed
+// «от» возвращало defaultPrice() — дефолтную конфигурацию в HOME_BASE_QTY = 100
+// экземпляров. Т.е. «от» показывало цену СОТНИ: `/photobooks/wedding` — «от
+// 72 600 ₽», `/books/single-copy` — «Печать книги в 1 экземпляре — от 19 500 ₽»
+// (сама себе противоречила). Теперь тираж един для всех стратегий и берётся из
+// пресетов продукта. Движок считает 1 экз честно: tierRate/bracketRate дадут
+// самую дорогую ступень, а не 1/100 от сотни.
 export function minPrice(p: ProductPricing, pricing: PricingData): number | null {
-  if (p.strategy !== "sheet") return defaultPrice(p, pricing);
+  const qty = showcaseQty(p);
+  if (p.strategy === "multipage") return minMultipagePrice(p, pricing, qty);
+  if (p.strategy === "fixed") return fixedPrice(p, pricing, qty);
   const size = p.sizes[0];
   if (!size || !p.papers.length) return null;
   const sides: Sides = p.doubleSided ? "4+4" : "4+0";
@@ -249,7 +289,7 @@ export function minPrice(p: ProductPricing, pricing: PricingData): number | null
       width: size.width,
       height: size.height,
       sides,
-      quantity: MIN_SHOWCASE_QTY,
+      quantity: qty,
       paper,
       urgent: false,
       finishing: [],
@@ -309,7 +349,11 @@ export function presetPrice(
   return computePrice(cfg, pricing).total;
 }
 
-function defaultMultipagePrice(p: ProductPricing, pricing: PricingData): number | null {
+function multipagePrice(
+  p: ProductPricing,
+  pricing: PricingData,
+  quantity: number,
+): number | null {
   const fmt = p.sizes[0];
   const inner = p.innerPapers[0];
   const cover = p.coverPapers[0];
@@ -325,11 +369,54 @@ function defaultMultipagePrice(p: ProductPricing, pricing: PricingData): number 
     innerPaper: inner,
     coverPaper: cover,
     binding: bind,
-    quantity: HOME_BASE_QTY,
+    quantity,
     urgent: false,
     finishing: [],
   };
   return computePrice(cfg, pricing).total;
+}
+
+const defaultMultipagePrice = (p: ProductPricing, pricing: PricingData) =>
+  multipagePrice(p, pricing, HOME_BASE_QTY);
+
+// Настоящий минимум multipage: перебираем переплёты и бумаги, берём самое дешёвое
+// сочетание — как sheet-ветка minPrice() перебирает бумаги. Брать bindings[0]
+// нельзя: у фотокниг это твёрдый 7БЦ (min 32 полосы, 1261 ₽), тогда как самый
+// дешёвый реальный заказ — пружина на 8 полосах (423 ₽), и именно на нём
+// открывается калькулятор (переплёт авто-выбирается по числу полос). «От» должно
+// совпадать с тем, что человек видит на странице, иначе title противоречит ей же.
+function minMultipagePrice(
+  p: ProductPricing,
+  pricing: PricingData,
+  quantity: number,
+): number | null {
+  const fmt = p.sizes[0];
+  if (!fmt || !p.bindings.length || !p.innerPapers.length || !p.coverPapers.length) return null;
+  let min = Infinity;
+  for (const binding of p.bindings) {
+    const pages = Math.max(PAGE_STEP, Math.ceil(binding.minPages / PAGE_STEP) * PAGE_STEP);
+    for (const innerPaper of p.innerPapers) {
+      for (const coverPaper of p.coverPapers) {
+        const cfg: MultipageConfig = {
+          strategy: "multipage",
+          width: fmt.width,
+          height: fmt.height,
+          pages,
+          innerSides: "4+4",
+          coverSides: "4+0",
+          innerPaper,
+          coverPaper,
+          binding,
+          quantity,
+          urgent: false,
+          finishing: [],
+        };
+        const total = computePrice(cfg, pricing).total;
+        if (total < min) min = total;
+      }
+    }
+  }
+  return Number.isFinite(min) ? min : null;
 }
 
 // Ценовой конфиг продукта (размеры, бумаги, постпечать) → типы движка.
@@ -366,6 +453,7 @@ export async function getProductPricing(
     "double_sided",
     "lead_days",
     "allow_contour_cut",
+    "qty_presets",
     "fold_types",
     "fixed_price",
     "fixed_sheet_width",
@@ -463,6 +551,7 @@ export async function getProductPricing(
     singleSided: !!p.single_sided,
     doubleSided: !!p.double_sided,
     allowContourCut: !!p.allow_contour_cut,
+    qtyPresets: qtyPresets(p.qty_presets, (p.strategy ?? "sheet") as Strategy),
     foldTypes: (Array.isArray(p.fold_types) ? p.fold_types : []).map((f: any) => ({
       name: String(f.name ?? ""),
       folds: num(f.folds),

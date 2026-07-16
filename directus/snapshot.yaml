@@ -8378,6 +8378,51 @@ fields:
       validation: null
       validation_message: null
       width: full
+  - collection: products
+    field: qty_presets
+    type: json
+    meta:
+      collection: products
+      conditions: null
+      display: null
+      display_options: null
+      field: qty_presets
+      group: null
+      hidden: false
+      interface: input-code
+      note: >-
+        Плитки тиража в калькуляторе, напр. [50,100,250,500,1000]. Пусто =
+        дефолт по стратегии. Ярлыки, а не ограничение: «Другой тираж» берёт
+        любое число от 1.
+      options:
+        language: json
+      readonly: false
+      required: false
+      searchable: true
+      sort: 38
+      special:
+        - cast-json
+      translations: null
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: qty_presets
+      table: products
+      data_type: json
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
   - collection: products_bindings
     field: id
     type: integer
@@ -11047,6 +11092,48 @@ fields:
       table: settings
       data_type: integer
       default_value: 20000
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: settings
+    field: min_order_total
+    type: integer
+    meta:
+      collection: settings
+      conditions: null
+      display: null
+      display_options: null
+      field: min_order_total
+      group: null
+      hidden: false
+      interface: input
+      note: Минимальная сумма заказа по товарам, БЕЗ доставки, руб (0/пусто = выкл)
+      options:
+        min: 0
+        step: 100
+      readonly: false
+      required: false
+      searchable: true
+      sort: 14
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: min_order_total
+      table: settings
+      data_type: integer
+      default_value: 2500
       max_length: null
       numeric_precision: 32
       numeric_scale: 0
