@@ -1,2 +1,9 @@
 # промежуточный дамп xlsx → JSON (регенерируется _xlsx_dump.py / _pipeline.py)
 dump.json
+
+# рыночный радар: снапшоты sitemap тяжёлые (~19 МБ/прогон) и промежуточные json —
+# локальные, регенерируются скриптами .claude/skills/market-radar/scripts/
+radar/snapshots/
+radar/classified.json
+radar/our_catalog.json
+radar/hosts-scoring.json
