@@ -117,6 +117,10 @@ export function useMultipageCalculator(props: {
     const idx = forcedLaminationIndex(on, laminationOptions.value.map((o) => o.name));
     if (idx >= 0) laminationIndex.value = idx;
   });
+  // Доп. обработка обложки: ungrouped-опции (УФ-лак, конгрев, объёмный лак).
+  // Чекбоксы; все per_item → цена на весь тираж, ручной count не нужен.
+  const coverExtras = product.finishing.filter((o) => !o.group);
+  const extraChecked = ref<boolean[]>(coverExtras.map(() => false));
 
   // — Тираж —
   const presets = [50, 100, 250, 500, 1000];
@@ -135,6 +139,7 @@ export function useMultipageCalculator(props: {
     const lam = laminationOptions.value[laminationIndex.value];
     if (laminationIndex.value >= 0 && lam) f.push({ option: lam });
     if (foilOn.value && foilOption.value) f.push({ option: foilOption.value });
+    coverExtras.forEach((o, i) => { if (extraChecked.value[i]) f.push({ option: o }); });
     return f;
   }
 
@@ -193,6 +198,9 @@ export function useMultipageCalculator(props: {
       const fc = foilOption.value.colors[foilColorIndex.value]?.name;
       d.push({ label: "Фольга обложки", value: fc ?? "да" });
     }
+    coverExtras.forEach((o, i) => {
+      if (extraChecked.value[i]) d.push({ label: "Отделка обложки", value: o.name });
+    });
     d.push({ label: "Печать", value: `обложка ${coverSides.value}, блок ${innerSides}` });
     d.push({ label: "Тираж", value: `${totalQty.value} шт` });
     return d;
@@ -217,7 +225,9 @@ export function useMultipageCalculator(props: {
       foilOn.value && foilOption.value
         ? { id: foilOption.value.id, colorId: foilOption.value.colors[foilColorIndex.value]?.id ?? null }
         : null,
-    finishing: [],
+    finishing: coverExtras
+      .filter((_, i) => extraChecked.value[i])
+      .map((o) => ({ id: o.id, count: 1 })), // per_item — count игнорируется движком
   });
 
   const money = (n: number) => n.toLocaleString("ru-RU", { maximumFractionDigits: 0 });
@@ -237,6 +247,7 @@ export function useMultipageCalculator(props: {
     innerSides, coverSides, sides, presets, quantity, totalQty, selectQty,
     // отделка обложки
     laminationOptions, foilOption, laminationIndex, foilOn, foilColorIndex, laminationLocked,
+    coverExtras, extraChecked,
     // макет
     artworkId, artworkName, artworkPreflight,
     // расчёт / контракт

@@ -126,6 +126,18 @@ function bindGlyph(name: string): string {
         v-model:foilOn="calc.foilOn"
         v-model:foilColorIndex="calc.foilColorIndex"
       />
+      <!-- Доп. обработка обложки: ungrouped-опции (УФ-лак, конгрев, объёмный лак) -->
+      <div v-if="calc.coverExtras.length" class="flex flex-col gap-1.5">
+        <span class="text-sm font-semibold">Дополнительная обработка</span>
+        <label
+          v-for="(o, i) in calc.coverExtras"
+          :key="o.id"
+          class="inline-flex items-center gap-2"
+        >
+          <input type="checkbox" class="toggle toggle-sm" v-model="calc.extraChecked[i]" />
+          <span>{{ o.name }}</span>
+        </label>
+      </div>
     </div>
 
     <!-- Блок: бумага (всегда белая) + печать всегда двусторонняя -->
