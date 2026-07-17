@@ -69,8 +69,21 @@ export function useMultipageCalculator(props: {
   }
 
   // — Полосы (кратно 4, свободно в общем диапазоне) — переплёт подстраивается —
-  const allMin = Math.min(...product.bindings.map((b) => b.minPages), 8);
-  const allMax = Math.max(...product.bindings.map((b) => b.maxPages), 8);
+  // Границы — по РЕАЛЬНЫМ переплётам продукта. Раньше здесь стояла жёсткая
+  // восьмёрка (`Math.min(...minPages, 8)`), и она опускала нижнюю границу ниже
+  // того, что продукт умеет: у выпускных альбомов самый «короткий» переплёт —
+  // 7БЦ от 32 полос, поэтому калькулятор открывался на 8 полосах, где ОБА
+  // переплёта несовместимы. autoBinding() в таком состоянии не находит ни
+  // одного кандидата и оставляет bindings[0], а движок честно считает цену
+  // несобираемой конфигурации: страница показывала 39 800 ₽ и активную кнопку
+  // «В корзину» (сервер минимум полос тоже не проверяет). Восьмёрка нужна была
+  // только как фолбэк для продукта без переплётов — им и осталась.
+  const allMin = product.bindings.length
+    ? Math.min(...product.bindings.map((b) => b.minPages))
+    : 8;
+  const allMax = product.bindings.length
+    ? Math.max(...product.bindings.map((b) => b.maxPages))
+    : 8;
   const pagesMin = Math.ceil(allMin / PAGE_STEP) * PAGE_STEP;
   const pagesMax = Math.floor(allMax / PAGE_STEP) * PAGE_STEP;
   const clampPages = (p: number) =>
