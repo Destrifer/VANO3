@@ -43,6 +43,10 @@ export type MultipageSpec = {
   coverColorId: number | null;
   bindingId: number;
   quantity: number;
+  // Разлиновка блока («Линейка», «Клетка», …). На цену НЕ влияет — это макет
+  // блока; нужна производству. Храним строкой, а не id: список задаётся на
+  // продукте (`ruling_options`), отдельной сущности с ценой у неё нет.
+  ruling?: string | null;
   // отделка обложки
   laminationId: number | null;
   foil: { id: number; colorId: number | null } | null;
@@ -230,6 +234,9 @@ function describeMultipage(spec: MultipageSpec, product: ProductPricing): string
   if (cover) parts.push(`обложка ${cover.name}`);
   const inner = product.innerPapers.find((p) => p.id === spec.innerPaperId);
   if (inner) parts.push(`блок ${inner.name}`);
+  // Разлиновку показываем менеджеру всегда, когда выбрана: на цену не влияет,
+  // но без неё блок уйдёт в печать не тот.
+  if (spec.ruling) parts.push(`разлиновка: ${spec.ruling.toLowerCase()}`);
   if (spec.laminationId != null) {
     const lam = product.finishing.find((f) => f.id === spec.laminationId);
     if (lam) parts.push(lam.name);

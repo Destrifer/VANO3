@@ -115,6 +115,11 @@ export type ProductPricing = {
   // ЯРЛЫКИ, а не ограничение: поле «Другой тираж» принимает любое число от 1, а
   // нижняя граница заказа — сумма корзины (settings.min_order_total), не тираж.
   qtyPresets: number[];
+  // Разлиновка блока (Directus `ruling_options`, только multipage): «Чистый /
+  // Линейка / Клетка / Точка». Пусто → поля в калькуляторе нет. На цену НЕ
+  // влияет — это макет блока, который мы и так печатаем; выбор едет в спек
+  // заказа для производства (тот же приём, что `needsDesign`).
+  rulingOptions: string[];
   foldTypes: FoldType[]; // варианты фальцовки (буклеты); фальцовка считается per_fold
   sizes: SizePreset[]; // для multipage это форматы (с pagesPerSheet)
   papers: PaperOption[]; // только published
@@ -256,6 +261,15 @@ function qtyPresets(raw: unknown, strategy: Strategy): number[] {
   return uniq.length ? uniq : (DEFAULT_QTY_PRESETS[strategy] ?? QTY_PRESETS_FALLBACK);
 }
 
+// Разлиновка из Directus: массив непустых строк, мусор тихо чистим. Дефолта нет
+// — пусто значит «поле не показывать» (у брошюр/каталогов линовки не бывает).
+function rulingOptions(raw: unknown): string[] {
+  const list = (Array.isArray(raw) ? raw : [])
+    .map((v) => (typeof v === "string" ? v.trim() : ""))
+    .filter((v) => v.length > 0);
+  return [...new Set(list)];
+}
+
 // Тираж витрины для цены «от» — минимальный пресет продукта: у визиток это 50,
 // у фотокниги/книги — 1 экземпляр. Раньше здесь была общая константа 50, из-за
 // чего «от» у multipage считалось вообще не так (см. ниже).
@@ -303,13 +317,24 @@ export function minPrice(p: ProductPricing, pricing: PricingData): number | null
 // Цена «от» с учётом пресета кластерной страницы (для плиток хаба).
 // Зеркалит дефолт калькулятора при заданном пресете: бумага/форма/стороны/тираж
 // + фольга. Совпадает с тем, что покажет конфигуратор на кластере при открытии.
-// Для не-sheet стратегий пресет не применяется → обычный defaultPrice.
+//
+// Было (баг, найден на гэп-аудите блокнотов 2026-07-17): для не-sheet стратегий
+// ветка уходила в defaultPrice() — т.е. в HOME_BASE_QTY = 100 экз, ровно тот
+// дефект, который на аудите фотокниг починили в minPrice(), но только для
+// title/JSON-LD. Плитки хаба остались на старом пути, и хаб противоречил
+// собственным кластерам: `/photobooks` плитка «свадебная — от 72 600 ₽», а
+// сама `/photobooks/wedding` в title — «от 423 ₽». Задето было 34 плитки на 9
+// multipage-хабах. Теперь не-sheet считается тем же честным минимумом, что и
+// minPrice(), но суженным пресетом кластера — плитки и совпадают с целевой
+// страницей, и отличаются друг от друга.
 export function presetPrice(
   p: ProductPricing,
   pricing: PricingData,
   preset: CalcPreset | null | undefined,
 ): number | null {
-  if (p.strategy !== "sheet" || !preset) return defaultPrice(p, pricing);
+  if (p.strategy === "multipage") return minMultipagePrice(p, pricing, showcaseQty(p), preset);
+  if (p.strategy === "fixed") return fixedPrice(p, pricing, showcaseQty(p));
+  if (!preset) return minPrice(p, pricing);
   const round = preset.shape === "round";
   const sizeIdx =
     preset.sizeIndex != null &&
@@ -327,7 +352,12 @@ export function presetPrice(
   const paper = p.papers[resolvePaperIndex(p.papers, preset, p.paperOrder) ?? 0];
   if (!paper || width < 1 || height < 1) return null;
   const sides: Sides = preset.sides ?? (p.doubleSided ? "4+4" : "4+0");
-  const quantity = preset.quantity && preset.quantity > 0 ? preset.quantity : HOME_BASE_QTY;
+  // Тираж: пресет, иначе минимальный пресет продукта — НЕ HOME_BASE_QTY.
+  // Здесь была сотня, и «от» листового кластера считалось за 100 экз (тот же
+  // дефект, что чинили у multipage на аудите фотокниг): `/stickers/transparent`
+  // показывал «от 675 ₽» вместо честных 450 ₽ за минимальные 50 шт.
+  const quantity =
+    preset.quantity && preset.quantity > 0 ? preset.quantity : showcaseQty(p);
   const finishing: OrderConfig["finishing"] = [];
   if (preset.foil) {
     const foil = p.finishing.find((o) => o.group === "Фольгирование");
@@ -385,18 +415,40 @@ const defaultMultipagePrice = (p: ProductPricing, pricing: PricingData) =>
 // дешёвый реальный заказ — пружина на 8 полосах (423 ₽), и именно на нём
 // открывается калькулятор (переплёт авто-выбирается по числу полос). «От» должно
 // совпадать с тем, что человек видит на странице, иначе title противоречит ей же.
+// Пресет кластера сужает перебор: заданные им поля фиксируются, свободные —
+// минимизируются. Без пресета (хаб, title) перебирается всё.
 function minMultipagePrice(
   p: ProductPricing,
   pricing: PricingData,
   quantity: number,
+  preset?: CalcPreset | null,
 ): number | null {
-  const fmt = p.sizes[0];
+  const fmtIdx =
+    preset?.formatIndex != null && p.sizes[preset.formatIndex] ? preset.formatIndex : 0;
+  const fmt = p.sizes[fmtIdx];
   if (!fmt || !p.bindings.length || !p.innerPapers.length || !p.coverPapers.length) return null;
+  const bindings =
+    preset?.bindingId != null && p.bindings.some((b) => b.id === preset.bindingId)
+      ? p.bindings.filter((b) => b.id === preset.bindingId)
+      : p.bindings;
+  const inners =
+    preset?.innerPaperId != null && p.innerPapers.some((x) => x.id === preset.innerPaperId)
+      ? p.innerPapers.filter((x) => x.id === preset.innerPaperId)
+      : p.innerPapers;
+  const covers =
+    preset?.coverPaperId != null && p.coverPapers.some((x) => x.id === preset.coverPaperId)
+      ? p.coverPapers.filter((x) => x.id === preset.coverPaperId)
+      : p.coverPapers;
   let min = Infinity;
-  for (const binding of p.bindings) {
-    const pages = Math.max(PAGE_STEP, Math.ceil(binding.minPages / PAGE_STEP) * PAGE_STEP);
-    for (const innerPaper of p.innerPapers) {
-      for (const coverPaper of p.coverPapers) {
+  for (const binding of bindings) {
+    // Полосы: пресет, но не ниже минимума переплёта (как клампит калькулятор).
+    const floor = Math.max(PAGE_STEP, Math.ceil(binding.minPages / PAGE_STEP) * PAGE_STEP);
+    const pages =
+      preset?.pages != null && preset.pages > 0
+        ? Math.max(floor, Math.ceil(preset.pages / PAGE_STEP) * PAGE_STEP)
+        : floor;
+    for (const innerPaper of inners) {
+      for (const coverPaper of covers) {
         const cfg: MultipageConfig = {
           strategy: "multipage",
           width: fmt.width,
@@ -454,6 +506,7 @@ export async function getProductPricing(
     "lead_days",
     "allow_contour_cut",
     "qty_presets",
+    "ruling_options",
     "fold_types",
     "fixed_price",
     "fixed_sheet_width",
@@ -552,6 +605,7 @@ export async function getProductPricing(
     doubleSided: !!p.double_sided,
     allowContourCut: !!p.allow_contour_cut,
     qtyPresets: qtyPresets(p.qty_presets, (p.strategy ?? "sheet") as Strategy),
+    rulingOptions: rulingOptions(p.ruling_options),
     foldTypes: (Array.isArray(p.fold_types) ? p.fold_types : []).map((f: any) => ({
       name: String(f.name ?? ""),
       folds: num(f.folds),

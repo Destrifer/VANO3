@@ -103,6 +103,15 @@ export function useMultipageCalculator(props: {
   const coverColorIndex = ref(0);
   watch(coverPaperIndex, () => { coverColorIndex.value = 0; });
 
+  // — Разлиновка блока (Directus `ruling_options`; у блокнотов есть, у брошюр нет) —
+  // На цену не влияет: линовка — это макет блока, который и так печатается 4+4.
+  // Поэтому в buildConfig() её нет, только в details() и в спеке заказа.
+  const rulingOptions = product.rulingOptions;
+  const hasRuling = rulingOptions.length > 0;
+  const rulingIndex = ref(0);
+  const ruling = computed(() => (hasRuling ? rulingOptions[rulingIndex.value] ?? rulingOptions[0] : null));
+  const selectRuling = (i: number) => { rulingIndex.value = i; };
+
   // — Печать: блок всегда двусторонний (4 полосы на лист → 4+4), обложка на выбор —
   const innerSides: Sides = "4+4";
   const coverSides = ref<Sides>("4+0");
@@ -195,6 +204,7 @@ export function useMultipageCalculator(props: {
       d.push({ label: "Обложка", value: c ? `${coverPaper.value.name} (${c})` : coverPaper.value.name });
     }
     if (innerPaper.value) d.push({ label: "Блок", value: `${innerPaper.value.name} (белый)` });
+    if (ruling.value) d.push({ label: "Разлиновка", value: ruling.value });
     if (laminationIndex.value >= 0) {
       const lam = laminationOptions.value[laminationIndex.value]?.name;
       if (lam) d.push({ label: "Ламинация обложки", value: lam });
@@ -224,6 +234,7 @@ export function useMultipageCalculator(props: {
     innerColorId: null, // блок всегда белый
     coverColorId: coverColors.value[coverColorIndex.value]?.id ?? null,
     bindingId: binding.value?.id ?? 0,
+    ruling: ruling.value,
     quantity: totalQty.value,
     laminationId:
       laminationIndex.value >= 0 ? laminationOptions.value[laminationIndex.value]?.id ?? null : null,
@@ -252,6 +263,8 @@ export function useMultipageCalculator(props: {
     innerGroups, coverGroups, innerPaperIndex, coverPaperIndex, innerPaper, coverPaper,
     coverColors, coverColorIndex,
     innerSides, coverSides, sides, presets, quantity, totalQty, selectQty,
+    // разлиновка блока (на цену не влияет)
+    rulingOptions, hasRuling, rulingIndex, ruling, selectRuling,
     // отделка обложки
     laminationOptions, foilOption, laminationIndex, foilOn, foilColorIndex, laminationLocked,
     coverExtras, extraChecked,

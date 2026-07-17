@@ -5,7 +5,7 @@
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import { getCategories } from "../../lib/categories";
 import { getProducts } from "../../lib/products";
-import { getProductPricing, getPricingData, minPrice, presetPrice } from "../../lib/pricing/data";
+import { getProductPricing, getPricingData, presetPrice } from "../../lib/pricing/data";
 import { getWorks, getClusterWorks, type Work } from "../../lib/works";
 import { getPromotedPages } from "../../lib/promotedPages";
 import { productOffer, faqPage } from "../../lib/seo/jsonld";
@@ -101,8 +101,15 @@ const hasCalc =
   (productPricing.papers.length > 0 ||
     (productPricing.strategy === "multipage" && productPricing.bindings.length > 0) ||
     (productPricing.strategy === "fixed" && productPricing.fixedPrice.length > 0));
+// «От» кластера считаем ПО ЕГО ПРЕСЕТУ (presetPrice), а не по продукту в целом:
+// minPrice() пресет игнорирует, из-за чего страница обещала цену, недостижимую в
+// собственной конфигурации — «Брошюры КБС — от 10 750 ₽», хотя КБС требует от 100
+// полос и стоит от 53 050 ₽; «Книги в мягком переплёте — от 255 ₽» при реальных
+// 1 536 ₽. Тот же класс, что дефект фотокниг (2026-07-16), но в другую сторону:
+// не завышение, а занижение. Число уходит в title и в JSON-LD Offer → его видит
+// Google. Теперь плитка хаба и title кластера считаются одной функцией и совпадают.
 const lowPrice =
-  productPricing && pricing ? minPrice(productPricing, pricing) : null;
+  productPricing && pricing ? presetPrice(productPricing, pricing, page.preset) : null;
 
 const h1 = page.h1 ?? productName;
 const introHtml = page.introText;

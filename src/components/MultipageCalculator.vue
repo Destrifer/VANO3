@@ -29,6 +29,31 @@ function bindGlyph(name: string): string {
   if (n.includes("кбс") || n.includes("клей") || n.includes("термо")) return BIND_GLYPH.glue;
   return BIND_GLYPH.book;
 }
+
+// Глифы разлиновки: рамка листа + собственно линовка внутри. Подбираются по
+// названию из Directus (`ruling_options`), как и переплёт, — список правится
+// в админке без правки кода; незнакомое имя → чистый лист.
+const SHEET_FRAME =
+  '<rect x="4" y="3" width="16" height="18" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>';
+const RULE_GLYPH: Record<string, string> = {
+  blank: SHEET_FRAME,
+  lines:
+    SHEET_FRAME +
+    '<path stroke="currentColor" stroke-width="1.5" stroke-linecap="round" d="M7 8h10M7 12h10M7 16h10"/>',
+  grid:
+    SHEET_FRAME +
+    '<path stroke="currentColor" stroke-width="1.5" stroke-linecap="round" d="M7 9h10M7 13h10M7 17h10M10 6v13M14 6v13"/>',
+  dots:
+    SHEET_FRAME +
+    '<g fill="currentColor"><circle cx="8.5" cy="9" r="1"/><circle cx="12" cy="9" r="1"/><circle cx="15.5" cy="9" r="1"/><circle cx="8.5" cy="13" r="1"/><circle cx="12" cy="13" r="1"/><circle cx="15.5" cy="13" r="1"/><circle cx="8.5" cy="17" r="1"/><circle cx="12" cy="17" r="1"/><circle cx="15.5" cy="17" r="1"/></g>',
+};
+function ruleGlyph(name: string): string {
+  const n = name.toLowerCase();
+  if (n.includes("линей") || n.includes("лине")) return RULE_GLYPH.lines;
+  if (n.includes("клет")) return RULE_GLYPH.grid;
+  if (n.includes("точк") || n.includes("dot")) return RULE_GLYPH.dots;
+  return RULE_GLYPH.blank;
+}
 </script>
 
 <template>
@@ -150,6 +175,23 @@ function bindGlyph(name: string): string {
         :colors="[]"
         :color-index="0"
       />
+      <!-- Разлиновка: есть только у продуктов с `ruling_options` (блокноты).
+           На цену не влияет — печатается тем же 4+4, что и блок. -->
+      <div v-if="calc.hasRuling" class="flex flex-col gap-1.5">
+        <span class="text-sm font-semibold">Разлиновка</span>
+        <div class="flex flex-wrap gap-2" role="radiogroup" aria-label="Разлиновка блока">
+          <OptionTile
+            v-for="(r, i) in calc.rulingOptions"
+            :key="r"
+            icon
+            :label="r"
+            :glyph="ruleGlyph(r)"
+            :active="calc.rulingIndex === i"
+            @select="calc.selectRuling(i)"
+          />
+        </div>
+        <span class="text-xs opacity-60">на цену не влияет</span>
+      </div>
       <span class="text-xs opacity-60">Печать блока — двусторонняя (4+4).</span>
     </div>
 
