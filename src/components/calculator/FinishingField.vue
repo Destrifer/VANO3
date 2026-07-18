@@ -19,6 +19,9 @@ const NONE_LABEL: Record<string, string> = {
   "Скругление углов": "Без скругления",
   "Сверление отверстий": "Без отверстий",
   "Еврослот": "Без еврослота",
+  "УФ-лак": "Без лака",
+  "Конгрев": "Без конгрева",
+  "Объёмный 3D-лак": "Без 3D-лака",
 };
 const noneLabel = (h: string) => NONE_LABEL[h] ?? "Без обработки";
 
@@ -32,6 +35,12 @@ const GROUP_GLYPH: Record<string, string> = {
     '<rect x="4" y="3" width="16" height="18" rx="1" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="2.5" fill="none" stroke="currentColor" stroke-width="2"/>',
   "Еврослот":
     '<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5a2.6 2.6 0 0 0-2.6 2.6c0 1.3.9 1.9.9 3.1V16a1.7 1.7 0 0 0 3.4 0v-5.3c0-1.2.9-1.8.9-3.1A2.6 2.6 0 0 0 12 5z"/>',
+  "УФ-лак":
+    '<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3c3 4.2 5 6.6 5 9.2a5 5 0 0 1-10 0C7 9.6 9 7.2 12 3z"/>',
+  "Конгрев":
+    '<rect x="5" y="5" width="14" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><rect x="8.5" y="8.5" width="7" height="7" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.3"/>',
+  "Объёмный 3D-лак":
+    '<circle cx="12" cy="14" r="6" fill="none" stroke="currentColor" stroke-width="2"/><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.4" d="M9.5 12.2a3.2 3.2 0 0 1 2.5-1.4"/>',
 };
 const groupGlyph = (h: string) => GROUP_GLYPH[h];
 </script>
