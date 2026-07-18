@@ -55,9 +55,13 @@ const groupGlyph = (h: string) => GROUP_GLYPH[h];
     <div class="flex flex-wrap gap-2" role="radiogroup" :aria-label="g.heading">
       <OptionTile
         :label="noneLabel(g.heading)"
+        :thumb="g.thumb"
         :glyph="GLYPH_NONE"
         :active="(calc.finGroupIndex[g.id] ?? -1) === -1"
+        :zoom="!!g.full"
+        :full="g.full"
         @select="calc.finGroupIndex[g.id] = -1"
+        @zoom="lightbox?.open(noneLabel(g.heading), g.full ?? null)"
       />
       <OptionTile
         v-for="(v, i) in g.variants"

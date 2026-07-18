@@ -94,6 +94,11 @@ export type FinishingVariantGroup = {
   id: number; // finishing_options.id — по нему берём опцию из product.finishing для цены
   heading: string; // finishing_options.group (заголовок блока)
   unit: string; // единица опции (для гейтов: per_corner скрываем у круглой формы)
+  // Картинка «чистого» (без услуги) — из самой опции (finishing_options.image),
+  // как «Без биговки»/«Чистый». Нет фото → плитка «Без …» покажет глиф.
+  image: string | null;
+  thumb: ResponsiveImage;
+  full: ResponsiveImage;
   variants: FinishingVariant[];
 };
 
@@ -678,6 +683,9 @@ export async function getProductPricing(
       id: f.id,
       heading: f.group as string,
       unit: f.unit,
+      image: f.image,
+      thumb: f.thumb,
+      full: f.full,
       variants: f.colors.map((c) => {
         const n = Number(c.code);
         return {
