@@ -122,7 +122,10 @@ export function useMultipageCalculator(props: {
   const rulingOptions = product.rulingOptions;
   const hasRuling = rulingOptions.length > 0;
   const rulingIndex = ref(0);
-  const ruling = computed(() => (hasRuling ? rulingOptions[rulingIndex.value] ?? rulingOptions[0] : null));
+  // В спек/итог едет ИМЯ варианта (строка), как и раньше.
+  const ruling = computed(() =>
+    hasRuling ? (rulingOptions[rulingIndex.value] ?? rulingOptions[0]).name : null,
+  );
   const selectRuling = (i: number) => { rulingIndex.value = i; };
 
   // — Печать: блок всегда двусторонний (4 полосы на лист → 4+4), обложка на выбор —

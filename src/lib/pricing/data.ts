@@ -58,6 +58,9 @@ export type SizePreset = {
 
 export type BindingOption = Binding & { id: number; image: string | null; thumb: ResponsiveImage };
 
+// Вариант разлиновки: имя + картинка плитки (может не быть — тогда глиф).
+export type RulingOption = { name: string; image: string | null; thumb: ResponsiveImage };
+
 // тип фальцовки; kind: book|accordion|roll; image/thumb — иконка сложения
 export type FoldType = { name: string; folds: number; kind: string; image: string | null; thumb: ResponsiveImage };
 
@@ -115,11 +118,13 @@ export type ProductPricing = {
   // ЯРЛЫКИ, а не ограничение: поле «Другой тираж» принимает любое число от 1, а
   // нижняя граница заказа — сумма корзины (settings.min_order_total), не тираж.
   qtyPresets: number[];
-  // Разлиновка блока (Directus `ruling_options`, только multipage): «Чистый /
-  // Линейка / Клетка / Точка». Пусто → поля в калькуляторе нет. На цену НЕ
-  // влияет — это макет блока, который мы и так печатаем; выбор едет в спек
-  // заказа для производства (тот же приём, что `needsDesign`).
-  rulingOptions: string[];
+  // Разлиновка блока (только multipage): «Чистый / Линейка / Клетка / Точка».
+  // Пусто → поля в калькуляторе нет. На цену НЕ влияет — это макет блока,
+  // который мы и так печатаем; выбор (имя) едет в спек заказа для производства
+  // (тот же приём, что `needsDesign`). Источники: свои строки продукта
+  // (`ruling_options`) или универсальные варианты отделки «Разлиновка» с
+  // картинками — см. сборку в getProductPricing().
+  rulingOptions: RulingOption[];
   foldTypes: FoldType[]; // варианты фальцовки (буклеты); фальцовка считается per_fold
   sizes: SizePreset[]; // для multipage это форматы (с pagesPerSheet)
   papers: PaperOption[]; // только published
@@ -576,6 +581,28 @@ export async function getProductPricing(
     image: assetUrl(f.image),
     thumb: responsiveAsset(f.image, FOLD_THUMB_W, FOLD_THUMB_H),
   }));
+  // Плитки разлиновки — тот же приём, что с биговкой ниже: свои строки продукта
+  // (`ruling_options`) в приоритете (без картинок, глифы), иначе — варианты
+  // универсальной отделки «Разлиновка» (finishing_colors, с картинками) плюс
+  // синтетический «Чистый». Отделка на цену не влияет (в расчёт не попадает),
+  // она только носитель вариантов.
+  const ownRuling = rulingOptions(p.ruling_options).map((name) => ({
+    name,
+    image: null,
+    thumb: null,
+  }));
+  const rulingSource = ownRuling.length
+    ? null
+    : finishingList.find((f) => f.group === "Разлиновка" && f.colors.length);
+  const rulingList: RulingOption[] = ownRuling.length
+    ? ownRuling
+    : rulingSource
+      ? [
+          { name: "Чистый", image: null, thumb: null },
+          ...rulingSource.colors.map((c) => ({ name: c.name, image: c.image, thumb: c.tile })),
+        ]
+      : [];
+
   const creaseSource = ownFoldTypes.length
     ? null
     : finishingList.find((f) => f.unit === "per_fold" && f.colors.length);
@@ -606,7 +633,7 @@ export async function getProductPricing(
     doubleSided: !!p.double_sided,
     allowContourCut: !!p.allow_contour_cut,
     qtyPresets: qtyPresets(p.qty_presets, (p.strategy ?? "sheet") as Strategy),
-    rulingOptions: rulingOptions(p.ruling_options),
+    rulingOptions: rulingList,
     foldTypes,
     sizes: (p.sizes ?? []).map((s: any) => ({
       label: s.label,

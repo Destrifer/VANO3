@@ -182,10 +182,11 @@ function ruleGlyph(name: string): string {
         <div class="flex flex-wrap gap-2" role="radiogroup" aria-label="Разлиновка блока">
           <OptionTile
             v-for="(r, i) in calc.rulingOptions"
-            :key="r"
+            :key="r.name"
             icon
-            :label="r"
-            :glyph="ruleGlyph(r)"
+            :label="r.name"
+            :thumb="r.thumb"
+            :glyph="ruleGlyph(r.name)"
             :active="calc.rulingIndex === i"
             @select="calc.selectRuling(i)"
           />
