@@ -9,8 +9,13 @@ import SidesSelect from "./calculator/SidesSelect.vue";
 import CoatingField from "./calculator/CoatingField.vue";
 import QuantitySelect from "./calculator/QuantitySelect.vue";
 import OptionTile from "./calculator/OptionTile.vue";
+import ImageLightbox from "./calculator/ImageLightbox.vue";
+import { ref } from "vue";
 
 const calc = inject(mpCalcKey)!;
+// Lightbox фото разлиновки — паттерн PaperSelect/CoatingField: тап по фото на
+// таче открывает крупное, на десктопе ховер-превью делает сама OptionTile.
+const rulingLightbox = ref<InstanceType<typeof ImageLightbox> | null>(null);
 const onRange = (e: Event) => calc.setPages(+(e.target as HTMLInputElement).value);
 const onInput = (e: Event) => calc.setPages(+(e.target as HTMLInputElement).value);
 
@@ -183,15 +188,18 @@ function ruleGlyph(name: string): string {
           <OptionTile
             v-for="(r, i) in calc.rulingOptions"
             :key="r.name"
-            icon
             :label="r.name"
             :thumb="r.thumb"
             :glyph="ruleGlyph(r.name)"
+            :zoom="!!r.full"
+            :full="r.full"
             :active="calc.rulingIndex === i"
             @select="calc.selectRuling(i)"
+            @zoom="rulingLightbox?.open(r.name, r.full ?? null)"
           />
         </div>
         <span class="text-xs opacity-60">на цену не влияет</span>
+        <ImageLightbox ref="rulingLightbox" />
       </div>
       <span class="text-xs opacity-60">Печать блока — двусторонняя (4+4).</span>
     </div>

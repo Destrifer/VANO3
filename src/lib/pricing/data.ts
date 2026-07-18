@@ -58,11 +58,25 @@ export type SizePreset = {
 
 export type BindingOption = Binding & { id: number; image: string | null; thumb: ResponsiveImage };
 
-// Вариант разлиновки: имя + картинка плитки (может не быть — тогда глиф).
-export type RulingOption = { name: string; image: string | null; thumb: ResponsiveImage };
+// Вариант разлиновки: имя + картинка плитки (может не быть — тогда глиф);
+// full — крупное фото для ховер-превью/лайтбокса.
+export type RulingOption = {
+  name: string;
+  image: string | null;
+  thumb: ResponsiveImage;
+  full: ResponsiveImage;
+};
 
-// тип фальцовки; kind: book|accordion|roll; image/thumb — иконка сложения
-export type FoldType = { name: string; folds: number; kind: string; image: string | null; thumb: ResponsiveImage };
+// тип фальцовки; kind: book|accordion|roll|crease; image/thumb — картинка плитки,
+// full — крупное фото для ховер-превью/лайтбокса (как у бумаги и фольги)
+export type FoldType = {
+  name: string;
+  folds: number;
+  kind: string;
+  image: string | null;
+  thumb: ResponsiveImage;
+  full: ResponsiveImage;
+};
 
 export type PaperColor = {
   id: number;
@@ -580,6 +594,7 @@ export async function getProductPricing(
     kind: String(f.kind ?? "accordion"),
     image: assetUrl(f.image),
     thumb: responsiveAsset(f.image, FOLD_THUMB_W, FOLD_THUMB_H),
+    full: responsiveAssetFluid(f.image, FULL_WIDTHS, FULL_SIZES),
   }));
   // Плитки разлиновки — тот же приём, что с биговкой ниже: свои строки продукта
   // (`ruling_options`) в приоритете (без картинок, глифы), иначе — варианты
@@ -590,6 +605,7 @@ export async function getProductPricing(
     name,
     image: null,
     thumb: null,
+    full: null,
   }));
   const rulingSource = ownRuling.length
     ? null
@@ -600,8 +616,8 @@ export async function getProductPricing(
     ? ownRuling
     : rulingSource
       ? [
-          { name: "Чистый", image: rulingSource.image, thumb: rulingSource.thumb },
-          ...rulingSource.colors.map((c) => ({ name: c.name, image: c.image, thumb: c.tile })),
+          { name: "Чистый", image: rulingSource.image, thumb: rulingSource.thumb, full: rulingSource.full },
+          ...rulingSource.colors.map((c) => ({ name: c.name, image: c.image, thumb: c.tile, full: c.full })),
         ]
       : [];
 
@@ -613,13 +629,14 @@ export async function getProductPricing(
     : creaseSource
       ? [
           // Картинка «Без биговки» — image самой опции «Биговка» (как у «Чистого»).
-          { name: "Без биговки", folds: 0, kind: "crease", image: creaseSource.image, thumb: creaseSource.thumb },
+          { name: "Без биговки", folds: 0, kind: "crease", image: creaseSource.image, thumb: creaseSource.thumb, full: creaseSource.full },
           ...creaseSource.colors.map((c) => ({
             name: c.name,
             folds: num(c.code),
             kind: "crease",
             image: c.image,
             thumb: c.tile,
+            full: c.full,
           })),
         ]
       : [];

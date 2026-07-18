@@ -4,9 +4,10 @@
 // Иконку берём из Directus (FoldType.thumb, avif/webp); нет фото — глиф Tabler.
 // Если ВСЕ варианты продукта имеют kind:"crease" — блок называется «Биговка»
 // (плитки «Без биговки / 1 / 2 / … сгиба»), иначе классическая «Фальцовка».
-import { computed, inject } from "vue";
+import { computed, inject, ref } from "vue";
 import { calcKey } from "../../composables/useCalculator";
 import OptionTile from "./OptionTile.vue";
+import ImageLightbox from "./ImageLightbox.vue";
 
 const calc = inject(calcKey)!;
 const foldWord = (n: number) => (n === 1 ? "сгиб" : n >= 2 && n <= 4 ? "сгиба" : "сгибов");
@@ -18,6 +19,9 @@ const heading = computed(() =>
 // «1 сгиб» под плиткой «1 сгиб» — шум; сабтайтл только когда имя про другое.
 const subFor = (f: { name: string; folds: number }) =>
   f.name.toLowerCase().includes("сгиб") ? undefined : `${f.folds} ${foldWord(f.folds)}`;
+// Lightbox фото сгиба — паттерн PaperSelect/CoatingField (тач); десктопное
+// ховер-превью делает сама OptionTile через full.
+const lightbox = ref<InstanceType<typeof ImageLightbox> | null>(null);
 
 // Глифы-фолбэки (Tabler): book / wave-sine / rotate-clockwise.
 const FOLD_GLYPH: Record<string, string> = {
@@ -41,10 +45,14 @@ const glyphFor = (kind: string) => FOLD_GLYPH[kind] ?? FOLD_GLYPH.accordion;
         :sub="subFor(f)"
         :thumb="f.thumb"
         :glyph="glyphFor(f.kind)"
+        :zoom="!!f.full"
+        :full="f.full"
         :active="calc.foldTypeIndex === i"
         :title="`${f.name} — ${f.folds} ${foldWord(f.folds)}`"
         @select="calc.foldTypeIndex = i"
+        @zoom="lightbox?.open(f.name, f.full ?? null)"
       />
     </div>
+    <ImageLightbox ref="lightbox" />
   </div>
 </template>
