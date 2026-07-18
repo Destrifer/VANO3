@@ -540,6 +540,60 @@ export async function getProductPricing(
     };
   };
 
+  const finishingList: FinishingOption[] = (p.finishing ?? []).map((x: any) => {
+    const f = x.finishing_id;
+    return {
+      id: num(f.id),
+      name: f.name,
+      group: f.group ?? null,
+      image: assetUrl(f.image),
+      thumb: responsiveAsset(f.image, FIN_THUMB_W, FIN_THUMB_H),
+      full: responsiveAssetFluid(f.image, FULL_WIDTHS, FULL_SIZES),
+      unit: f.unit,
+      unitPrice: f.unit_price == null ? null : num(f.unit_price),
+      setupPrice: num(f.setup_price),
+      tiers: (f.tiers ?? []).map((t: any) => ({
+        minSheets: num(t.min_sheets),
+        price: num(t.price),
+      })),
+      colors: (f.colors ?? [])
+        .slice()
+        .sort((a: any, b: any) => (a.sort ?? 0) - (b.sort ?? 0))
+        .map(mapColor),
+    } as FinishingOption;
+  });
+
+  // Плитки сгибов. Свои fold_types продукта (фальцовка буклетов/открыток) — в
+  // приоритете. Если их нет, но привязана per_fold-отделка с вариантами
+  // (finishing_colors: «1 сгиб»…«4 сгиба», folds в поле code) — строим
+  // универсальные плитки биговки: «Без биговки» + варианты с картинками из
+  // самой отделки. Варианты заводятся ОДИН раз в «Постпечати» (как цвета
+  // фольги) и работают у любого продукта, к которому привязана биговка.
+  const ownFoldTypes = (Array.isArray(p.fold_types) ? p.fold_types : []).map((f: any) => ({
+    name: String(f.name ?? ""),
+    folds: num(f.folds),
+    kind: String(f.kind ?? "accordion"),
+    image: assetUrl(f.image),
+    thumb: responsiveAsset(f.image, FOLD_THUMB_W, FOLD_THUMB_H),
+  }));
+  const creaseSource = ownFoldTypes.length
+    ? null
+    : finishingList.find((f) => f.unit === "per_fold" && f.colors.length);
+  const foldTypes: FoldType[] = ownFoldTypes.length
+    ? ownFoldTypes
+    : creaseSource
+      ? [
+          { name: "Без биговки", folds: 0, kind: "crease", image: null, thumb: null },
+          ...creaseSource.colors.map((c) => ({
+            name: c.name,
+            folds: num(c.code),
+            kind: "crease",
+            image: c.image,
+            thumb: c.tile,
+          })),
+        ]
+      : [];
+
   return {
     strategy: (p.strategy ?? "sheet") as Strategy,
     production: p.production ?? "sheet",
@@ -553,13 +607,7 @@ export async function getProductPricing(
     allowContourCut: !!p.allow_contour_cut,
     qtyPresets: qtyPresets(p.qty_presets, (p.strategy ?? "sheet") as Strategy),
     rulingOptions: rulingOptions(p.ruling_options),
-    foldTypes: (Array.isArray(p.fold_types) ? p.fold_types : []).map((f: any) => ({
-      name: String(f.name ?? ""),
-      folds: num(f.folds),
-      kind: String(f.kind ?? "accordion"),
-      image: assetUrl(f.image),
-      thumb: responsiveAsset(f.image, FOLD_THUMB_W, FOLD_THUMB_H),
-    })),
+    foldTypes,
     sizes: (p.sizes ?? []).map((s: any) => ({
       label: s.label,
       width: num(s.width),
@@ -593,27 +641,6 @@ export async function getProductPricing(
       height: num(p.fixed_sheet_height) || 405,
       margin: num(p.fixed_sheet_margin) || 0,
     },
-    finishing: (p.finishing ?? []).map((x: any) => {
-      const f = x.finishing_id;
-      return {
-        id: num(f.id),
-        name: f.name,
-        group: f.group ?? null,
-        image: assetUrl(f.image),
-        thumb: responsiveAsset(f.image, FIN_THUMB_W, FIN_THUMB_H),
-        full: responsiveAssetFluid(f.image, FULL_WIDTHS, FULL_SIZES),
-        unit: f.unit,
-        unitPrice: f.unit_price == null ? null : num(f.unit_price),
-        setupPrice: num(f.setup_price),
-        tiers: (f.tiers ?? []).map((t: any) => ({
-          minSheets: num(t.min_sheets),
-          price: num(t.price),
-        })),
-        colors: (f.colors ?? [])
-          .slice()
-          .sort((a: any, b: any) => (a.sort ?? 0) - (b.sort ?? 0))
-          .map(mapColor),
-      } as FinishingOption;
-    }),
+    finishing: finishingList,
   };
 }
