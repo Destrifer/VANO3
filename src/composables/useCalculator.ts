@@ -322,6 +322,19 @@ export function useCalculator(props: {
     per_fold: "сгибов", per_hole: "отверстий",
   };
 
+  // — Универсальные группы доп-обработки плитками (скругление/сверление/еврослот) —
+  // Состояние = индекс выбранного варианта на группу (-1 = «без»). Скругление
+  // (per_corner) прячем у круглой формы — как в otherOptions.
+  const finById = (id: number) => product.finishing.find((o) => o.id === id) ?? null;
+  const variantGroups = computed(() =>
+    product.variantGroups.filter(
+      (g) => !(shape.value === "round" && g.unit === "per_corner"),
+    ),
+  );
+  const finGroupIndex = reactive<Record<number, number>>(
+    Object.fromEntries(product.variantGroups.map((g) => [g.id, -1])),
+  );
+
   // — Сборка конфига и расчёт —
   // Переопределения для ячеек таблицы цен: считаем как текущее состояние,
   // но с другим тиражом/бумагой/размером/сторонами (без мутации стейта).
@@ -368,6 +381,12 @@ export function useCalculator(props: {
     // folds === 0 («Без сложения» → листовка/флаер) — биговку не добавляем.
     if (foldTypes.length && foldFinishing && selectedFold.value && selectedFold.value.folds > 0) {
       finishing.push({ option: foldFinishing, count: selectedFold.value.folds });
+    }
+    // Универсальные группы доп-обработки: выбранный вариант → опция + count из code.
+    for (const g of variantGroups.value) {
+      const idx = finGroupIndex[g.id] ?? -1;
+      const opt = finById(g.id);
+      if (idx >= 0 && opt) finishing.push({ option: opt, count: g.variants[idx]?.count });
     }
     return {
       production: product.production,
@@ -448,6 +467,10 @@ export function useCalculator(props: {
     }
     const others = otherOptions.value.filter((x) => fin[x.i].checked).map((x) => x.o.name);
     if (others.length) d.push({ label: "Обработка", value: others.join(", ") });
+    for (const g of variantGroups.value) {
+      const idx = finGroupIndex[g.id] ?? -1;
+      if (idx >= 0) d.push({ label: g.heading, value: g.variants[idx]?.name ?? "да" });
+    }
     d.push({ label: "Тираж", value: `${totalQty.value} шт` });
     if (artworkMode.value === "design") d.push({ label: "Макет", value: "нужен дизайн" });
     return d;
@@ -490,6 +513,9 @@ export function useCalculator(props: {
       ...(foldTypes.length && foldFinishing && selectedFold.value && selectedFold.value.folds > 0
         ? [{ id: foldFinishing.id, count: selectedFold.value.folds }]
         : []),
+      ...variantGroups.value
+        .filter((g) => (finGroupIndex[g.id] ?? -1) >= 0)
+        .map((g) => ({ id: g.id, count: g.variants[finGroupIndex[g.id]]?.count })),
     ],
     needsDesign: artworkMode.value === "design" || undefined,
     };
@@ -519,6 +545,7 @@ export function useCalculator(props: {
     laminationOptions, foilOption, otherOptions,
     laminationIndex, foilOn, foilColorIndex, laminationLocked,
     fin, needsCount, countLabel,
+    variantGroups, finGroupIndex,
     // расчёт
     perUnit, priceForCell, result, money, currentConfig, currentSpec, details,
     // миниатюра превью

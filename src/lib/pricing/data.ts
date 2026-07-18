@@ -78,6 +78,25 @@ export type FoldType = {
   full: ResponsiveImage;
 };
 
+// Универсальная доп-обработка плитками (скругление, сверление, еврослот и т.п.):
+// опция с group (кроме зарезервированных ламинации/фольги/разлиновки) и вариантами
+// finishing_colors → плитки «Без …» + варианты с картинкой. `count` — число единиц
+// (углов/отверстий) из `code` варианта: для per_corner/per_hole меняет цену, для
+// per_item/per_sheet цену не трогает (в UNIT_QTY count не участвует).
+export type FinishingVariant = {
+  name: string;
+  count: number;
+  image: string | null;
+  thumb: ResponsiveImage;
+  full: ResponsiveImage;
+};
+export type FinishingVariantGroup = {
+  id: number; // finishing_options.id — по нему берём опцию из product.finishing для цены
+  heading: string; // finishing_options.group (заголовок блока)
+  unit: string; // единица опции (для гейтов: per_corner скрываем у круглой формы)
+  variants: FinishingVariant[];
+};
+
 export type PaperColor = {
   id: number;
   name: string;
@@ -139,6 +158,9 @@ export type ProductPricing = {
   // (`ruling_options`) или универсальные варианты отделки «Разлиновка» с
   // картинками — см. сборку в getProductPricing().
   rulingOptions: RulingOption[];
+  // Универсальные группы доп-обработки плитками (скругление/сверление/еврослот и
+  // т.п.) — см. FinishingVariantGroup и сборку в getProductPricing().
+  variantGroups: FinishingVariantGroup[];
   foldTypes: FoldType[]; // варианты фальцовки (буклеты); фальцовка считается per_fold
   sizes: SizePreset[]; // для multipage это форматы (с pagesPerSheet)
   papers: PaperOption[]; // только published
@@ -641,6 +663,33 @@ export async function getProductPricing(
         ]
       : [];
 
+  // Универсальные плитки доп-обработки: любая привязанная опция с group (кроме
+  // ламинации/фольги/разлиновки — у них своя отрисовка) и вариантами
+  // finishing_colors → блок «Без …» + плитки вариантов с картинками. Варианты
+  // заводятся ОДИН раз в «Постпечати» и работают у любого продукта с этой опцией
+  // (как цвета фольги). `count` берём из code варианта (углы/отверстия).
+  const RESERVED_GROUPS = new Set(["Ламинация", "Фольгирование", "Разлиновка"]);
+  const DEFAULT_UNIT_COUNT: Record<string, number> = {
+    per_sheet: 1, per_item: 1, per_fold: 1, per_corner: 4, per_hole: 1,
+  };
+  const variantGroups: FinishingVariantGroup[] = finishingList
+    .filter((f) => f.group && !RESERVED_GROUPS.has(f.group) && f.colors.length)
+    .map((f) => ({
+      id: f.id,
+      heading: f.group as string,
+      unit: f.unit,
+      variants: f.colors.map((c) => {
+        const n = Number(c.code);
+        return {
+          name: c.name,
+          count: c.code && !Number.isNaN(n) ? n : (DEFAULT_UNIT_COUNT[f.unit] ?? 1),
+          image: c.image,
+          thumb: c.tile,
+          full: c.full,
+        };
+      }),
+    }));
+
   return {
     strategy: (p.strategy ?? "sheet") as Strategy,
     production: p.production ?? "sheet",
@@ -654,6 +703,7 @@ export async function getProductPricing(
     allowContourCut: !!p.allow_contour_cut,
     qtyPresets: qtyPresets(p.qty_presets, (p.strategy ?? "sheet") as Strategy),
     rulingOptions: rulingList,
+    variantGroups,
     foldTypes,
     sizes: (p.sizes ?? []).map((s: any) => ({
       label: s.label,
