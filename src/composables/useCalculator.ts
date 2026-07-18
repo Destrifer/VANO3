@@ -426,7 +426,11 @@ export function useCalculator(props: {
     const d: { label: string; value: string }[] = [];
     d.push({ label: "Размер", value: sizeStr });
     if (!singleSided) d.push({ label: "Печать", value: sides.value });
-    if (foldTypes.length && selectedFold.value) d.push({ label: "Фальцовка", value: selectedFold.value.name });
+    if (foldTypes.length && selectedFold.value) {
+      // Продукты, где все варианты kind:"crease" (чертежи), зовут блок «Биговка».
+      const foldLabel = foldTypes.every((f) => f.kind === "crease") ? "Биговка" : "Фальцовка";
+      d.push({ label: foldLabel, value: selectedFold.value.name });
+    }
     if (allowContourCut) {
       const v = cutType.value === "die" ? "вырубка" : cutType.value === "kiss" ? "надсечка" : "на листе";
       d.push({ label: "Резка", value: v });
