@@ -198,31 +198,11 @@ export async function getPricingData(): Promise<PricingData> {
   };
 }
 
-// Тираж для цены «от» на витрине (совпадает с дефолтом калькулятора).
-export const HOME_BASE_QTY = 100;
-
-// Цена дефолтной конфигурации продукта (для плиток главной «от X ₽»).
-// Тот же движок, что в калькуляторе/заказе — единый источник истины (П2).
-export function defaultPrice(p: ProductPricing, pricing: PricingData): number | null {
-  if (p.strategy === "multipage") return defaultMultipagePrice(p, pricing);
-  if (p.strategy === "fixed") return defaultFixedPrice(p, pricing);
-
-  const paper = p.papers[0];
-  const size = p.sizes[0];
-  if (!paper || !size) return null;
-  const cfg: OrderConfig = {
-    production: p.production,
-    form: "rectangular",
-    width: size.width,
-    height: size.height,
-    sides: "4+0",
-    quantity: HOME_BASE_QTY,
-    paper,
-    urgent: false,
-    finishing: [],
-  };
-  return computePrice(cfg, pricing).total;
-}
+// Стартовый тираж калькулятора: открываемся на ходовой сотне, если она есть в
+// пресетах продукта. К цене «от» отношения НЕ имеет — витрина считает minPrice()/
+// presetPrice() по минимальному пресету (раньше здесь жил HOME_BASE_QTY, которым
+// считали и «от» на главной/каталоге — т.е. показывали цену СОТНИ экземпляров).
+export const CALC_DEFAULT_QTY = 100;
 
 function fixedPrice(p: ProductPricing, pricing: PricingData, quantity: number): number | null {
   const size = p.sizes[0];
@@ -238,9 +218,6 @@ function fixedPrice(p: ProductPricing, pricing: PricingData, quantity: number): 
   };
   return computePrice(cfg, pricing).total;
 }
-
-const defaultFixedPrice = (p: ProductPricing, pricing: PricingData) =>
-  fixedPrice(p, pricing, HOME_BASE_QTY);
 
 // Плитки тиража по умолчанию — если у продукта не заданы `qty_presets`.
 // Совпадают с прежним хардкодом в калькуляторах, чтобы поведение не поехало
@@ -378,36 +355,6 @@ export function presetPrice(
   };
   return computePrice(cfg, pricing).total;
 }
-
-function multipagePrice(
-  p: ProductPricing,
-  pricing: PricingData,
-  quantity: number,
-): number | null {
-  const fmt = p.sizes[0];
-  const inner = p.innerPapers[0];
-  const cover = p.coverPapers[0];
-  const bind = p.bindings[0];
-  if (!fmt || !inner || !cover || !bind) return null;
-  const cfg: MultipageConfig = {
-    strategy: "multipage",
-    width: fmt.width,
-    height: fmt.height,
-    pages: Math.max(4, Math.ceil(bind.minPages / 4) * 4),
-    innerSides: "4+4",
-    coverSides: "4+0",
-    innerPaper: inner,
-    coverPaper: cover,
-    binding: bind,
-    quantity,
-    urgent: false,
-    finishing: [],
-  };
-  return computePrice(cfg, pricing).total;
-}
-
-const defaultMultipagePrice = (p: ProductPricing, pricing: PricingData) =>
-  multipagePrice(p, pricing, HOME_BASE_QTY);
 
 // Настоящий минимум multipage: перебираем переплёты и бумаги, берём самое дешёвое
 // сочетание — как sheet-ветка minPrice() перебирает бумаги. Брать bindings[0]

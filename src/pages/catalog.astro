@@ -8,7 +8,7 @@ import { Icon } from "astro-icon/components";
 import Breadcrumbs from "../components/Breadcrumbs.astro";
 import { getCategories } from "../lib/categories";
 import { getProducts } from "../lib/products";
-import { getPricingData, getProductPricing, defaultPrice } from "../lib/pricing/data";
+import { getPricingData, getProductPricing, minPrice } from "../lib/pricing/data";
 
 const [categories, products, pricing] = await Promise.all([
   getCategories(),
@@ -16,13 +16,14 @@ const [categories, products, pricing] = await Promise.all([
   getPricingData(),
 ]);
 
-// Цена «от» — тем же движком, что на главной (дефолтный конфиг калькулятора).
+// Цена «от» — честный минимум minPrice(), как на главной и в title хабов:
+// плитка каталога и целевой хаб считаются одной функцией и совпадают.
 // Пересборка при правке цен в Directus пересчитает все плитки.
 const priceBySlug = new Map<string, number | null>(
   await Promise.all(
     products.map(async (p): Promise<[string, number | null]> => {
       const cfg = await getProductPricing(p.slug);
-      return [p.slug, cfg ? defaultPrice(cfg, pricing) : null];
+      return [p.slug, cfg ? minPrice(cfg, pricing) : null];
     }),
   ),
 );

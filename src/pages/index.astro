@@ -2,19 +2,21 @@
 import BaseLayout from "../layouts/BaseLayout.astro";
 import { Icon } from "astro-icon/components";
 import { getHomeProducts } from "../lib/products";
-import { getPricingData, getProductPricing, defaultPrice } from "../lib/pricing/data";
+import { getPricingData, getProductPricing, minPrice } from "../lib/pricing/data";
 
 const [homeProducts, pricing] = await Promise.all([
   getHomeProducts(),
   getPricingData(),
 ]);
 
-// Цена «от» считается на сборке тем же движком (дефолт. конфиг калькулятора).
+// Цена «от» — честный минимум minPrice(), тот же, что в title/JSON-LD хаба:
+// плитка не должна противоречить странице, на которую ведёт (раньше здесь был
+// defaultPrice() за 100 экз — у multipage это цена сотни книг/фотокниг).
 // Подорожает бумага/печать в Directus → пересборка пересчитает все плитки.
 const products = await Promise.all(
   homeProducts.map(async (p) => {
     const pricingConfig = await getProductPricing(p.slug);
-    const price = pricingConfig ? defaultPrice(pricingConfig, pricing) : null;
+    const price = pricingConfig ? minPrice(pricingConfig, pricing) : null;
     return { ...p, price };
   }),
 );

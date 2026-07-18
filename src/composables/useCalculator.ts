@@ -5,7 +5,7 @@ import { reactive, ref, computed, watch, type InjectionKey } from "vue";
 import { computePrice, type OrderConfig, type AnyConfig, type Sides, type CutType } from "../lib/pricing/engine";
 import type { PricingData, Sheet } from "../lib/pricing/engine";
 import type { ProductPricing, PaperOption } from "../lib/pricing/data";
-import { HOME_BASE_QTY } from "../lib/pricing/data";
+import { CALC_DEFAULT_QTY } from "../lib/pricing/data";
 import { isLaminationLocked, forcedLaminationIndex } from "../lib/pricing/rules";
 import type { SpecInput } from "../lib/pricing/spec";
 import { glyphFor, splitLabel, type SizeTile } from "../lib/calculator/sizeGlyph";
@@ -152,7 +152,7 @@ export function useCalculator(props: {
   // любое число от 1, нижняя граница заказа — сумма корзины.
   const sides = ref<Sides>(doubleSided ? "4+4" : "4+0");
   const presets = product.qtyPresets;
-  const quantity = ref(presets.includes(HOME_BASE_QTY) ? HOME_BASE_QTY : presets[0]);
+  const quantity = ref(presets.includes(CALC_DEFAULT_QTY) ? CALC_DEFAULT_QTY : presets[0]);
   const views = ref(1);
   const totalQty = computed(() => quantity.value * views.value);
   const selectQty = (q: number) => {
