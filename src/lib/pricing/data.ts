@@ -594,11 +594,13 @@ export async function getProductPricing(
   const rulingSource = ownRuling.length
     ? null
     : finishingList.find((f) => f.group === "Разлиновка" && f.colors.length);
+  // «Чистый» — синтетическая плитка «без варианта»; её картинка — image САМОЙ
+  // опции «Разлиновка» (владелец грузит чистый лист туда, варианты — в строки).
   const rulingList: RulingOption[] = ownRuling.length
     ? ownRuling
     : rulingSource
       ? [
-          { name: "Чистый", image: null, thumb: null },
+          { name: "Чистый", image: rulingSource.image, thumb: rulingSource.thumb },
           ...rulingSource.colors.map((c) => ({ name: c.name, image: c.image, thumb: c.tile })),
         ]
       : [];
@@ -610,7 +612,8 @@ export async function getProductPricing(
     ? ownFoldTypes
     : creaseSource
       ? [
-          { name: "Без биговки", folds: 0, kind: "crease", image: null, thumb: null },
+          // Картинка «Без биговки» — image самой опции «Биговка» (как у «Чистого»).
+          { name: "Без биговки", folds: 0, kind: "crease", image: creaseSource.image, thumb: creaseSource.thumb },
           ...creaseSource.colors.map((c) => ({
             name: c.name,
             folds: num(c.code),
