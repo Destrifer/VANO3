@@ -4,7 +4,7 @@ name: Build & Deploy
 # затем по SSH сервер тянет образ и перезапускает сайт.
 on:
   push:
-    branches: [master]
+    branches: [master, design/rework]
     # Правки доков/SEO-инструментов не меняют сайт — не пересобираем.
     # (repository_dispatch и workflow_dispatch не зависят от paths-ignore.)
     paths-ignore:
