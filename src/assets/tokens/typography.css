@@ -1,0 +1,90 @@
+/* Printmos · Typography
+   A contrast pairing, requested: a dramatic Didone serif for headlines against a
+   quiet grotesque for everything you read, plus a mono for specs and figures.
+
+   - Display  → Playfair Display. High-contrast Didone; at large sizes and heavy
+                weight it carries the neo-noir drama. Set TIGHT (line-height ~1.0,
+                negative tracking). Never below ~28px — it's a headline face only.
+   - Text/UI  → Golos Text. Neutral Russian grotesque; the workhorse for body,
+                labels, buttons, form fields. Calm and legible.
+   - Mono     → JetBrains Mono. Prices, dimensions (90×50 мм), tirage, codes —
+                anything tabular or "technical printer" in tone. Tabular figures. */
+
+:root {
+  /* ── Families ────────────────────────────────────────────────────── */
+  --font-display: "Playfair Display", "Times New Roman", Georgia, serif;
+  --font-sans:    "Golos Text", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono:    "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  /* ── Weights ─────────────────────────────────────────────────────── */
+  --w-regular:  400; /* @kind other */
+  --w-medium:   500; /* @kind other */
+  --w-semibold: 600; /* @kind other */
+  --w-bold:     700; /* @kind other */
+  --w-black:    900; /* @kind other */
+
+  /* ── Fluid type scale (min .. max across the viewport) ───────────────
+     Display steps lean big — neo-noir wants a headline that dominates. */
+  --fs-display-1: clamp(2.75rem, 1.6rem + 5.4vw, 6rem);    /* @kind other */
+  --fs-display-2: clamp(2.2rem, 1.5rem + 3.2vw, 4rem);     /* @kind other */
+  --fs-h1:        clamp(1.9rem, 1.4rem + 2.2vw, 3rem);     /* @kind other */
+  --fs-h2:        clamp(1.5rem, 1.2rem + 1.3vw, 2.125rem); /* @kind other */
+  --fs-h3:        clamp(1.25rem, 1.1rem + 0.6vw, 1.5rem);  /* @kind other */
+  --fs-lead:      clamp(1.05rem, 1rem + 0.35vw, 1.3rem);   /* @kind other */
+  --fs-body:      1rem;       /* @kind other */
+  --fs-sm:        0.875rem;   /* @kind other */
+  --fs-xs:        0.75rem;    /* @kind other */
+  --fs-2xs:       0.6875rem;  /* @kind other */
+
+  /* ── Line heights ────────────────────────────────────────────────── */
+  --lh-display: 0.98; /* @kind other */
+  --lh-tight:   1.1;  /* @kind other */
+  --lh-snug:    1.25; /* @kind other */
+  --lh-body:    1.55; /* @kind other */
+
+  /* ── Tracking ────────────────────────────────────────────────────── */
+  --tr-display: -0.02em;  /* @kind other */
+  --tr-tight:   -0.01em;  /* @kind other */
+  --tr-normal:  0;        /* @kind other */
+  --tr-kicker:  0.16em;   /* @kind other */
+  --tr-caps:    0.06em;   /* @kind other */
+}
+
+/* ── Element defaults ─────────────────────────────────────────────────
+   Kept lightweight so consumers get sane baselines without utility classes. */
+body {
+  font-family: var(--font-sans);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  font-weight: var(--w-regular);
+  color: var(--text-body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, .u-display {
+  font-family: var(--font-display);
+  color: var(--text-strong);
+  font-weight: var(--w-bold);
+  line-height: var(--lh-tight);
+  letter-spacing: var(--tr-display);
+  text-wrap: balance;
+}
+
+/* Kicker / eyebrow — the small caps label above a headline. A neo-noir signature:
+   quiet, wide-set, often cinnabar. */
+.u-kicker {
+  font-family: var(--font-sans);
+  font-size: var(--fs-2xs);
+  font-weight: var(--w-semibold);
+  letter-spacing: var(--tr-kicker);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* Mono spec label / figure */
+.u-mono {
+  font-family: var(--font-mono);
+  font-feature-settings: "tnum" 1, "zero" 1;
+  letter-spacing: 0;
+}

@@ -1,0 +1,49 @@
+/* Printmos · Spacing, radius, borders, elevation & layout
+   Neo-noir editorial: structure comes from hairlines and whitespace, not from
+   shadows or heavy rounding. Corners are nearly square; borders do the work. */
+
+:root {
+  /* ── Spacing scale (4px base) ────────────────────────────────────── */
+  --sp-1:  0.25rem;  /*  4 */
+  --sp-2:  0.5rem;   /*  8 */
+  --sp-3:  0.75rem;  /* 12 */
+  --sp-4:  1rem;     /* 16 */
+  --sp-5:  1.5rem;   /* 24 */
+  --sp-6:  2rem;     /* 32 */
+  --sp-7:  3rem;     /* 48 */
+  --sp-8:  4rem;     /* 64 */
+  --sp-9:  6rem;     /* 96 */
+  --sp-10: 8rem;     /* 128 */
+
+  /* ── Radius — editorial sharpness. Almost square. ────────────────── */
+  --r-none: 0;     /* @kind radius */
+  --r-sm:   2px;   /* fields, buttons, chips */
+  --r-md:   3px;   /* cards, tiles */
+  --r-lg:   4px;   /* large panels */
+  --r-pill: 999px; /* only for status dots / round marks */
+
+  /* ── Borders — the load-bearing element of the whole system ──────── */
+  --bw-hair:   1px;
+  --bw-strong: 1.5px;
+  --bw-heavy:  2px;
+
+  /* ── Elevation — used rarely. Neo-noir prefers a hard, printed shadow
+     over a soft blurry one. ──────────────────────────────────────── */
+  --shadow-none: none;
+  --shadow-card: 0 1px 2px rgba(12, 12, 14, 0.05);
+  --shadow-pop:  0 8px 24px -8px rgba(12, 12, 14, 0.22);
+  --shadow-noir: 6px 6px 0 var(--ink); /* hard offset block — signature */
+
+  /* ── Motion — restrained. A cut, not a bounce. ───────────────────── */
+  --ease-out:  cubic-bezier(0.22, 1, 0.36, 1); /* @kind other */
+  --dur-fast:  120ms; /* @kind other */
+  --dur-base:  180ms; /* @kind other */
+  --dur-slow:  320ms; /* @kind other */
+
+  /* ── Layout ──────────────────────────────────────────────────────── */
+  --page-max:     1280px;
+  --page-pad:     clamp(1rem, 4vw, 4.5rem);
+  --grid-gap:     clamp(1rem, 2vw, 2rem);
+  --measure:      66ch;   /* readable text column */
+  --measure-tight: 48ch;
+}

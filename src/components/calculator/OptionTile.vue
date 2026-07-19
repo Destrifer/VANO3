@@ -162,18 +162,21 @@ function thumbLeave(e: MouseEvent) {
   width: 9rem;
   padding: 0.4rem;
   border: 1px solid var(--color-base-300, #d6d3cd);
-  border-radius: 0.75rem;
+  border-radius: var(--radius-box, 3px); /* нео-нуар: редакционная острота */
   background: var(--color-base-100, #fff);
   cursor: pointer;
-  transition: border-color 0.12s, background 0.12s;
+  transition: border-color 0.12s, color 0.12s;
 }
 .otile:hover { border-color: var(--color-base-content, #555); }
+/* Выделение в системе — киноварь-контур, фон остаётся бумажным (без серой
+   заливки), подпись киноварью. */
 .otile--on {
-  border-color: var(--color-primary, #1f1f1f);
-  border-width: 2px;
-  padding: calc(0.4rem - 1px);
-  background: var(--color-base-200, #f3f1ea);
+  border-color: var(--color-accent-ink);
+  border-width: 1.5px;
+  padding: calc(0.4rem - 0.5px);
+  background: var(--color-base-100, #fff);
 }
+.otile--on .otile__name { color: var(--color-accent-ink); }
 .otile--off { cursor: not-allowed; opacity: 0.4; }
 .otile--off:hover { border-color: var(--color-base-300, #d6d3cd); }
 .otile__thumb {
@@ -183,7 +186,7 @@ function thumbLeave(e: MouseEvent) {
   aspect-ratio: 16 / 9;
   width: 100%;
   overflow: hidden;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-field, 2px);
   background-color: var(--color-base-200, #f3f1ea); /* placeholder, пока грузится */
 }
 .otile__thumb picture { display: contents; }
@@ -300,7 +303,7 @@ function thumbLeave(e: MouseEvent) {
   border-color: var(--color-accent-ink);
   background: var(--color-base-100, #fff);
   color: var(--color-accent-ink);
-  padding: calc(0.45rem - 1px) calc(0.7rem - 1px);
+  padding: calc(0.45rem - 0.5px) calc(0.7rem - 0.5px);
 }
 .otile--icon.otile--on:hover { border-color: var(--color-accent-ink); }
 .otile--icon.otile--on .otile__sub { color: var(--color-accent-ink); opacity: 1; }

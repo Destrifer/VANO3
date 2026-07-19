@@ -64,7 +64,17 @@ const businessLd = localBusiness(settings, siteUrl);
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#ffffff" />
+    <meta name="theme-color" content="#FDFDFC" />
+
+    {/* Нео-нуар типографика: Playfair Display (заголовки), Golos Text (текст/UI),
+        JetBrains Mono (цены/размеры/тиражи) — все с полной кириллицей.
+        Google Fonts + preconnect; display=swap чтобы текст не мигал пустотой. */}
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Golos+Text:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
     <meta name="generator" content={Astro.generator} />
     <meta name="description" content={description} />
     <meta name="lead-cutoff" content={String(settings.cutoff_hour ?? 14)} />
@@ -260,7 +270,7 @@ const businessLd = localBusiness(settings, siteUrl);
       <slot />
     </main>
 
-    <footer class="site-footer page-shell">
+    <footer class="site-footer page-shell" data-surface="ink">
       <!-- 1. Карта: ленивый фасад → клик подгружает ч/б интерактив Яндекса -->
       <div
         class="footer-block map-block"

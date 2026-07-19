@@ -1,34 +1,42 @@
 @import "tailwindcss";
+
+/* Нео-нуар дизайн-система: семантические токены (палитра + ink-скоуп),
+   типографика (дисплей/текст/моно) и шкала отступов/радиусов. Импорт ДО
+   @plugin — CSS требует @import выше прочих правил. */
+@import "./tokens/colors.css";
+@import "./tokens/typography.css";
+@import "./tokens/spacing.css";
+
 @plugin "daisyui";
 
 @plugin "daisyui/theme" {
-  name: "lofi";
+  name: "printmos-noir";
   default: true;
   prefersdark: false;
   color-scheme: "light";
-  --color-base-100: oklch(100% 0 0);
-  --color-base-200: oklch(97% 0 0);
-  --color-base-300: oklch(94% 0 0);
-  --color-base-content: oklch(0% 0 0);
-  --color-primary: oklch(15.906% 0 0);
-  --color-primary-content: oklch(100% 0 0);
-  --color-secondary: oklch(21.455% 0.001 17.278);
-  --color-secondary-content: oklch(100% 0 0);
-  --color-accent: oklch(26.861% 0 0);
-  --color-accent-content: oklch(100% 0 0);
-  --color-neutral: oklch(0% 0 0);
-  --color-neutral-content: oklch(100% 0 0);
-  --color-info: oklch(79.54% 0.103 205.9);
-  --color-info-content: oklch(15.908% 0.02 205.9);
-  --color-success: oklch(90.13% 0.153 164.14);
-  --color-success-content: oklch(18.026% 0.03 164.14);
-  --color-warning: oklch(88.37% 0.135 79.94);
-  --color-warning-content: oklch(17.674% 0.027 79.94);
-  --color-error: oklch(78.66% 0.15 28.47);
-  --color-error-content: oklch(15.732% 0.03 28.47);
-  --radius-selector: 2rem;
-  --radius-field: 0.25rem;
-  --radius-box: 0.5rem;
+  --color-base-100: #FDFDFC;  /* --paper: страница */
+  --color-base-200: #F5F5F4;  /* --n-50: утопленные поверхности */
+  --color-base-300: #DCDCD9;  /* --n-200 = --line-hair: тонкие линии */
+  --color-base-content: #212123; /* --n-800 = --text-body */
+  --color-primary: #0C0C0E;      /* --ink */
+  --color-primary-content: #FDFDFC;
+  --color-secondary: #38383A;    /* --n-700 */
+  --color-secondary-content: #FDFDFC;
+  --color-accent: #E5341F;       /* --cinnabar: единственный цветной акцент */
+  --color-accent-content: #FFFFFF;
+  --color-neutral: #0C0C0E;
+  --color-neutral-content: #FDFDFC;
+  --color-info: #54544E;         /* инфо остаётся серым — нуар без синего */
+  --color-info-content: #FFFFFF;
+  --color-success: #0B7A4B;      /* --green: «выгода» */
+  --color-success-content: #FFFFFF;
+  --color-warning: #A9741A;      /* --amber: preflight-предупреждения */
+  --color-warning-content: #FFFFFF;
+  --color-error: #C42913;        /* --cinnabar-strong */
+  --color-error-content: #FFFFFF;
+  --radius-selector: 2px;  /* было 2rem — пилюли уходят */
+  --radius-field: 2px;     /* было 0.25rem */
+  --radius-box: 3px;       /* было 0.5rem — редакционная острота */
   --size-selector: 0.25rem;
   --size-field: 0.25rem;
   --border: 1px;
@@ -37,24 +45,25 @@
 }
 
 @theme {
-  /* Один источник шрифта для Tailwind-утилит и нашей рукописной верстки.
-     Системный стек: 0 загрузки, родной вид на каждой ОС. */
-  --font-sans:
-    system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
-    "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  /* Нео-нуар: три гарнитуры (полная кириллица). Golos — текст/UI, Playfair —
+     заголовки, JetBrains Mono — цены/размеры/тиражи. Tailwind генерит утилиты
+     font-sans / font-display / font-mono. */
+  --font-sans: "Golos Text", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Playfair Display", "Times New Roman", Georgia, serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
 
   /* Семантика «выгоды» для таблицы цен — осознанный цветной акцент в монохромной
      теме. Tailwind генерит утилиты text-gain / bg-gain / text-loss / bg-loss. */
-  --color-gain: oklch(52% 0.15 150);
-  --color-loss: oklch(55% 0.2 27);
+  --color-gain: #0B7A4B;  /* --green */
+  --color-loss: #C42913;  /* --cinnabar-strong */
 }
 
 :root {
-  /* единственный акцент в монохроме — «печатная» киноварь */
-  --color-accent-ink: oklch(60% 0.20 27);
+  /* единственный акцент в монохроме — «печатная» киноварь (--cinnabar) */
+  --color-accent-ink: #E5341F;
   --page-padding: clamp(16px, 4vw, 72px);
   --grid-gap: clamp(16px, 2vw, 32px);
-  --text-readable: 68ch;
+  --text-readable: 66ch;
 }
 
 /* Fluid root font-size (часть A).
@@ -76,11 +85,53 @@ body {
   background: var(--color-base-100);
   color: var(--color-base-content);
   font-family: var(--font-sans);
-  line-height: 1.5;
+  line-height: 1.55; /* нео-нуар: чуть свободнее для Golos Text */
   /* колонка во всю высоту экрана: header / main / footer */
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+}
+
+/* Ink-панель («драма света»): контейнер с data-surface="ink" чёрный (фон и
+   базовый цвет текста задаёт colors.css через --text-body). Наши футер-классы
+   местами хардкодят daisyUI-переменную --color-base-content (тёмную) — на
+   чёрном они бы утонули. Ремап самой переменной проигрывает каскад daisyUI
+   (unlayered) и ломает Lightning CSS через !important, поэтому чиним точечно:
+   перекрываем цвет/бордер этих элементов светлыми токенами colors.css. */
+[data-surface="ink"] .contact-card__label,
+[data-surface="ink"] .contact-card__muted {
+  color: var(--text-muted); /* светлый приглушённый на чёрном */
+}
+[data-surface="ink"] .footer-block {
+  border-color: var(--line-hair); /* тонкая линия под чёрный, не яркая */
+}
+[data-surface="ink"] .messenger {
+  border-color: color-mix(in oklch, var(--text-body) 40%, transparent);
+}
+[data-surface="ink"] .messenger:hover {
+  background: var(--surface-raised); /* --n-900 на ink-скоупе */
+}
+
+/* Клавиатурный фокус — одно киноварное кольцо, без браузерного гало. */
+:focus-visible {
+  outline: 2px solid var(--color-accent-ink);
+  outline-offset: 2px;
+}
+
+/* Выделение текста — киноварь: печатный акцент системы. */
+::selection {
+  background: var(--cinnabar, #E5341F);
+  color: #fff;
+}
+
+/* Моушен нео-нуара: нажатие — сдвиг на 1px вниз, «рез, не отскок». */
+.btn:not([disabled]):active {
+  transform: translateY(1px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn:not([disabled]):active {
+    transform: none;
+  }
 }
 
 /* main забирает всё свободное место → футер уезжает вниз */
@@ -95,7 +146,9 @@ body > main {
   gap: 1.5rem;
   margin-top: 4rem;
   padding-block: 2.5rem;
-  border-top: var(--border) solid var(--color-base-content);
+  /* «газетная шапка» системы: тяжёлая структурная линейка сверху.
+     Внутри ink-панели --color-base-content = бумага → светлая линия. */
+  border-top: 2px solid var(--color-base-content);
 }
 
 @media (min-width: 640px) {
@@ -252,15 +305,17 @@ body > main {
 
 /* блок «Контакты» */
 .contact-card__label {
-  font-size: 0.8rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.16em;
   color: color-mix(in oklch, var(--color-base-content) 55%, transparent);
 }
 
 .contact-card__phone {
+  font-family: var(--font-mono); /* цифры — всегда моно */
   font-size: 1.5rem;
-  font-weight: 700;
+  font-weight: 500;
   line-height: 1.1;
   text-decoration: none;
   color: inherit;
@@ -368,9 +423,10 @@ body > main {
 /* --- Главная: заголовок + сетка продуктов --- */
 .home-title {
   margin-block: 1.5rem 1.25rem;
-  font-size: clamp(1.75rem, 1.35rem + 1.9vw, 2.75rem);
-  font-weight: 800;
-  line-height: 1.1;
+  font-family: var(--font-display); /* Playfair Display — редакционная драма */
+  font-size: clamp(1.9rem, 1.4rem + 2.2vw, 3rem);
+  font-weight: 700;
+  line-height: 1.05;
   letter-spacing: -0.02em;
 }
 
@@ -457,7 +513,9 @@ body > main {
 }
 
 .product-tile__price {
-  font-weight: 600;
+  font-family: var(--font-mono); /* все цены/размеры/тиражи в системе — моно */
+  font-feature-settings: "tnum" 1;
+  font-weight: 500;
   color: var(--color-accent-ink); /* единственное цветное пятно */
 }
 
@@ -503,9 +561,9 @@ body > main {
   padding: 0.5rem 0.7rem;
   text-align: left;
   border: var(--border) solid var(--color-base-300);
-  border-radius: 0.75rem;
+  border-radius: var(--radius-box); /* 3px — редакционная острота */
   background: var(--color-base-100);
-  transition: border-color 0.12s, background 0.12s, color 0.12s;
+  transition: border-color 0.12s, box-shadow 0.12s, color 0.12s;
 }
 .product-tile--compact .product-tile__icon {
   width: 1.5rem;
@@ -533,13 +591,18 @@ body > main {
   border-color: var(--color-base-content);
   box-shadow: none; /* без inset-полосы базовой карточки */
 }
+/* Выделение в системе — всегда киноварь-контур, не заливка. */
 .product-tile--compact.product-tile--active {
-  background: var(--color-base-content);
-  border-color: var(--color-base-content);
-  color: var(--color-base-100);
+  background: var(--color-base-100);
+  border-color: var(--color-accent-ink);
+  box-shadow: inset 0 0 0 0.5px var(--color-accent-ink);
+  color: var(--color-accent-ink);
+}
+.product-tile--compact.product-tile--active:hover {
+  border-color: var(--color-accent-ink);
 }
 .product-tile--compact.product-tile--active .product-tile__meta {
-  color: color-mix(in oklch, var(--color-base-100) 75%, transparent);
+  color: var(--color-accent-ink);
 }
 
 /* Заголовок хаба/кластера (крошки-заголовок). Плитки-сегменты — отдельным рядом
@@ -667,12 +730,15 @@ body > main {
 }
 
 /* --- Заглушки страниц --- */
+/* Кикер над главным заголовком — подпись системы: тихая, широко разбитая,
+   киноварная (над H1). */
 .stub-kicker {
   margin-bottom: 0;
-  font-size: 0.85rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: color-mix(in oklch, var(--color-base-content) 55%, transparent);
+  letter-spacing: 0.16em;
+  color: var(--color-accent-ink);
 }
 
 .stub-title {
@@ -680,9 +746,10 @@ body > main {
   align-items: center;
   gap: 0.5rem;
   margin-block: 0 0.75rem;
-  font-size: clamp(1.75rem, 1.35rem + 1.9vw, 2.75rem);
-  font-weight: 800;
-  line-height: 1.1;
+  font-family: var(--font-display); /* Playfair Display */
+  font-size: clamp(1.9rem, 1.4rem + 2.2vw, 3rem);
+  font-weight: 700;
+  line-height: 1.05;
   letter-spacing: -0.02em;
 }
 
