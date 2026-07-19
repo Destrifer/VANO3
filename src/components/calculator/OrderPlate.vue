@@ -83,7 +83,7 @@ function add() {
             <span>Готово {{ lead.text }}</span>
           </div>
 
-          <button class="btn btn-accent plate__btn" :class="{ 'btn-success': added }" @click="add">
+          <button class="btn btn-primary plate__btn" :class="{ 'btn-success': added }" @click="add">
             {{ added ? "Добавлено ✓" : "В корзину" }}
           </button>
         </div>
@@ -116,22 +116,8 @@ function add() {
 .plate--empty { display: none; } /* нет расчёта — корзину не показываем */
 .plate__inner { display: flex; flex-direction: column; gap: 0.75rem; padding: 1rem; }
 .plate__lead { display: flex; flex-direction: column; gap: 0.75rem; }
-/* Итог — крупно, моно, киноварью: главная цифра экрана. */
-.plate__price {
-  font-family: var(--font-mono);
-  font-feature-settings: "tnum" 1;
-  font-size: 1.875rem;
-  font-weight: 500;
-  line-height: 1.1;
-  color: var(--color-accent-ink);
-}
-.plate__sub {
-  font-family: var(--font-mono);
-  font-feature-settings: "tnum" 1;
-  font-size: 0.8125rem;
-  color: var(--color-base-content);
-  opacity: 0.6;
-}
+.plate__price { font-size: 1.875rem; font-weight: 700; line-height: 1.1; }
+.plate__sub { font-size: 0.875rem; color: var(--color-base-content); opacity: 0.6; }
 .plate__btn { width: 100%; }
 .plate__note { font-size: 0.75rem; color: var(--color-base-content); opacity: 0.6; }
 .plate__empty { font-size: 0.875rem; color: var(--color-base-content); opacity: 0.6; }
