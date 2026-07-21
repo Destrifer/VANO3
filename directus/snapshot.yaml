@@ -456,6 +456,32 @@ collections:
       versioning: false
     schema:
       name: print_tiers
+  - collection: product_fold_types
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: product_fold_types
+      color: null
+      display_template: null
+      group: null
+      hidden: true
+      icon: menu_book
+      item_duplication_fields: null
+      note: null
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: sort
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: product_fold_types
   - collection: product_sizes
     meta:
       accountability: all
@@ -6464,6 +6490,287 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
+  - collection: product_fold_types
+    field: id
+    type: integer
+    meta:
+      collection: product_fold_types
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: null
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 1
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: product_fold_types
+      data_type: integer
+      default_value: nextval('product_fold_types_id_seq'::regclass)
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: true
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: product_fold_types
+    field: product
+    type: integer
+    meta:
+      collection: product_fold_types
+      conditions: null
+      display: null
+      display_options: null
+      field: product
+      group: null
+      hidden: true
+      interface: null
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 2
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: product
+      table: product_fold_types
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: products
+      foreign_key_column: id
+  - collection: product_fold_types
+    field: name
+    type: string
+    meta:
+      collection: product_fold_types
+      conditions: null
+      display: null
+      display_options: null
+      field: name
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 3
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: name
+      table: product_fold_types
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: product_fold_types
+    field: folds
+    type: integer
+    meta:
+      collection: product_fold_types
+      conditions: null
+      display: null
+      display_options: null
+      field: folds
+      group: null
+      hidden: false
+      interface: input
+      note: число сгибов (для цены per_fold)
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 4
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: folds
+      table: product_fold_types
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: product_fold_types
+    field: kind
+    type: string
+    meta:
+      collection: product_fold_types
+      conditions: null
+      display: null
+      display_options: null
+      field: kind
+      group: null
+      hidden: false
+      interface: input
+      note: book / roll / accordion / crease / flat — для глифа-фолбэка
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 5
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: kind
+      table: product_fold_types
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: product_fold_types
+    field: sort
+    type: integer
+    meta:
+      collection: product_fold_types
+      conditions: null
+      display: null
+      display_options: null
+      field: sort
+      group: null
+      hidden: true
+      interface: null
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 6
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: sort
+      table: product_fold_types
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: product_fold_types
+    field: image
+    type: uuid
+    meta:
+      collection: product_fold_types
+      conditions: null
+      display: image
+      display_options: null
+      field: image
+      group: null
+      hidden: false
+      interface: file-image
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 7
+      special:
+        - file
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: image
+      table: product_fold_types
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: directus_files
+      foreign_key_column: id
   - collection: product_sizes
     field: id
     type: integer
@@ -7821,9 +8128,9 @@ fields:
       display_options: null
       field: fold_types
       group: null
-      hidden: false
+      hidden: true
       interface: input-code
-      note: Варианты сложения, JSON [{name,folds}] (буклеты)
+      note: УСТАРЕЛО — заменено на fold_variants (O2M). Не редактировать.
       options:
         language: json
       readonly: false
@@ -8468,6 +8775,31 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
+  - collection: products
+    field: fold_variants
+    type: alias
+    meta:
+      collection: products
+      conditions: null
+      display: null
+      display_options: null
+      field: fold_variants
+      group: null
+      hidden: false
+      interface: list-o2m
+      note: Виды фальцовки (плитки калькулятора). Картинка — drag-drop.
+      options:
+        template: '{{name}}'
+      readonly: false
+      required: false
+      searchable: true
+      sort: 40
+      special:
+        - o2m
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
   - collection: products_bindings
     field: id
     type: integer
@@ -11535,6 +11867,48 @@ relations:
       constraint_name: pricing_settings_cut_die_image_foreign
       on_update: NO ACTION
       on_delete: NO ACTION
+  - collection: product_fold_types
+    field: image
+    related_collection: directus_files
+    meta:
+      junction_field: null
+      many_collection: product_fold_types
+      many_field: image
+      one_allowed_collections: null
+      one_collection: directus_files
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: product_fold_types
+      column: image
+      foreign_key_table: directus_files
+      foreign_key_column: id
+      constraint_name: product_fold_types_image_foreign
+      on_update: NO ACTION
+      on_delete: SET NULL
+  - collection: product_fold_types
+    field: product
+    related_collection: products
+    meta:
+      junction_field: null
+      many_collection: product_fold_types
+      many_field: product
+      one_allowed_collections: null
+      one_collection: products
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: fold_variants
+      sort_field: sort
+    schema:
+      table: product_fold_types
+      column: product
+      foreign_key_table: products
+      foreign_key_column: id
+      constraint_name: product_fold_types_product_foreign
+      on_update: NO ACTION
+      on_delete: SET NULL
   - collection: product_sizes
     field: product
     related_collection: products
