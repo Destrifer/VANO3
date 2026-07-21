@@ -500,7 +500,11 @@ export async function getProductPricing(
     "allow_contour_cut",
     "qty_presets",
     "ruling_options",
-    "fold_types",
+    "fold_variants.name",
+    "fold_variants.folds",
+    "fold_variants.kind",
+    "fold_variants.image",
+    "fold_variants.sort",
     "fixed_price",
     "fixed_sheet_width",
     "fixed_sheet_height",
@@ -609,20 +613,23 @@ export async function getProductPricing(
     } as FinishingOption;
   });
 
-  // Плитки сгибов. Свои fold_types продукта (фальцовка буклетов/открыток) — в
-  // приоритете. Если их нет, но привязана per_fold-отделка с вариантами
-  // (finishing_colors: «1 сгиб»…«4 сгиба», folds в поле code) — строим
-  // универсальные плитки биговки: «Без биговки» + варианты с картинками из
-  // самой отделки. Варианты заводятся ОДИН раз в «Постпечати» (как цвета
-  // фольги) и работают у любого продукта, к которому привязана биговка.
-  const ownFoldTypes = (Array.isArray(p.fold_types) ? p.fold_types : []).map((f: any) => ({
-    name: String(f.name ?? ""),
-    folds: num(f.folds),
-    kind: String(f.kind ?? "accordion"),
-    image: assetUrl(f.image),
-    thumb: responsiveAsset(f.image, FOLD_THUMB_W, FOLD_THUMB_H),
-    full: responsiveAssetFluid(f.image, FULL_WIDTHS, FULL_SIZES),
-  }));
+  // Плитки сгибов. Свои виды фальцовки продукта (буклеты/приглашения/открытки) —
+  // O2M-коллекция `product_fold_types` (поле `fold_variants`): name/folds/kind +
+  // картинка drag-drop, как у product_sizes. Приоритетнее биговки. Если их нет,
+  // но привязана per_fold-отделка с вариантами (finishing_colors: «1 сгиб»…, folds
+  // в поле code) — строим универсальные плитки биговки: «Без биговки» + варианты
+  // с картинками из самой отделки (заводятся ОДИН раз в «Постпечати», как фольга).
+  const ownFoldTypes = (Array.isArray(p.fold_variants) ? p.fold_variants : [])
+    .slice()
+    .sort((a: any, b: any) => (a.sort ?? 0) - (b.sort ?? 0))
+    .map((f: any) => ({
+      name: String(f.name ?? ""),
+      folds: num(f.folds),
+      kind: String(f.kind ?? "accordion"),
+      image: assetUrl(f.image),
+      thumb: responsiveAsset(f.image, FOLD_THUMB_W, FOLD_THUMB_H),
+      full: responsiveAssetFluid(f.image, FULL_WIDTHS, FULL_SIZES),
+    }));
   // Плитки разлиновки — тот же приём, что с биговкой ниже: свои строки продукта
   // (`ruling_options`) в приоритете (без картинок, глифы), иначе — варианты
   // универсальной отделки «Разлиновка» (finishing_colors, с картинками) плюс
