@@ -477,7 +477,9 @@ collections:
       sort: null
       sort_field: sort
       status: active
-      translations: null
+      translations:
+        - language: ru-RU
+          translation: Виды фальцовки
       unarchive_value: null
       versioning: false
     schema:
@@ -6589,7 +6591,9 @@ fields:
       searchable: true
       sort: 3
       special: null
-      translations: null
+      translations:
+        - language: ru-RU
+          translation: Название
       validation: null
       validation_message: null
       width: full
@@ -6629,7 +6633,9 @@ fields:
       searchable: true
       sort: 4
       special: null
-      translations: null
+      translations:
+        - language: ru-RU
+          translation: Число сгибов
       validation: null
       validation_message: null
       width: full
@@ -6669,7 +6675,9 @@ fields:
       searchable: true
       sort: 5
       special: null
-      translations: null
+      translations:
+        - language: ru-RU
+          translation: Тип (иконка-фолбэк)
       validation: null
       validation_message: null
       width: full
@@ -6750,7 +6758,9 @@ fields:
       sort: 7
       special:
         - file
-      translations: null
+      translations:
+        - language: ru-RU
+          translation: Картинка плитки
       validation: null
       validation_message: null
       width: full
@@ -8796,7 +8806,9 @@ fields:
       sort: 40
       special:
         - o2m
-      translations: null
+      translations:
+        - language: ru-RU
+          translation: Виды фальцовки
       validation: null
       validation_message: null
       width: full
