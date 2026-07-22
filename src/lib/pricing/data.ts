@@ -531,17 +531,14 @@ export async function getProductPricing(
     // Фото переплёта для плитки (нет фото — глиф-фолбэк по имени, см.
     // MultipageCalculator.bindGlyph).
     //
-    // Фото переплёта. ОТКЛЮЧЕНО: поле на проде не живёт дольше нескольких
-    // минут. Убирание `schema apply` из деплоя (477e21d) не помогло —
-    // запись в directus_fields исчезает и без него, причём ВО ВРЕМЯ сборки,
-    // которая только читает. Сам Directus при этом здоров (health ok, БД 8 мс).
-    // Поведение воспроизводится: создать поле → 200 и живёт минуты, запустить
-    // сборку → meta.id снова null, чтения падают с
-    // «column bindings.image does not exist».
-    // Осталось проверить НА СЕРВЕРЕ (нет доступа): что применяет
-    // /opt/printmos/directus/snapshot.yaml (он там лежит с прошлых деплоев),
-    // и нет ли рестарта Directus под нагрузкой сборки.
-    // "bindings.bindings_id.image",
+    // Фото переплёта. ОТКЛЮЧЕНО: любое новое file-поле в коллекции bindings
+    // на этом проде живёт минуты, а потом колонка пропадает из БД. Проверено
+    // и исключено: schema apply на деплое (убран), имя поля (`photo` умер так
+    // же, как `image`), рестарт контейнера (RestartCount 0, аптайм 12 дней),
+    // крон (только бэкап в 3:30), лимиты лицензии (production_enabled).
+    // Смерть стабильно наступает после прогона полной сборки, хотя сборка
+    // делает только GET. Причина не найдена — нужен доступ к БД.
+    // "bindings.bindings_id.photo",
     "bindings.bindings_id.price",
     "bindings.bindings_id.min_pages",
     "bindings.bindings_id.max_pages",
@@ -753,9 +750,10 @@ export async function getProductPricing(
       return {
         id: num(b.id),
         name: b.name,
-        image: assetUrl(b.image),
-        thumb: responsiveAsset(b.image, FOLD_THUMB_W, FOLD_THUMB_H),
-        full: responsiveAssetFluid(b.image, FULL_WIDTHS, FULL_SIZES),
+        // в Directus поле называется `photo` (см. список полей запроса выше)
+        image: assetUrl(b.photo),
+        thumb: responsiveAsset(b.photo, FOLD_THUMB_W, FOLD_THUMB_H),
+        full: responsiveAssetFluid(b.photo, FULL_WIDTHS, FULL_SIZES),
         priceBrackets: (Array.isArray(b.price) ? b.price : [])
           .map((br: any) => ({ to: num(br.to), price: num(br.price) }))
           .sort((a: any, z: any) => a.to - z.to),
