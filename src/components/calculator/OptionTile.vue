@@ -280,6 +280,16 @@ function thumbLeave(e: MouseEvent) {
   align-items: center;
   gap: 0.3rem;
   min-width: 0;
+  /* Фикс высоты плитки. Миниатюра постоянна (16:9), прыгал только текст:
+     имя 1–2 строки + опциональный сабтайтл, а у выбранной плитки инлайновая
+     галочка ещё и срывала line-clamp (имя росло в 3-ю строку). Резервируем
+     место под 2 строки имени + строку сабтайтла — плитки в ряду держат единую
+     высоту при любой подписи, выбранная/невыбранная, с сабтайтлом и без.
+     Верхнее выравнивание: короткое имя прижато к миниатюре, а не плавает.
+     Высота в rem, не em: имя 2×0.72×1.1 + gap 0.3 + сабтайтл 0.65 ≈ 2.53rem
+     (em здесь считался бы от шрифта .otile__text, а не имени). */
+  height: 2.55rem;
+  justify-content: flex-start;
 }
 .otile__name {
   font-size: 0.72rem;
@@ -289,6 +299,9 @@ function thumbLeave(e: MouseEvent) {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  /* Потолок в 2 строки НЕЗАВИСИМО от line-clamp: если его сорвёт инлайновый
+     SVG галочки, третью строку всё равно срежет overflow. */
+  max-height: calc(2 * 1.1em);
 }
 .otile__sub { font-size: 0.65rem; line-height: 1; opacity: 0.55; white-space: nowrap; }
 
@@ -312,12 +325,14 @@ function thumbLeave(e: MouseEvent) {
 }
 .otile--icon .otile__glyph,
 .otile--icon .otile__thumb :slotted(svg) { width: 1.7rem; height: 1.7rem; opacity: 0.75; }
-.otile--icon .otile__text { align-items: flex-start; gap: 0.1rem; }
+/* icon-вариант — строчная плитка: сбрасываем фикс-высоту колоночного текста */
+.otile--icon .otile__text { align-items: flex-start; gap: 0.1rem; height: auto; }
 .otile--icon .otile__name {
   font-size: 0.9rem;
   font-weight: 600;
   text-align: left;
   -webkit-line-clamp: 1;
+  max-height: none; /* строка одна — потолок в 2 строки не нужен */
 }
 .otile--icon .otile__sub { line-height: 1.1; }
 /* активная icon-плитка — киноварь: рамка + иконка + текст, без заливки */
