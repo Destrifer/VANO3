@@ -16,6 +16,8 @@ const calc = inject(mpCalcKey)!;
 // Lightbox фото разлиновки — паттерн PaperSelect/CoatingField: тап по фото на
 // таче открывает крупное, на десктопе ховер-превью делает сама OptionTile.
 const rulingLightbox = ref<InstanceType<typeof ImageLightbox> | null>(null);
+// То же для фото переплёта (bindings.image).
+const bindLightbox = ref<InstanceType<typeof ImageLightbox> | null>(null);
 const onRange = (e: Event) => calc.setPages(+(e.target as HTMLInputElement).value);
 const onInput = (e: Event) => calc.setPages(+(e.target as HTMLInputElement).value);
 
@@ -128,13 +130,17 @@ function ruleGlyph(name: string): string {
           :sub="`${b.minPages}–${b.maxPages} полос`"
           :thumb="b.thumb"
           :glyph="bindGlyph(b.name)"
+          :zoom="!!b.full"
+          :full="b.full"
           :active="calc.bindingIndex === i"
           :disabled="!calc.bindingCompatible(b)"
           :title="calc.bindingCompatible(b) ? b.name : `${b.name} — ${b.minPages}–${b.maxPages} полос`"
           @select="calc.bindingCompatible(b) && (calc.bindingIndex = i)"
+          @zoom="bindLightbox?.open(b.name, b.full ?? null)"
         />
       </div>
       <span class="text-xs opacity-60">подбирается автоматически по числу полос</span>
+      <ImageLightbox ref="bindLightbox" />
     </div>
 
     <!-- Обложка: бумага + печать + покрытие -->
