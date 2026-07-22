@@ -132,19 +132,19 @@ function thumbLeave(e: MouseEvent) {
       <span v-if="zoom" class="otile__badge" aria-hidden="true">
         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
       </span>
+      <!-- Галочка выбора — бейджем в углу миниатюры, НЕ в строке подписи: иначе
+           при выборе она вставляется перед текстом и толкает надпись вбок. В углу
+           она не влияет на раскладку текста (и не ломает line-clamp имени). Роль
+           radio/checkbox + aria-checked на кнопке несут состояние для скринридера,
+           бейдж — aria-hidden. Не показываем в icon-варианте (миниатюра там —
+           просто иконка, угловой бейдж некуда посадить; выбор виден киноварной
+           рамкой и жирным текстом). -->
+      <span v-if="active && !icon" class="otile__pick" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+      </span>
     </span>
     <span class="otile__text">
-      <span class="otile__name">
-        <!-- Галочка у выбранной плитки: подтверждает выбор словом, а не только
-             рамкой (важно для снимаемых опций — видно, что это состояние). -->
-        <svg
-          v-if="active"
-          class="otile__check"
-          viewBox="0 0 24 24"
-          aria-hidden="true"
-        ><path fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-        {{ label }}
-      </span>
+      <span class="otile__name">{{ label }}</span>
       <span v-if="sub" class="otile__sub">{{ sub }}</span>
     </span>
   </button>
@@ -191,14 +191,22 @@ function thumbLeave(e: MouseEvent) {
 }
 .otile--on:hover { border-color: var(--color-accent-ink); }
 .otile--on .otile__name { color: var(--color-accent-ink); font-weight: 600; }
-.otile__check {
-  display: inline-block;
-  width: 0.85em;
-  height: 0.85em;
-  margin-right: 0.15em;
-  vertical-align: -0.08em;
-  color: var(--color-accent-ink);
+/* Бейдж выбора в углу миниатюры (позиционируется от .otile__thumb, он relative).
+   Верхний-левый угол: верхний-правый занимает значок лупы (zoom) на тачах. */
+.otile__pick {
+  position: absolute;
+  top: 0.3rem;
+  left: 0.3rem;
+  display: grid;
+  place-items: center;
+  width: 1.15rem;
+  height: 1.15rem;
+  border-radius: 9999px;
+  background: var(--color-accent-ink);
+  color: #fff;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.3);
 }
+.otile__pick svg { width: 0.8rem; height: 0.8rem; }
 .otile--off { cursor: not-allowed; opacity: 0.4; }
 .otile--off:hover { border-color: var(--color-base-300, #d6d3cd); }
 .otile__thumb {
