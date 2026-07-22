@@ -24,8 +24,10 @@ const props = withDefaults(
     full?: ResponsiveImage; // ДЕСКТОП: крупное фото для ховер-превью — карточка
                             // через Teleport в body (fixed — не режется
                             // overflow-контейнерами вроде списка материалов).
+    multi?: boolean; // независимый вкл/выкл (доп-обработка) вместо выбора
+                     // одного из ряда: role=checkbox, а не radio.
   }>(),
-  { active: false, disabled: false, icon: false, zoom: false },
+  { active: false, disabled: false, icon: false, zoom: false, multi: false },
 );
 const emit = defineEmits<{ select: []; zoom: [] }>();
 
@@ -97,7 +99,7 @@ function thumbLeave(e: MouseEvent) {
 <template>
   <button
     type="button"
-    role="radio"
+    :role="multi ? 'checkbox' : 'radio'"
     :aria-checked="active"
     :disabled="disabled"
     :title="title ?? label"

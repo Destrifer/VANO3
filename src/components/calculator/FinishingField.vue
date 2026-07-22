@@ -10,6 +10,7 @@ import OptionTile from "./OptionTile.vue";
 import ImageLightbox from "./ImageLightbox.vue";
 import InfoTip from "../InfoTip.vue";
 import { optionInfo } from "../../lib/optionInfo";
+import { extraGlyph } from "../../lib/calculator/finishingGlyph";
 
 const calc = inject(calcKey)!;
 const lightbox = ref<InstanceType<typeof ImageLightbox> | null>(null);
@@ -88,19 +89,43 @@ const groupGlyph = (h: string) => GROUP_GLYPH[h];
     </div>
   </div>
 
-  <!-- Остаток: опции без group (обратная совместимость) — чекбоксами -->
+  <!-- Опции без group (у них нет вариантов-картинок в finishing_colors) —
+       тоже плитками, но независимыми: не «один из ряда», а вкл/выкл каждая
+       (role=checkbox через multi). Картинка — image самой опции; нет фото →
+       глиф по имени (EXTRA_GLYPH). -->
   <div class="flex flex-col gap-1.5" v-if="calc.otherOptions.length">
     <span class="text-sm font-semibold">Дополнительная обработка</span>
-    <label v-for="{ o, i } in calc.otherOptions" :key="i" class="inline-flex items-center gap-2">
-      <input type="checkbox" class="toggle" v-model="calc.fin[i].checked" />
-      <span>{{ o.name }}</span>
+    <div class="flex flex-wrap gap-2" role="group" aria-label="Дополнительная обработка">
+      <OptionTile
+        v-for="{ o, i } in calc.otherOptions"
+        :key="i"
+        multi
+        :label="o.name"
+        :thumb="o.thumb"
+        :glyph="extraGlyph(o.name)"
+        :zoom="!!o.full"
+        :full="o.full"
+        :active="calc.fin[i].checked"
+        :title="o.name"
+        @select="calc.fin[i].checked = !calc.fin[i].checked"
+        @zoom="lightbox?.open(o.name, o.full ?? null)"
+      />
+    </div>
+    <!-- Количество — только у опций, где цена зависит от него (сгибы/отверстия) -->
+    <label
+      v-for="{ o, i } in calc.otherOptions.filter(
+        ({ o, i }) => calc.fin[i].checked && calc.needsCount(o.unit),
+      )"
+      :key="`c${i}`"
+      class="inline-flex items-center gap-2 text-sm"
+    >
+      <span class="opacity-70">{{ o.name }}:</span>
       <input
-        v-if="calc.fin[i].checked && calc.needsCount(o.unit)"
         type="number" class="input input-xs w-20"
         v-model.number="calc.fin[i].count" min="1"
         :title="calc.countLabel[o.unit]"
       />
-      <span v-if="calc.fin[i].checked && calc.needsCount(o.unit)" class="text-sm opacity-70">{{ calc.countLabel[o.unit] }}</span>
+      <span class="opacity-70">{{ calc.countLabel[o.unit] }}</span>
     </label>
   </div>
 
