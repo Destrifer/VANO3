@@ -528,14 +528,13 @@ export async function getProductPricing(
     ...paperFields("inner_papers"),
     "bindings.bindings_id.id",
     "bindings.bindings_id.name",
-    // Фото переплёта. ОТКЛЮЧЕНО В ТРЕТИЙ РАЗ: `schema apply` на деплое снова
-    // рассинхронил поле — теперь наоборот, колонка в БД есть, а записи в
-    // directus_fields нет (meta.id: null). Из-за этого админка не открывает
-    // карточки bindings (404), а чтение поля отдаёт 500 — и сборка падает.
-    // ⛔ НЕ раскомментировать, пока не выполнено ВСЁ: поле пересоздано в UI
-    // прода → прошёл деплой → после него проверено, что meta.id не null и
-    // публичный запрос products?fields=bindings.bindings_id.image даёт 200.
-    // "bindings.bindings_id.image",
+    // Фото переплёта для плитки (нет фото — глиф-фолбэк по имени, см.
+    // MultipageCalculator.bindGlyph). Поле пересобрано через API (a45aec1:
+    // колонка + meta + relation) и ПЕРЕЖИЛО деплой — apply был no-op, потому
+    // что снапшот совпадает с продом. Именно на расхождении снапшота и прода
+    // поле ломалось дважды, так что снапшот трогать только через
+    // ops/schema-snapshot.sh.
+    "bindings.bindings_id.image",
     "bindings.bindings_id.price",
     "bindings.bindings_id.min_pages",
     "bindings.bindings_id.max_pages",
