@@ -1307,49 +1307,6 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
-  - collection: bindings
-    field: image
-    type: uuid
-    meta:
-      collection: bindings
-      conditions: null
-      display: image
-      display_options: null
-      field: image
-      group: null
-      hidden: false
-      interface: file-image
-      note: Фото переплёта для плитки калькулятора (16:9). Нет фото — рисуется иконка.
-      options: null
-      readonly: false
-      required: false
-      searchable: true
-      sort: 11
-      special:
-        - file
-      translations:
-        - language: ru-RU
-          translation: Картинка плитки
-      validation: null
-      validation_message: null
-      width: full
-    schema:
-      name: image
-      table: bindings
-      data_type: uuid
-      default_value: null
-      max_length: null
-      numeric_precision: null
-      numeric_scale: null
-      is_nullable: true
-      is_unique: false
-      is_indexed: false
-      is_primary_key: false
-      is_generated: false
-      generation_expression: null
-      has_auto_increment: false
-      foreign_key_table: directus_files
-      foreign_key_column: id
   - collection: categories
     field: id
     type: integer
@@ -11628,27 +11585,6 @@ systemFields:
     schema:
       is_indexed: true
 relations:
-  - collection: bindings
-    field: image
-    related_collection: directus_files
-    meta:
-      junction_field: null
-      many_collection: bindings
-      many_field: image
-      one_allowed_collections: null
-      one_collection: directus_files
-      one_collection_field: null
-      one_deselect_action: nullify
-      one_field: null
-      sort_field: null
-    schema:
-      table: bindings
-      column: image
-      foreign_key_table: directus_files
-      foreign_key_column: id
-      constraint_name: bindings_image_foreign
-      on_update: NO ACTION
-      on_delete: SET NULL
   - collection: delivery_methods
     field: logo
     related_collection: directus_files
