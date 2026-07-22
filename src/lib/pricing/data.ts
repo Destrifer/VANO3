@@ -528,13 +528,18 @@ export async function getProductPricing(
     ...paperFields("inner_papers"),
     "bindings.bindings_id.id",
     "bindings.bindings_id.name",
-    // Фото переплёта для плитки (нет фото — глиф-фолбэк по имени, см.
-    // MultipageCalculator.bindGlyph). Поле пересобрано через API (a45aec1:
-    // колонка + meta + relation) и ПЕРЕЖИЛО деплой — apply был no-op, потому
-    // что снапшот совпадает с продом. Именно на расхождении снапшота и прода
-    // поле ломалось дважды, так что снапшот трогать только через
-    // ops/schema-snapshot.sh.
-    "bindings.bindings_id.image",
+    // Фото переплёта. ОТКЛЮЧЕНО: поле bindings.image на проде не держится.
+    // POST /fields отвечает 200 и Directus показывает колонку, но в БД её нет
+    // («column bindings.image does not exist» на любом реальном чтении);
+    // успешные ответы шли из кеша, /utils/cache/clear это вскрывает.
+    // Колонка получалась настоящей только когда поле заводили через UI
+    // админки — но её сносил `schema apply` на деплое.
+    // ⛔ Включать обратно ТОЛЬКО после того, как ВСЁ выполнено:
+    //   1) поле заведено через UI прода;
+    //   2) POST /utils/cache/clear;
+    //   3) GET /items/products?fields=bindings.bindings_id.image → 200;
+    //   4) прошёл деплой, и пункт 3 всё ещё даёт 200.
+    // "bindings.bindings_id.image",
     "bindings.bindings_id.price",
     "bindings.bindings_id.min_pages",
     "bindings.bindings_id.max_pages",
