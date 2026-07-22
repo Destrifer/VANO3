@@ -1,8 +1,9 @@
 <script setup lang="ts">
 // Презентационное поле «покрытие»: ламинация + фольгирование — оба едиными
-// плитками (OptionTile): «без» + варианты с миниатюрой (avif/webp) / глифом /
-// цвет-заливкой. Единое для всех калькуляторов. Без бизнес-логики — только
-// отображение и v-model наружу.
+// плитками (OptionTile) с миниатюрой (avif/webp) / глифом / цвет-заливкой.
+// Услуга включается выбором плитки и выключается повторным кликом по ней же —
+// отдельных плиток «Без ламинации»/«Без фольги» нет. Единое для всех
+// калькуляторов. Без бизнес-логики — только отображение и v-model наружу.
 import { ref } from "vue";
 import InfoTip from "../InfoTip.vue";
 import OptionTile from "./OptionTile.vue";
@@ -13,9 +14,7 @@ import type { ResponsiveImage } from "../../lib/directus";
 const lamInfo = optionInfo("Ламинация");
 const foilInfo = optionInfo("Фольгирование");
 
-// Глифы-фолбэки (Tabler): «без» — circle-off, ламинация без фото — sparkles.
-const GLYPH_NONE =
-  '<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.042 16.045A9 9 0 0 0 7.955 3.958M5.637 5.635a9 9 0 1 0 12.725 12.73M3 3l18 18"/>';
+// Глиф-фолбэк ламинации без фото (Tabler sparkles).
 const GLYPH_LAM =
   '<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 18a2 2 0 0 1 2 2a2 2 0 0 1 2-2a2 2 0 0 1-2-2a2 2 0 0 1-2 2m0-12a2 2 0 0 1 2 2a2 2 0 0 1 2-2a2 2 0 0 1-2-2a2 2 0 0 1-2 2M9 18a6 6 0 0 1 6-6a6 6 0 0 1-6-6a6 6 0 0 1-6 6a6 6 0 0 1 6 6"/>';
 
@@ -49,19 +48,13 @@ const lightbox = ref<InstanceType<typeof ImageLightbox> | null>(null);
     <div
       class="flex flex-wrap gap-2"
       :class="{ 'pointer-events-none opacity-50': laminationLocked }"
-      role="radiogroup"
+      role="group"
       aria-label="Ламинация"
     >
       <OptionTile
-        label="Без ламинации"
-        :glyph="GLYPH_NONE"
-        :active="laminationIndex === -1"
-        :disabled="laminationLocked"
-        @select="emit('update:laminationIndex', -1)"
-      />
-      <OptionTile
         v-for="(o, i) in laminationOptions"
         :key="i"
+        multi
         :label="o.name"
         :thumb="o.thumb"
         :glyph="GLYPH_LAM"
@@ -69,7 +62,7 @@ const lightbox = ref<InstanceType<typeof ImageLightbox> | null>(null);
         :disabled="laminationLocked"
         :zoom="!!o.full"
         :full="o.full"
-        @select="emit('update:laminationIndex', i)"
+        @select="emit('update:laminationIndex', laminationIndex === i ? -1 : i)"
         @zoom="lightbox?.open(o.name, o.full ?? null)"
       />
     </div>
@@ -84,16 +77,11 @@ const lightbox = ref<InstanceType<typeof ImageLightbox> | null>(null);
       Фольгирование
       <InfoTip v-if="foilInfo" :text="foilInfo" />
     </span>
-    <div class="flex flex-wrap gap-2" role="radiogroup" aria-label="Фольгирование">
-      <OptionTile
-        label="Без фольги"
-        :glyph="GLYPH_NONE"
-        :active="!foilOn"
-        @select="emit('update:foilOn', false)"
-      />
+    <div class="flex flex-wrap gap-2" role="group" aria-label="Фольгирование">
       <OptionTile
         v-for="(c, i) in foilOption.colors"
         :key="i"
+        multi
         :label="c.name"
         :thumb="c.tile"
         :fill="c.hex ?? '#ccc'"
@@ -101,7 +89,9 @@ const lightbox = ref<InstanceType<typeof ImageLightbox> | null>(null);
         :title="c.name + (c.code ? ' · ' + c.code : '')"
         :zoom="!!c.full"
         :full="c.full"
-        @select="emit('update:foilColorIndex', i); emit('update:foilOn', true)"
+        @select="foilOn && foilColorIndex === i
+          ? emit('update:foilOn', false)
+          : (emit('update:foilColorIndex', i), emit('update:foilOn', true))"
         @zoom="lightbox?.open(c.name, c.full)"
       />
     </div>

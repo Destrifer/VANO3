@@ -1,8 +1,11 @@
 <script setup lang="ts">
 // Постпечать: общий CoatingField (ламинация+фольга) + универсальные группы
 // доп-обработки плитками (скругление/сверление/еврослот — варианты с картинками,
-// как цвета фольги) + остаток «Дополнительной обработки» чекбоксами (опции без
-// group, если такие ещё есть у продукта).
+// как цвета фольги) + опции без group отдельным рядом плиток.
+//
+// Во всех рядах услуга включается выбором плитки и выключается повторным
+// кликом по ней же — плиток «Без …» нет. Отсюда role=group + multi вместо
+// radiogroup: у radio-группы нет состояния «ничего не выбрано».
 import { inject, ref } from "vue";
 import { calcKey } from "../../composables/useCalculator";
 import CoatingField from "./CoatingField.vue";
@@ -15,20 +18,7 @@ import { extraGlyph } from "../../lib/calculator/finishingGlyph";
 const calc = inject(calcKey)!;
 const lightbox = ref<InstanceType<typeof ImageLightbox> | null>(null);
 
-// Подпись плитки «без варианта» по названию группы (родительный падеж).
-const NONE_LABEL: Record<string, string> = {
-  "Скругление углов": "Без скругления",
-  "Сверление отверстий": "Без отверстий",
-  "Еврослот": "Без еврослота",
-  "УФ-лак": "Без лака",
-  "Конгрев": "Без конгрева",
-  "Объёмный 3D-лак": "Без 3D-лака",
-};
-const noneLabel = (h: string) => NONE_LABEL[h] ?? "Без обработки";
-
 // Глифы-фолбэки (viewBox 0 0 24 24), пока владелец не загрузил фото вариантов.
-const GLYPH_NONE =
-  '<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.042 16.045A9 9 0 0 0 7.955 3.958M5.637 5.635a9 9 0 1 0 12.725 12.73M3 3l18 18"/>';
 const GROUP_GLYPH: Record<string, string> = {
   "Скругление углов":
     '<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 20v-6a10 10 0 0 1 10-10h6"/>',
@@ -62,20 +52,14 @@ const groupGlyph = (h: string) => GROUP_GLYPH[h];
       {{ g.heading }}
       <InfoTip v-if="optionInfo(g.heading)" :text="optionInfo(g.heading)!" />
     </span>
-    <div class="flex flex-wrap gap-2" role="radiogroup" :aria-label="g.heading">
-      <OptionTile
-        :label="noneLabel(g.heading)"
-        :thumb="g.thumb"
-        :glyph="GLYPH_NONE"
-        :active="(calc.finGroupIndex[g.id] ?? -1) === -1"
-        :zoom="!!g.full"
-        :full="g.full"
-        @select="calc.finGroupIndex[g.id] = -1"
-        @zoom="lightbox?.open(noneLabel(g.heading), g.full ?? null)"
-      />
+    <!-- Плитки «Без …» нет: услуга включается выбором варианта и выключается
+         повторным кликом по нему же (снятие выбора). Поэтому role=group +
+         multi, а не radiogroup: у radio нет состояния «ничего не выбрано». -->
+    <div class="flex flex-wrap gap-2" role="group" :aria-label="g.heading">
       <OptionTile
         v-for="(v, i) in g.variants"
         :key="i"
+        multi
         :label="v.name"
         :thumb="v.thumb"
         :glyph="groupGlyph(g.heading)"
@@ -83,7 +67,7 @@ const groupGlyph = (h: string) => GROUP_GLYPH[h];
         :title="`${g.heading} — ${v.name}`"
         :zoom="!!v.full"
         :full="v.full"
-        @select="calc.finGroupIndex[g.id] = i"
+        @select="calc.finGroupIndex[g.id] = calc.finGroupIndex[g.id] === i ? -1 : i"
         @zoom="lightbox?.open(v.name, v.full ?? null)"
       />
     </div>
