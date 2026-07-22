@@ -528,13 +528,12 @@ export async function getProductPricing(
     ...paperFields("inner_papers"),
     "bindings.bindings_id.id",
     "bindings.bindings_id.name",
-    // Фото переплёта. ЗАКОММЕНТИРОВАНО ПОВТОРНО: `schema apply` из снапшота
-    // создал поле как alias (meta без колонки в БД) — public-чтение отдаёт
-    // 403 и сборка падает. Поле нужно завести РУКАМИ в админке прода (тогда
-    // Directus создаст колонку), снять `ops/schema-snapshot.sh`, и только
-    // потом раскомментировать. Порядок из directus/README.md: источник
-    // истины схемы — прод, снапшот лишь его слепок.
-    // "bindings.bindings_id.image",
+    // Фото переплёта для плитки (нет фото — глиф-фолбэк по имени, см.
+    // MultipageCalculator.bindGlyph). Поле заведено в админке прода вручную:
+    // `schema apply` из снапшота создавал его как alias, без колонки в БД,
+    // и сборка падала на 403 (см. 0a69ba9). Public-политика читает bindings
+    // с fields ["*"], отдельных прав не требуется.
+    "bindings.bindings_id.image",
     "bindings.bindings_id.price",
     "bindings.bindings_id.min_pages",
     "bindings.bindings_id.max_pages",
