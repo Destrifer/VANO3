@@ -529,16 +529,12 @@ export async function getProductPricing(
     "bindings.bindings_id.id",
     "bindings.bindings_id.name",
     // Фото переплёта для плитки (нет фото — глиф-фолбэк по имени, см.
-    // MultipageCalculator.bindGlyph).
-    //
-    // Фото переплёта. ОТКЛЮЧЕНО: любое новое file-поле в коллекции bindings
-    // на этом проде живёт минуты, а потом колонка пропадает из БД. Проверено
-    // и исключено: schema apply на деплое (убран), имя поля (`photo` умер так
-    // же, как `image`), рестарт контейнера (RestartCount 0, аптайм 12 дней),
-    // крон (только бэкап в 3:30), лимиты лицензии (production_enabled).
-    // Смерть стабильно наступает после прогона полной сборки, хотя сборка
-    // делает только GET. Причина не найдена — нужен доступ к БД.
-    // "bindings.bindings_id.photo",
+    // MultipageCalculator.bindGlyph). Историческая справка: поле трижды
+    // «умирало» — его сносил schema apply УСТАРЕВШЕГО снапшота из MASTER:
+    // repository_dispatch (пересборка при правке контента) запускает воркфлоу
+    // дефолтной ветки, а фикс убирал apply только на design/rework. Apply
+    // убран из обеих веток — поле живёт.
+    "bindings.bindings_id.image",
     "bindings.bindings_id.price",
     "bindings.bindings_id.min_pages",
     "bindings.bindings_id.max_pages",
@@ -750,10 +746,9 @@ export async function getProductPricing(
       return {
         id: num(b.id),
         name: b.name,
-        // в Directus поле называется `photo` (см. список полей запроса выше)
-        image: assetUrl(b.photo),
-        thumb: responsiveAsset(b.photo, FOLD_THUMB_W, FOLD_THUMB_H),
-        full: responsiveAssetFluid(b.photo, FULL_WIDTHS, FULL_SIZES),
+        image: assetUrl(b.image),
+        thumb: responsiveAsset(b.image, FOLD_THUMB_W, FOLD_THUMB_H),
+        full: responsiveAssetFluid(b.image, FULL_WIDTHS, FULL_SIZES),
         priceBrackets: (Array.isArray(b.price) ? b.price : [])
           .map((br: any) => ({ to: num(br.to), price: num(br.price) }))
           .sort((a: any, z: any) => a.to - z.to),
