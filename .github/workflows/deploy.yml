@@ -4,7 +4,7 @@ name: Build & Deploy
 # затем по SSH сервер тянет образ и перезапускает сайт.
 on:
   push:
-    branches: [master]
+    branches: [master, design/rework]
     # Правки доков/SEO-инструментов не меняют сайт — не пересобираем.
     # (repository_dispatch и workflow_dispatch не зависят от paths-ignore.)
     paths-ignore:
@@ -37,36 +37,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # ── Схема Directus: применяем снапшот из гита ДО сборки Astro ──
-      # Сборка читает прод-API (prerender), поэтому код, ожидающий новые
-      # поля/коллекции, должен встретить уже обновлённую схему. Идемпотентно:
-      # нет диффа — no-op. Контент/права apply не трогает.
-      # ⚠️ ДИСЦИПЛИНА: схему правим на проде → сразу `ops/schema-snapshot.sh`
-      # → коммит. Устаревший снапшот в гите ОТКАТИТ прод-схему (apply удаляет
-      # то, чего нет в снапшоте).
-      - name: Copy schema snapshot to server
-        uses: appleboy/scp-action@v1
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "directus/snapshot.yaml"
-          target: "/opt/printmos"
-          # /opt/printmos/directus/snapshot.yaml — папка directus/ сохраняется
-
-      - name: Apply Directus schema
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            set -e
-            cd /opt/printmos
-            C="docker compose -p printmos -f docker-compose.prod.yml --env-file .env.production"
-            $C cp directus/snapshot.yaml directus:/tmp/snapshot.yaml
-            # node cli.js, НЕ npx: в образе directus 12 npx отсутствует
-            $C exec -T directus node /directus/cli.js schema apply --yes /tmp/snapshot.yaml
+      # ── Схема Directus НЕ применяется на деплое (убрано 2026-07-22) ──
+      # Здесь стоял `schema apply` снапшота из гита. За один день он трижды
+      # сломал поле bindings.image (то meta без колонки, то колонка без meta,
+      # то удаление живого поля) и дважды уронил прод-сборку; полезной работы
+      # не сделал ни разу — схему всё равно правят на проде, снапшот лишь
+      # снимают следом (см. directus/README.md).
+      #
+      # Схема теперь живёт только на проде. `directus/snapshot.yaml`
+      # остаётся версионированной документацией и способом поднять окружение
+      # с нуля: `npx directus schema apply ./directus/snapshot.yaml` — руками,
+      # осознанно, а не на каждый пуш.
+      #
+      # Правило прежнее: поправил схему на проде → `ops/schema-snapshot.sh`
+      # → коммит, чтобы слепок не устаревал.
 
       - uses: docker/setup-buildx-action@v3
 

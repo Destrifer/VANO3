@@ -104,12 +104,42 @@ export function responsiveAssetFluid(
   };
 }
 
-export async function directusFetch<T>(path: string): Promise<T> {
-  const response = await fetch(`${SERVER_URL}${path}`);
+// Сборка делает сотни запросов подряд к прод-Directus (2 ГБ сервер), и один
+// сетевой чих валит весь деплой: 2026-07-22 prerender упал на 90-й странице с
+// «Connect Timeout» в getMenu. Поэтому повторяем при сетевых ошибках и 5xx —
+// они, как правило, преходящие. 4xx не повторяем: 403 за отсутствующее поле
+// или 404 от повтора не исправятся, а только затянут падение.
+const RETRIES = 3;
+const RETRY_DELAY_MS = 1500;
 
-  if (!response.ok) {
-    throw new Error(`Directus request failed: ${response.status}`);
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+export async function directusFetch<T>(path: string): Promise<T> {
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= RETRIES; attempt++) {
+    try {
+      const response = await fetch(`${SERVER_URL}${path}`);
+
+      if (!response.ok) {
+        // 4xx — ошибка запроса, повтор не поможет.
+        if (response.status < 500) {
+          throw new Error(`Directus request failed: ${response.status}`);
+        }
+        throw new Error(`Directus request failed: ${response.status} (попытка ${attempt})`);
+      }
+
+      return (await response.json()) as T;
+    } catch (error) {
+      lastError = error;
+      const status = error instanceof Error ? error.message.match(/failed: (\d+)/)?.[1] : null;
+      if (status && Number(status) < 500) throw error;
+      if (attempt === RETRIES) break;
+      // Линейная задержка: 1.5s, 3s — сервер успевает отдышаться, а сборка
+      // не растягивается, даже если проблемных запросов много.
+      await sleep(RETRY_DELAY_MS * attempt);
+    }
   }
 
-  return response.json() as Promise<T>;
+  throw lastError;
 }

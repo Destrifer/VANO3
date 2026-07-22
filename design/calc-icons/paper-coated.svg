@@ -1,0 +1,36 @@
+<svg viewBox="0 0 320 180" xmlns="http://www.w3.org/2000/svg">
+  <rect width="320" height="180" fill="#9be7c4"/>
+  <ellipse cx="162" cy="154" rx="80" ry="8" fill="rgba(0,0,0,.18)" stroke="none"/>
+  <g stroke="#000" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" fill="none">
+    <!-- задний лист -->
+    <g transform="rotate(-9 160 92)">
+      <rect x="104" y="34" width="108" height="112" fill="#ffffff"/>
+    </g>
+    <!-- средний лист, жёлтый -->
+    <g transform="rotate(3 160 94)">
+      <rect x="108" y="37" width="108" height="112" fill="#ffd600"/>
+    </g>
+    <!-- передний лист: синяя плашка + линии-«текст» -->
+    <g transform="rotate(9 164 96)">
+      <rect x="112" y="40" width="108" height="112" fill="#ffffff"/>
+      <rect x="112" y="40" width="108" height="22" fill="#1e88e5"/>
+      <line x1="124" y1="78" x2="202" y2="78"/>
+      <line x1="124" y1="92" x2="184" y2="92"/>
+      <line x1="124" y1="106" x2="194" y2="106"/>
+      <!-- блик глянца -->
+      <line x1="128" y1="132" x2="140" y2="120"/>
+      <line x1="144" y1="136" x2="162" y2="118"/>
+    </g>
+  </g>
+  <!-- акценты -->
+  <g transform="translate(36,32)" stroke="#000" stroke-width="2" stroke-linecap="round" fill="none">
+    <line x1="0" y1="-6" x2="0" y2="6"/>
+    <line x1="-6" y1="0" x2="6" y2="0"/>
+  </g>
+  <path d="M284 23 L286.1 27.9 L291 30 L286.1 32.1 L284 37 L281.9 32.1 L277 30 L281.9 27.9 Z" fill="#000"/>
+  <circle cx="48" cy="142" r="2.5" fill="#000"/>
+  <g transform="translate(276,144)" stroke="#000" stroke-width="2" stroke-linecap="round" fill="none">
+    <line x1="0" y1="-5" x2="0" y2="5"/>
+    <line x1="-5" y1="0" x2="5" y2="0"/>
+  </g>
+</svg>

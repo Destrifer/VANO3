@@ -24,8 +24,10 @@ const props = withDefaults(
     full?: ResponsiveImage; // ДЕСКТОП: крупное фото для ховер-превью — карточка
                             // через Teleport в body (fixed — не режется
                             // overflow-контейнерами вроде списка материалов).
+    multi?: boolean; // независимый вкл/выкл (доп-обработка) вместо выбора
+                     // одного из ряда: role=checkbox, а не radio.
   }>(),
-  { active: false, disabled: false, icon: false, zoom: false },
+  { active: false, disabled: false, icon: false, zoom: false, multi: false },
 );
 const emit = defineEmits<{ select: []; zoom: [] }>();
 
@@ -97,7 +99,7 @@ function thumbLeave(e: MouseEvent) {
 <template>
   <button
     type="button"
-    role="radio"
+    :role="multi ? 'checkbox' : 'radio'"
     :aria-checked="active"
     :disabled="disabled"
     :title="title ?? label"
@@ -132,7 +134,17 @@ function thumbLeave(e: MouseEvent) {
       </span>
     </span>
     <span class="otile__text">
-      <span class="otile__name">{{ label }}</span>
+      <span class="otile__name">
+        <!-- Галочка у выбранной плитки: подтверждает выбор словом, а не только
+             рамкой (важно для снимаемых опций — видно, что это состояние). -->
+        <svg
+          v-if="active"
+          class="otile__check"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        ><path fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+        {{ label }}
+      </span>
       <span v-if="sub" class="otile__sub">{{ sub }}</span>
     </span>
   </button>
@@ -168,11 +180,24 @@ function thumbLeave(e: MouseEvent) {
   transition: border-color 0.12s, background 0.12s;
 }
 .otile:hover { border-color: var(--color-base-content, #555); }
+/* Выбранная плитка: киноварная рамка + лёгкая киноварная подложка + галочка
+   в подписи. Три признака вместо одного — выбор читается и на монохромной
+   миниатюре, и при дальтонизме (галочка не зависит от цвета). */
 .otile--on {
-  border-color: var(--color-primary, #1f1f1f);
+  border-color: var(--color-accent-ink);
   border-width: 2px;
   padding: calc(0.4rem - 1px);
-  background: var(--color-base-200, #f3f1ea);
+  background: color-mix(in oklch, var(--color-accent-ink) 7%, var(--color-base-100, #fff));
+}
+.otile--on:hover { border-color: var(--color-accent-ink); }
+.otile--on .otile__name { color: var(--color-accent-ink); font-weight: 600; }
+.otile__check {
+  display: inline-block;
+  width: 0.85em;
+  height: 0.85em;
+  margin-right: 0.15em;
+  vertical-align: -0.08em;
+  color: var(--color-accent-ink);
 }
 .otile--off { cursor: not-allowed; opacity: 0.4; }
 .otile--off:hover { border-color: var(--color-base-300, #d6d3cd); }

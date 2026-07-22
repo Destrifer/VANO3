@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Образец шрифтов — Printmos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Spectral:wght@400;600;800&family=Unbounded:wght@400;700;900&family=Golos+Text:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1a1a1a; --sub:#6b6b6b; --line:#e2e0da; --bg:#faf9f6; --card:#fff; --accent:#c8442e;
+    --golos:'Golos Text',system-ui,sans-serif;
+    --mono:'JetBrains Mono',ui-monospace,monospace;
+  }
+  *{box-sizing:border-box;margin:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--golos);line-height:1.5;padding:40px 24px 80px}
+  .wrap{max-width:1120px;margin:0 auto}
+  .lead{font-size:14px;color:var(--sub);letter-spacing:.02em;margin-bottom:6px;text-transform:uppercase}
+  h1.page{font-family:var(--golos);font-weight:600;font-size:26px;margin-bottom:8px}
+  .note{color:var(--sub);font-size:15px;max-width:60ch;margin-bottom:32px}
+  .note b{font-weight:600;color:var(--ink)}
+  .grid{display:grid;gap:20px;grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:26px 26px 30px}
+  .tag{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--accent);border:1px solid var(--line);border-radius:999px;padding:3px 10px;margin-bottom:20px}
+  .mono-mini{font-family:var(--mono);font-size:11px;color:var(--sub);margin-left:6px}
+  .logo-row{display:flex;align-items:baseline;gap:20px;padding-bottom:18px;margin-bottom:18px;border-bottom:1px solid var(--line)}
+  .pm{font-size:64px;line-height:.9;letter-spacing:.01em}
+  .wordmark{font-size:26px;letter-spacing:.06em;text-transform:uppercase}
+  .h1{font-size:30px;line-height:1.15;margin:2px 0 10px}
+  .h2{font-size:19px;color:#333;margin:14px 0 4px;font-weight:700}
+  .h3{font-size:16px;color:#444;margin:12px 0 2px;font-weight:600}
+  .body{font-family:var(--golos);font-size:15px;color:#333;margin-top:10px;max-width:42ch}
+  .spec{font-family:var(--mono);font-size:13px;color:#222;margin-top:16px;padding-top:14px;border-top:1px dashed var(--line)}
+  .spec .u{color:var(--sub)}
+  /* три заголовочных кандидата */
+  .f-playfair .pm,.f-playfair .wordmark,.f-playfair .h1,.f-playfair .h2,.f-playfair .h3{font-family:'Playfair Display',Georgia,serif}
+  .f-playfair .pm{font-weight:900}.f-playfair .h1{font-weight:700}
+  .f-spectral .pm,.f-spectral .wordmark,.f-spectral .h1,.f-spectral .h2,.f-spectral .h3{font-family:'Spectral',Georgia,serif}
+  .f-spectral .pm{font-weight:800}.f-spectral .h1{font-weight:600}
+  .f-unbounded .pm,.f-unbounded .wordmark,.f-unbounded .h1,.f-unbounded .h2,.f-unbounded .h3{font-family:'Unbounded',system-ui,sans-serif}
+  .f-unbounded .pm{font-weight:900}.f-unbounded .wordmark{font-size:22px}.f-unbounded .h1{font-weight:700;font-size:26px}
+  .sys .pm,.sys .wordmark,.sys .h1,.sys .h2,.sys .h3{font-family:Georgia,serif}
+  .sys .pm{font-weight:800}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="lead">Printmos · подбор шрифта</p>
+  <h1 class="page">Один шрифт на заголовки и логотип</h1>
+  <p class="note">Тело текста везде — <b>Golos Text</b>, технические строки (цена/размер/SKU) — <b>JetBrains Mono</b>. Меняется только заголовочный/лого-шрифт. Первая карточка — нынешний вид (Georgia, для сравнения).</p>
+
+  <div class="grid">
+    <!-- эталон -->
+    <section class="card sys">
+      <span class="tag">сейчас · Georgia (система)</span>
+      <div class="logo-row"><span class="pm">PM</span><span class="wordmark">Printmos</span></div>
+      <div class="h1">Печать наклеек на заказ</div>
+      <div class="h2">Материалы и цены</div>
+      <div class="h3">Самоклейка полуглянцевая</div>
+      <p class="body">Плёнки и бумага в наличии, контурная резка любой формы, ламинация и фольгирование.</p>
+      <div class="spec">50×50 мм · 1000 шт · <span class="u">10 ₽/шт</span> · SKU PM-641M-020</div>
+    </section>
+
+    <!-- Playfair -->
+    <section class="card f-playfair">
+      <span class="tag">Playfair Display <span class="mono-mini">serif · дисплей</span></span>
+      <div class="logo-row"><span class="pm">PM</span><span class="wordmark">Printmos</span></div>
+      <div class="h1">Печать наклеек на заказ</div>
+      <div class="h2">Материалы и цены</div>
+      <div class="h3">Самоклейка полуглянцевая</div>
+      <p class="body">Плёнки и бумага в наличии, контурная резка любой формы, ламинация и фольгирование.</p>
+      <div class="spec">50×50 мм · 1000 шт · <span class="u">10 ₽/шт</span> · SKU PM-641M-020</div>
+    </section>
+
+    <!-- Spectral -->
+    <section class="card f-spectral">
+      <span class="tag">Spectral <span class="mono-mini">serif · текстовый</span></span>
+      <div class="logo-row"><span class="pm">PM</span><span class="wordmark">Printmos</span></div>
+      <div class="h1">Печать наклеек на заказ</div>
+      <div class="h2">Материалы и цены</div>
+      <div class="h3">Самоклейка полуглянцевая</div>
+      <p class="body">Плёнки и бумага в наличии, контурная резка любой формы, ламинация и фольгирование.</p>
+      <div class="spec">50×50 мм · 1000 шт · <span class="u">10 ₽/шт</span> · SKU PM-641M-020</div>
+    </section>
+
+    <!-- Unbounded -->
+    <section class="card f-unbounded">
+      <span class="tag">Unbounded <span class="mono-mini">гротеск · дисплей</span></span>
+      <div class="logo-row"><span class="pm">PM</span><span class="wordmark">Printmos</span></div>
+      <div class="h1">Печать наклеек на заказ</div>
+      <div class="h2">Материалы и цены</div>
+      <div class="h3">Самоклейка полуглянцевая</div>
+      <p class="body">Плёнки и бумага в наличии, контурная резка любой формы, ламинация и фольгирование.</p>
+      <div class="spec">50×50 мм · 1000 шт · <span class="u">10 ₽/шт</span> · SKU PM-641M-020</div>
+    </section>
+  </div>
+</div>
+</body>
+</html>

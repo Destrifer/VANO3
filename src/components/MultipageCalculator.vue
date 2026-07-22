@@ -10,12 +10,16 @@ import CoatingField from "./calculator/CoatingField.vue";
 import QuantitySelect from "./calculator/QuantitySelect.vue";
 import OptionTile from "./calculator/OptionTile.vue";
 import ImageLightbox from "./calculator/ImageLightbox.vue";
+import { extraGlyph } from "../lib/calculator/finishingGlyph";
 import { ref } from "vue";
 
 const calc = inject(mpCalcKey)!;
 // Lightbox фото разлиновки — паттерн PaperSelect/CoatingField: тап по фото на
 // таче открывает крупное, на десктопе ховер-превью делает сама OptionTile.
 const rulingLightbox = ref<InstanceType<typeof ImageLightbox> | null>(null);
+// То же для фото переплёта (bindings.image) и доп-обработки обложки.
+const bindLightbox = ref<InstanceType<typeof ImageLightbox> | null>(null);
+const extraLightbox = ref<InstanceType<typeof ImageLightbox> | null>(null);
 const onRange = (e: Event) => calc.setPages(+(e.target as HTMLInputElement).value);
 const onInput = (e: Event) => calc.setPages(+(e.target as HTMLInputElement).value);
 
@@ -128,13 +132,17 @@ function ruleGlyph(name: string): string {
           :sub="`${b.minPages}–${b.maxPages} полос`"
           :thumb="b.thumb"
           :glyph="bindGlyph(b.name)"
+          :zoom="!!b.full"
+          :full="b.full"
           :active="calc.bindingIndex === i"
           :disabled="!calc.bindingCompatible(b)"
           :title="calc.bindingCompatible(b) ? b.name : `${b.name} — ${b.minPages}–${b.maxPages} полос`"
           @select="calc.bindingCompatible(b) && (calc.bindingIndex = i)"
+          @zoom="bindLightbox?.open(b.name, b.full ?? null)"
         />
       </div>
       <span class="text-xs opacity-60">подбирается автоматически по числу полос</span>
+      <ImageLightbox ref="bindLightbox" />
     </div>
 
     <!-- Обложка: бумага + печать + покрытие -->
@@ -156,17 +164,28 @@ function ruleGlyph(name: string): string {
         v-model:foilOn="calc.foilOn"
         v-model:foilColorIndex="calc.foilColorIndex"
       />
-      <!-- Доп. обработка обложки: ungrouped-опции (УФ-лак, конгрев, объёмный лак) -->
+      <!-- Доп. обработка обложки: ungrouped-опции (УФ-лак, конгрев, объёмный
+           лак). Плитки-переключатели, как в листовом FinishingField: опции
+           независимые → multi (role=checkbox), картинка из finishing_options.image. -->
       <div v-if="calc.coverExtras.length" class="flex flex-col gap-1.5">
         <span class="text-sm font-semibold">Дополнительная обработка</span>
-        <label
-          v-for="(o, i) in calc.coverExtras"
-          :key="o.id"
-          class="inline-flex items-center gap-2"
-        >
-          <input type="checkbox" class="toggle toggle-sm" v-model="calc.extraChecked[i]" />
-          <span>{{ o.name }}</span>
-        </label>
+        <div class="flex flex-wrap gap-2" role="group" aria-label="Дополнительная обработка обложки">
+          <OptionTile
+            v-for="(o, i) in calc.coverExtras"
+            :key="o.id"
+            multi
+            :label="o.name"
+            :thumb="o.thumb"
+            :glyph="extraGlyph(o.name)"
+            :zoom="!!o.full"
+            :full="o.full"
+            :active="calc.extraChecked[i]"
+            :title="o.name"
+            @select="calc.extraChecked[i] = !calc.extraChecked[i]"
+            @zoom="extraLightbox?.open(o.name, o.full ?? null)"
+          />
+        </div>
+        <ImageLightbox ref="extraLightbox" />
       </div>
     </div>
 
