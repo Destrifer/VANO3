@@ -1,8 +1,8 @@
 // Реестр макетов превью по продуктам. Каждый макет рисует ТОЛЬКО содержимое
 // («рыбу»), а универсальные слои (контур, материя, глянец) даёт Preview.vue.
 // Новый продукт со своей сценой = +1 запись здесь, движок не трогаем.
-import type { Rect } from "./primitives";
-import { drawFoilText, roundRect } from "./primitives";
+import type { FoilMark, Rect } from "./primitives";
+import { roundRect } from "./primitives";
 
 export type MockupEnv = {
   round: boolean;
@@ -21,8 +21,18 @@ export type MockupEnv = {
 export type Mockup = {
   // ink-слой (до глянца ламинации)
   content: (ctx: CanvasRenderingContext2D, r: Rect, env: MockupEnv) => void;
-  // foil-слой (после глянца, металл поверх) — опционально
-  foil?: (ctx: CanvasRenderingContext2D, r: Rect, env: MockupEnv) => void;
+  // ГДЕ на этой кукле лежит фольга. Сцена ОБЪЯВЛЯЕТ метки и не рисует металл
+  // сама — как он блестит, знает движок (`drawFoilMarks`), чтобы фольга
+  // выглядела одинаково на всех продуктах.
+  //
+  // Раньше здесь был `foil()`, который рисовал: из 26 сцен его реализовали 14,
+  // и на бейджах, буклетах, открытках, билетах и POS-материалах галочка
+  // «фольгирование» не давала в превью ничего. Метод остался необязательным,
+  // но молчания больше нет — движок подставляет `defaultFoilMarks()`.
+  foilMarks?: (r: Rect, env: MockupEnv) => FoilMark[];
+  // Слой ПОСЛЕ фольги. Нужен ровно там, где эффект и есть изделие и обязан
+  // накрывать металл: эпоксидный купол объёмной наклейки.
+  afterFoil?: (ctx: CanvasRenderingContext2D, r: Rect, env: MockupEnv) => void;
 };
 
 const pad = (r: Rect, round: boolean) => Math.min(r.w, r.h) * (round ? 0.2 : 0.1);
@@ -78,14 +88,15 @@ const card: Mockup = {
     ctx.font = `700 ${Math.round(h * 0.12 * fs)}px system-ui, sans-serif`;
     ctx.fillText("Иван Петров", anchorX, titleBaseline - h * 0.105 * fs);
   },
-  foil(ctx, r, env) {
+  foilMarks(r, env) {
     const { x, y, w, h } = r;
-    const round = env.round;
-    const p = pad(r, round);
-    const fs = round ? 0.85 : 1;
-    const size = Math.round(h * 0.18 * fs);
-    const lx = round ? x + w / 2 : x + p;
-    drawFoilText(ctx, "PM", lx, y + p, size, round ? "center" : "left", env.foilHex);
+    const p = pad(r, env.round);
+    const size = Math.round(h * 0.18 * (env.round ? 0.85 : 1));
+    return [{
+      kind: "text", text: "PM", size,
+      x: env.round ? x + w / 2 : x + p, y: y + p,
+      align: env.round ? "center" : "left",
+    }];
   },
 };
 
@@ -109,11 +120,10 @@ const sticker: Mockup = {
     ctx.fillText("PRINTMOS", cx, cy + h * 0.22);
     ctx.globalAlpha = 1;
   },
-  foil(ctx, r, env) {
+  foilMarks(r) {
     const { x, y, w, h } = r;
-    const m = Math.min(w, h);
-    const size = Math.round(m * 0.34);
-    drawFoilText(ctx, "PM", x + w / 2, y + h / 2 - h * 0.04 - size / 2, size, "center", env.foilHex);
+    const size = Math.round(Math.min(w, h) * 0.34);
+    return [{ kind: "text", text: "PM", x: x + w / 2, y: y + h / 2 - h * 0.04 - size / 2, size, align: "center" }];
   },
 };
 
@@ -212,9 +222,11 @@ const volumeSticker: Mockup = {
     sticker.content(ctx, r, env);
     resinDome(ctx, r, env.round);
   },
-  // фольга — под смолой: сначала металл, сверху купол
-  foil(ctx, r, env) {
-    sticker.foil?.(ctx, r, env);
+  // Фольга лежит ПОД смолой: движок кладёт металл по меткам наклейки, а купол
+  // возвращается сверху через afterFoil. Единственная сцена, которой нужен свой
+  // слой ПОСЛЕ фольги, — потому что купол и есть само изделие.
+  foilMarks: sticker.foilMarks,
+  afterFoil(ctx, r, env) {
     resinDome(ctx, r, env.round);
   },
 };
@@ -237,37 +249,45 @@ function starPath(ctx: CanvasRenderingContext2D, cx: number, cy: number, R: numb
 // сцена, а не куклы `sticker`: движок вывести это из материала не может.
 // Белое поле реза и пунктир каждая наклейка несёт сама (внешний край листа
 // остаётся ровным — см. STICKER_KINDS в Preview.vue).
+// Раскладка стикерпака вынесена из сцены: её должны видеть И `content`, И
+// `foilMarks` — иначе метки фольги разъедутся с вырубками при первой же правке
+// сетки, а поймать это можно только глазами.
+type PackCell = { cx: number; cy: number; R: number; kind: "circle" | "rect" | "star" };
+function packCells(r: Rect): PackCell[] {
+  const { x, y, w, h } = r;
+  // Сетка от пропорции листа, а не жёсткая 3×2: дефолтный размер наклейки —
+  // 50×50 мм, и шесть штук на квадрате вырождаются в нечитаемую мелочь.
+  const ratio = w / h;
+  const [cols, rows] = ratio > 1.35 ? [3, 2] : ratio < 0.75 ? [2, 3] : [2, 2];
+  const cw = w / cols, ch = h / rows;
+  const R = Math.min(cw, ch) * 0.38;
+  // Формы по ячейкам + разброс центра: на производстве стикеры раскладывают
+  // плотно и вразнобой, ровная сетка выглядит как лист этикеток.
+  const kinds = ["circle", "rect", "star", "rect", "star", "circle"] as const;
+  const jitter = [
+    [0.02, -0.04], [-0.05, 0.05], [0.04, 0.03],
+    [-0.03, -0.05], [0.05, -0.02], [-0.02, 0.04],
+  ];
+  return Array.from({ length: cols * rows }, (_, i) => ({
+    cx: x + ((i % cols) + 0.5) * cw + cw * jitter[i][0],
+    cy: y + (Math.floor(i / cols) + 0.5) * ch + ch * jitter[i][1],
+    R,
+    kind: kinds[i],
+  }));
+}
+
 const stickerPack: Mockup = {
   content(ctx, r, env) {
-    const { x, y, w, h } = r;
     const ink = env.ink;
-    // Сетка от пропорции листа, а не жёсткая 3×2: дефолтный размер наклейки —
-    // 50×50 мм, и шесть штук на квадрате вырождаются в нечитаемую мелочь.
-    const ratio = w / h;
-    const [cols, rows] = ratio > 1.35 ? [3, 2] : ratio < 0.75 ? [2, 3] : [2, 2];
-    const cw = w / cols, ch = h / rows;
-    const R = Math.min(cw, ch) * 0.38;
-    // Формы по ячейкам + разброс центра: на производстве стикеры раскладывают
-    // плотно и вразнобой, ровная сетка выглядит как лист этикеток.
-    const kinds = ["circle", "rect", "star", "rect", "star", "circle"] as const;
-    const jitter = [
-      [0.02, -0.04], [-0.05, 0.05], [0.04, 0.03],
-      [-0.03, -0.05], [0.05, -0.02], [-0.02, 0.04],
-    ];
-
-    for (let i = 0; i < cols * rows; i++) {
-      const col = i % cols, row = Math.floor(i / cols);
-      const cx = x + (col + 0.5) * cw + cw * jitter[i][0];
-      const cy = y + (row + 0.5) * ch + ch * jitter[i][1];
-
+    for (const { cx, cy, R, kind } of packCells(r)) {
       // Белое поле реза (die-cut) под стикером. Тень обязательна: без неё белая
       // подложка на кремовой бумаге не видна вовсе, и лист читается как пустой
       // с редкими значками — проверено на живом превью 339×224.
       ctx.save();
       const shape = () => {
-        if (kinds[i] === "circle") {
+        if (kind === "circle") {
           ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2);
-        } else if (kinds[i] === "star") {
+        } else if (kind === "star") {
           starPath(ctx, cx, cy, R);
         } else {
           roundRect(ctx, cx - R, cy - R * 0.78, R * 2, R * 1.56, R * 0.3);
@@ -293,7 +313,7 @@ const stickerPack: Mockup = {
       // ink внутри вырубки: монограмма в круге/звезде, две строки в плашке
       ctx.save();
       ctx.fillStyle = ink;
-      if (kinds[i] === "rect") {
+      if (kind === "rect") {
         ctx.globalAlpha = 0.55;
         ctx.fillRect(cx - R * 0.6, cy - R * 0.2, R * 1.2, Math.max(1, R * 0.14));
         ctx.globalAlpha = 0.28;
@@ -303,11 +323,24 @@ const stickerPack: Mockup = {
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         // в звезде монограмма мельче — иначе выходит за лучи
-        ctx.font = `800 ${Math.round(R * (kinds[i] === "star" ? 0.38 : 0.62))}px Georgia, serif`;
+        ctx.font = `800 ${Math.round(R * (kind === "star" ? 0.38 : 0.62))}px Georgia, serif`;
         ctx.fillText("PM", cx, cy);
       }
       ctx.restore();
     }
+  },
+  // Фольгируются монограммы в КРУГЛЫХ вырубках: золотить весь лист неправдоподобно
+  // (фольга идёт акцентом), а круг — самая крупная и читаемая вырубка в паке.
+  foilMarks(r) {
+    return packCells(r)
+      .filter((c) => c.kind === "circle")
+      .map((c) => {
+        const size = Math.round(c.R * 0.62);
+        return {
+          kind: "text" as const, text: "PM",
+          x: c.cx, y: c.cy - size * 0.52, size, align: "center" as const,
+        };
+      });
   },
 };
 
@@ -364,6 +397,18 @@ const stickerQr: Mockup = {
     ctx.fillText("PRINTMOS", x + w / 2, y + h * 0.5 + size * 0.5);
     ctx.restore();
   },
+  // Фольгируется ТОЛЬКО подпись, не код: фольгированный QR бликует и перестаёт
+  // читаться сканером — этого в превью показывать нельзя, чтобы не продавать
+  // заведомо нерабочее сочетание.
+  foilMarks(r, env) {
+    const { x, y, w, h } = r;
+    const m = Math.min(w, h);
+    const qr = m * (env.round ? 0.5 : 0.6);
+    return [{
+      kind: "text", text: "PRINTMOS", x: x + w / 2, y: y + h * 0.5 + qr * 0.5,
+      size: Math.round(m * 0.09), align: "center", font: SANS,
+    }];
+  },
 };
 
 // Макет «буклет/листовка»: контент колонками по числу панелей (foldCount+1).
@@ -393,6 +438,17 @@ const leaflet: Mockup = {
       }
       ctx.globalAlpha = 1;
     }
+  },
+  // Фольгируется заголовок ПЕРВОЙ панели — она лицевая при любой фальцовке.
+  // Локальная переменная названа gap, а не pad: модульный pad() — это функция.
+  foilMarks(r, env) {
+    const { x, y, w, h } = r;
+    const pw = w / Math.max(1, (env.foldCount || 0) + 1);
+    const gap = Math.min(pw, h) * 0.08;
+    return [{
+      kind: "rect", x: x + gap, y: y + h * 0.42,
+      w: (pw - 2 * gap) * 0.7, h: Math.max(2, h * 0.03),
+    }];
   },
 };
 
@@ -450,9 +506,9 @@ const letterhead: Mockup = {
     }
     ctx.globalAlpha = 1;
   },
-  foil(ctx, r, env) {
+  foilMarks(r) {
     const { x, y, w } = r;
-    drawFoilText(ctx, "PM", x + w * 0.1, y + w * 0.1, Math.round(w * 0.11), "left", env.foilHex);
+    return [{ kind: "text", text: "PM", x: x + w * 0.1, y: y + w * 0.1, size: Math.round(w * 0.11) }];
   },
 };
 
@@ -528,10 +584,10 @@ const envelope: Mockup = {
     });
     ctx.globalAlpha = 1;
   },
-  foil(ctx, r, env) {
+  foilMarks(r) {
     const { x, y, w, h } = r;
     const u = Math.min(w, h);
-    drawFoilText(ctx, "PM", x + u * 0.09, y + h * 0.17, Math.round(u * 0.2), "left", env.foilHex);
+    return [{ kind: "text", text: "PM", x: x + u * 0.09, y: y + h * 0.17, size: Math.round(u * 0.2) }];
   },
 };
 
@@ -582,10 +638,10 @@ const poster: Mockup = {
     ctx.fillRect(x + p, y + h - p - u * 0.06, iw * 0.4, u * 0.06);
     ctx.globalAlpha = 1;
   },
-  foil(ctx, r, env) {
-    const { x, y, h } = r;
-    const u = Math.min(r.w, h);
-    drawFoilText(ctx, "PRINTMOS", x + u * 0.08, y + h * 0.6, Math.round(u * 0.16), "left", env.foilHex, "system-ui, sans-serif");
+  foilMarks(r) {
+    const { x, y, w, h } = r;
+    const u = Math.min(w, h);
+    return [{ kind: "text", text: "PRINTMOS", x: x + u * 0.08, y: y + h * 0.6, size: Math.round(u * 0.16), font: SANS }];
   },
 };
 
@@ -632,11 +688,10 @@ const tag: Mockup = {
     ctx.fillText("артикул · размер", cx, y + h * 0.82);
     ctx.globalAlpha = 1;
   },
-  foil(ctx, r, env) {
+  foilMarks(r) {
     const { x, y, w, h } = r;
-    const u = Math.min(w, h);
-    const size = Math.round(u * 0.24);
-    drawFoilText(ctx, "PM", x + w / 2, y + h * 0.45 - size / 2, size, "center", env.foilHex);
+    const size = Math.round(Math.min(w, h) * 0.24);
+    return [{ kind: "text", text: "PM", x: x + w / 2, y: y + h * 0.45 - size / 2, size, align: "center" }];
   },
 };
 
@@ -679,10 +734,12 @@ const sign: Mockup = {
     ctx.fillText("Кабинет", cx, y + h * 0.56 + u * 0.16);
     ctx.globalAlpha = 1;
   },
-  foil(ctx, r, env) {
+  foilMarks(r) {
     const { x, y, w, h } = r;
-    const u = Math.min(w, h);
-    drawFoilText(ctx, "101", x + w / 2, y + h * 0.56, Math.round(u * 0.14), "center", env.foilHex, "system-ui, sans-serif");
+    return [{
+      kind: "text", text: "101", x: x + w / 2, y: y + h * 0.56,
+      size: Math.round(Math.min(w, h) * 0.14), align: "center", font: SANS,
+    }];
   },
 };
 
@@ -728,10 +785,10 @@ const folder: Mockup = {
     ctx.fill();
     ctx.globalAlpha = 1;
   },
-  foil(ctx, r, env) {
+  foilMarks(r) {
     const { x, y } = r;
     const u = Math.min(r.w, r.h);
-    drawFoilText(ctx, "PM", x + u * 0.1, y + u * 0.1, Math.round(u * 0.16), "left", env.foilHex);
+    return [{ kind: "text", text: "PM", x: x + u * 0.1, y: y + u * 0.1, size: Math.round(u * 0.16) }];
   },
 };
 
@@ -843,9 +900,9 @@ const forms: Mockup = {
     ctx.fillText("М.П.", x + w - m - w * 0.09, fy - h * 0.022);
     ctx.globalAlpha = 1;
   },
-  foil(ctx, r, env) {
+  foilMarks(r) {
     const { x, y, w } = r;
-    drawFoilText(ctx, "PM", x + w * 0.09, y + w * 0.09, Math.round(w * 0.1), "left", env.foilHex);
+    return [{ kind: "text", text: "PM", x: x + w * 0.09, y: y + w * 0.09, size: Math.round(w * 0.1) }];
   },
 };
 
@@ -950,14 +1007,12 @@ const businessCard: Mockup = {
     );
     ctx.globalAlpha = 1;
   },
-  foil(ctx, r, env) {
+  foilMarks(r, env) {
     const { x, y, w, h } = r;
     const u = Math.min(w, h);
-    if (env.round) {
-      drawFoilText(ctx, "PM", x + w / 2, y + h * 0.2, Math.round(u * 0.2), "center", env.foilHex);
-    } else {
-      drawFoilText(ctx, "PM", x + u * 0.11, y + u * 0.11, Math.round(h * 0.2), "left", env.foilHex);
-    }
+    return env.round
+      ? [{ kind: "text", text: "PM", x: x + w / 2, y: y + h * 0.2, size: Math.round(u * 0.2), align: "center" }]
+      : [{ kind: "text", text: "PM", x: x + u * 0.11, y: y + u * 0.11, size: Math.round(h * 0.2) }];
   },
 };
 
@@ -1045,11 +1100,10 @@ const award: Mockup = {
     ctx.stroke();
     ctx.globalAlpha = 1;
   },
-  foil(ctx, r, env) {
+  foilMarks(r) {
     const { x, y, w, h } = r;
-    const u = Math.min(w, h);
-    const er = u * 0.08;
-    drawFoilText(ctx, "PM", x + w / 2, y + h * 0.2 - er * 0.55, Math.round(er * 1.1), "center", env.foilHex);
+    const er = Math.min(w, h) * 0.08;
+    return [{ kind: "text", text: "PM", x: x + w / 2, y: y + h * 0.2 - er * 0.55, size: Math.round(er * 1.1), align: "center" }];
   },
 };
 
@@ -1102,6 +1156,11 @@ const badge: Mockup = {
     ctx.globalAlpha = 0.85;
     ctx.fillRect(x + w * 0.15, y + h * 0.82, w * 0.7, h * 0.06);
     ctx.globalAlpha = 1;
+  },
+  // фольгируется акцентная плашка-подвал (её же рисует ink — металл её накрывает)
+  foilMarks(r) {
+    const { x, y, w, h } = r;
+    return [{ kind: "rect", x: x + w * 0.15, y: y + h * 0.82, w: w * 0.7, h: h * 0.06 }];
   },
 };
 
@@ -1268,10 +1327,9 @@ const invite: Mockup = {
     ctx.fillText("00.00.0000", cx, y + h * 0.76 + dh * 0.55);
     ctx.globalAlpha = 1;
   },
-  foil(ctx, r, env) {
+  foilMarks(r) {
     const { x, y, w, h } = r;
-    const u = Math.min(w, h);
-    drawFoilText(ctx, "PM", x + w / 2, y + h * 0.2, Math.round(u * 0.16), "center", env.foilHex);
+    return [{ kind: "text", text: "PM", x: x + w / 2, y: y + h * 0.2, size: Math.round(Math.min(w, h) * 0.16), align: "center" }];
   },
 };
 
@@ -1377,11 +1435,10 @@ const label: Mockup = {
     }
     ctx.globalAlpha = 1;
   },
-  foil(ctx, r, env) {
+  foilMarks(r) {
     const { x, y, w, h } = r;
-    const u = Math.min(w, h);
-    const er = u * 0.11;
-    drawFoilText(ctx, "PM", x + w / 2, y + h * 0.4 - er * 0.55, Math.round(er), "center", env.foilHex);
+    const er = Math.min(w, h) * 0.11;
+    return [{ kind: "text", text: "PM", x: x + w / 2, y: y + h * 0.4 - er * 0.55, size: Math.round(er), align: "center" }];
   },
 };
 
@@ -1459,7 +1516,7 @@ const menu: Mockup = {
     ctx.textBaseline = "top";
     ctx.fillStyle = ink;
     ctx.font = `700 ${Math.round(w * 0.09)}px Georgia, serif`;
-    ctx.fillText("МЕНЮ", cx, y + h * 0.07);
+    if (!env.foilOn) ctx.fillText("МЕНЮ", cx, y + h * 0.07);
     ctx.strokeStyle = ink;
     ctx.globalAlpha = 0.3;
     ctx.lineWidth = Math.max(1, u * 0.004);
@@ -1497,6 +1554,11 @@ const menu: Mockup = {
       ry += rowH * 0.4;
     }
   },
+  // фольгируется шапка «МЕНЮ»
+  foilMarks(r) {
+    const { x, y, w, h } = r;
+    return [{ kind: "text", text: "МЕНЮ", x: x + w / 2, y: y + h * 0.07, size: Math.round(w * 0.09), align: "center" }];
+  },
 };
 
 // Макет «открытка» (postcards): крупное поле изображения + поздравление и строки.
@@ -1527,10 +1589,16 @@ const postcard: Mockup = {
     ctx.fillStyle = ink;
     ctx.globalAlpha = 0.7;
     ctx.font = `italic 700 ${Math.round(u * 0.12)}px Georgia, serif`;
-    ctx.fillText("С праздником!", x + w / 2, y + h * 0.66);
+    if (!env.foilOn) ctx.fillText("С праздником!", x + w / 2, y + h * 0.66);
     ctx.globalAlpha = 0.25;
     [0.84, 0.9].forEach((f) => ctx.fillRect(x + w / 2 - w * 0.25, y + h * f, w * 0.5, Math.max(1, h * 0.02)));
     ctx.globalAlpha = 1;
+  },
+  // фольгируется поздравление — на открытках золотят именно его
+  foilMarks(r) {
+    const { x, y, w, h } = r;
+    const size = Math.round(Math.min(w, h) * 0.12);
+    return [{ kind: "text", text: "С праздником!", x: x + w / 2, y: y + h * 0.66 - size * 0.5, size, align: "center" }];
   },
 };
 
@@ -1550,7 +1618,7 @@ const ticket: Mockup = {
       ctx.textBaseline = "top";
       ctx.fillStyle = ink;
       ctx.font = `800 ${Math.round(w * 0.17)}px system-ui, sans-serif`;
-      ctx.fillText("ВХОД", cx, y + h * 0.08);
+      if (!env.foilOn) ctx.fillText("ВХОД", cx, y + h * 0.08);
       // событие + дата
       ctx.globalAlpha = 0.4;
       ctx.fillRect(cx - w * 0.3, y + h * 0.24, w * 0.6, Math.max(1, w * 0.035));
@@ -1596,7 +1664,7 @@ const ticket: Mockup = {
     ctx.textBaseline = "top";
     ctx.fillStyle = ink;
     ctx.font = `800 ${Math.round(u * 0.2)}px system-ui, sans-serif`;
-    ctx.fillText("ВХОД", x + m, y + m);
+    if (!env.foilOn) ctx.fillText("ВХОД", x + m, y + m);
     ctx.globalAlpha = 0.4;
     ctx.fillRect(x + m, y + h * 0.5, w * 0.4, Math.max(1, h * 0.05));
     ctx.globalAlpha = 0.25;
@@ -1613,6 +1681,17 @@ const ticket: Mockup = {
     ctx.font = `800 ${Math.round(u * 0.2)}px system-ui, sans-serif`;
     ctx.fillText("0042", sx, y + h * 0.44);
     ctx.globalAlpha = 1;
+  },
+  // Фольгируется «ВХОД». Раскладка билета ветвится по ориентации (инвариант 3),
+  // метка обязана ветвиться вместе с ней — иначе на портрете металл уедет.
+  foilMarks(r) {
+    const { x, y, w, h } = r;
+    const u = Math.min(w, h);
+    if (h >= w) {
+      const size = Math.round(w * 0.17);
+      return [{ kind: "text", text: "ВХОД", x: x + w / 2, y: y + h * 0.08, size, align: "center", font: SANS }];
+    }
+    return [{ kind: "text", text: "ВХОД", x: x + u * 0.16, y: y + u * 0.16, size: Math.round(u * 0.2), font: SANS }];
   },
 };
 
@@ -1863,6 +1942,36 @@ const pricetag: Mockup = {
       default: drawPricetag(ctx, r, env.ink, env.round);
     }
     ctx.restore();
+  },
+  // Фольгируется акцент, и он у каждого изделия свой: у ценника — ярлык-плашка,
+  // у воблера и хенгера — слово «АКЦИЯ». Метки ветвятся тем же posKindOf, что и
+  // раскладка, иначе металл ляжет мимо силуэта.
+  foilMarks(r, env) {
+    const { x, y, w, h } = r;
+    const u = Math.min(w, h);
+    switch (posKindOf(env.sizeLabel)) {
+      case "wobbler": {
+        const size = Math.round(u * 0.13);
+        return [{
+          kind: "text", text: "АКЦИЯ", x: x + w / 2,
+          y: y + h * 0.44 - u * 0.06 - size, size, align: "center", font: SANS,
+        }];
+      }
+      case "hanger": {
+        const hole = u * 0.17;
+        return [{
+          kind: "text", text: "АКЦИЯ", x: x + w / 2,
+          y: y + h * 0.055 + hole * 1.5 + hole * 1.6,
+          size: Math.round(u * 0.2), align: "center", font: SANS,
+        }];
+      }
+      default: {
+        const m = u * (env.round ? 0.2 : 0.12);
+        const tw = Math.min((w - 2 * m) * 0.34, u * 0.4);
+        const tH = Math.min(h * 0.16, u * 0.18);
+        return [{ kind: "rect", x: x + w - m - tw, y: y + m, w: tw, h: tH, radius: tH * 0.25 }];
+      }
+    }
   },
 };
 

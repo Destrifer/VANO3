@@ -4,7 +4,10 @@
 // из реестра (mockups). Всё питается от calc; перерисовка реактивная и по ресайзу.
 import { computed, inject, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { calcKey } from "../../composables/useCalculator";
-import { shapePath, paperTexture, laminationGloss, inkColor, type Rect } from "../../lib/preview/primitives";
+import {
+  shapePath, paperTexture, laminationGloss, inkColor,
+  drawFoilMarks, defaultFoilMarks, applyFoilStops, type Rect,
+} from "../../lib/preview/primitives";
 import { getMockup } from "../../lib/preview/mockups";
 
 const calc = inject(calcKey)!;
@@ -280,7 +283,16 @@ function draw() {
   if (isScratch.value) drawScratchPanel(ctx, mr);
   if (isTransfer.value) drawTransferFilm(ctx, mr);
   if (glossStrength.value > 0) laminationGloss(ctx, mr, glossStrength.value);
-  if (calc.foilOn && mockup.value.foil) mockup.value.foil(ctx, mr, env);
+  // Фольга: сцена только ОБЪЯВЛЯЕТ метки, металл кладёт движок — одинаково на
+  // всех продуктах. Сцена без меток получает фолбэк, а не тишину: раньше
+  // `mockup.foil` просто отсутствовал у 12 сцен, и на бейджах, буклетах,
+  // открытках, билетах и POS-материалах галочка фольги не давала ничего.
+  if (calc.foilOn) {
+    const marks = mockup.value.foilMarks?.(mr, env) ?? defaultFoilMarks(mr, isRound.value);
+    drawFoilMarks(ctx, marks, foilHex.value);
+    // купол смолы обязан лечь ПОВЕРХ металла (объёмные наклейки)
+    mockup.value.afterFoil?.(ctx, mr, env);
+  }
   // линии сгиба (буклеты): пунктир, делит лист на панели foldCount+1
   if (foldCount.value > 0) {
     ctx.strokeStyle = "rgba(0,0,0,.4)";
@@ -428,10 +440,12 @@ function drawFolded(ctx: CanvasRenderingContext2D, cssW: number, cssH: number) {
     poly(band(c, 0.14, 0.86, 0.08, 0.34)); ctx.fillStyle = ink; ctx.globalAlpha = 0.16; ctx.fill(); ctx.globalAlpha = 1;
     poly(band(c, 0.14, 0.62, 0.44, 0.49));
     if (calc.foilOn) {
+      // Металл тот же, что у плоского вида (applyFoilStops): раньше здесь был
+      // свой градиент с пересветом #fff7e0, и фольга на сложенном буклете
+      // отличалась от фольги на всех прочих продуктах.
       const a2 = bil(c, 0.14, 0.465), b2 = bil(c, 0.62, 0.465);
-      const g2 = ctx.createLinearGradient(a2.x, a2.y, b2.x, b2.y);
-      g2.addColorStop(0, foilHex.value); g2.addColorStop(0.5, "#fff7e0"); g2.addColorStop(1, foilHex.value);
-      ctx.fillStyle = g2; ctx.fill();
+      ctx.fillStyle = applyFoilStops(ctx.createLinearGradient(a2.x, a2.y, b2.x, b2.y), foilHex.value);
+      ctx.fill();
     } else { ctx.fillStyle = ink; ctx.globalAlpha = 0.5; ctx.fill(); ctx.globalAlpha = 1; }
     ctx.fillStyle = ink; ctx.globalAlpha = 0.3;
     for (let l = 0; l < 3; l++) {

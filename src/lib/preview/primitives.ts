@@ -136,6 +136,102 @@ export function dieCutWindow(ctx: CanvasRenderingContext2D, r: Rect, depth: numb
   ctx.restore();
 }
 
+// — ФОЛЬГА —
+// Как БЛЕСТИТ металл, знает только этот файл. Сцена объявляет, ГДЕ на кукле
+// лежит фольга (`FoilMark`), рисует движок — иначе каждая сцена шьёт себе свою
+// фольгу, что и произошло: из 26 сцен `foil()` написали 14, и на бейджах,
+// буклетах, открытках, билетах и POS-материалах галочка «фольгирование» в
+// калькуляторе не давала в превью ровно ничего.
+export type FoilMark =
+  | {
+      kind: "text";
+      text: string;
+      x: number; y: number; // y — ВЕРХ строки (textBaseline: top)
+      size: number;
+      align?: CanvasTextAlign;
+      font?: string;
+    }
+  | { kind: "rect"; x: number; y: number; w: number; h: number; radius?: number };
+
+// Раскладка металла по градиенту: тень → цвет → пересвет → цвет → тень.
+// Отдельно от создания градиента, потому что 3D-вид сложенного буклета кладёт
+// фольгу вдоль перспективной кромки — ось у него своя, а металл обязан быть тот
+// же (иначе фольга на буклете отличается от фольги на всём остальном).
+export function applyFoilStops(g: CanvasGradient, hex: string) {
+  const c = hexToRgb(hex);
+  g.addColorStop(0, scale(c, 0.45));
+  g.addColorStop(0.42, hex);
+  g.addColorStop(0.5, toWhite(c, 0.75));
+  g.addColorStop(0.58, hex);
+  g.addColorStop(1, scale(c, 0.45));
+  return g;
+}
+
+// Вертикальный металлический градиент под метку.
+function foilFill(ctx: CanvasRenderingContext2D, hex: string, top: number, height: number) {
+  return applyFoilStops(ctx.createLinearGradient(0, top, 0, top + height), hex);
+}
+
+// Плашка фольгой (полоса, кант, залитая фигура) — для сцен, где фольгируется не
+// текст. Тот же металл, что у drawFoilText, чтобы вид не разъезжался.
+function drawFoilRect(
+  ctx: CanvasRenderingContext2D,
+  m: Extract<FoilMark, { kind: "rect" }>,
+  hex: string,
+) {
+  const rad = m.radius ?? 0;
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,.45)";
+  ctx.shadowBlur = 2;
+  ctx.shadowOffsetY = 1;
+  ctx.fillStyle = foilFill(ctx, hex, m.y, m.h);
+  roundRect(ctx, m.x, m.y, m.w, m.h, rad);
+  ctx.fill();
+  ctx.restore();
+
+  ctx.save();
+  ctx.globalCompositeOperation = "screen";
+  const hi = ctx.createLinearGradient(m.x, 0, m.x + m.w, 0);
+  hi.addColorStop(0, "rgba(255,255,255,0)");
+  hi.addColorStop(0.5, "rgba(255,255,255,.7)");
+  hi.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = hi;
+  roundRect(ctx, m.x, m.y, m.w, m.h, rad);
+  ctx.fill();
+  ctx.restore();
+}
+
+// Фолбэк, когда сцена меток не объявила. Существует ровно затем, чтобы галочка
+// «фольгирование» НИКОГДА не была немой: на 5 опубликованных продуктах она
+// молчала именно потому, что сцена просто не написала свою реализацию.
+// Монограмма в углу (у круглого — по центру сверху) — самая частая конвенция
+// среди сцен, которые фольгу объявляют.
+export function defaultFoilMarks(r: Rect, round: boolean): FoilMark[] {
+  const u = Math.min(r.w, r.h);
+  const size = Math.round(u * 0.16);
+  return [{
+    kind: "text", text: "PM", size,
+    x: round ? r.x + r.w / 2 : r.x + u * 0.1,
+    y: r.y + u * 0.1,
+    align: round ? "center" : "left",
+  }];
+}
+
+// Единственная точка входа для движка: список меток → металл на канвасе.
+export function drawFoilMarks(
+  ctx: CanvasRenderingContext2D,
+  marks: readonly FoilMark[],
+  hex: string,
+) {
+  for (const m of marks) {
+    if (m.kind === "text") {
+      drawFoilText(ctx, m.text, m.x, m.y, m.size, m.align ?? "left", hex, m.font);
+    } else {
+      drawFoilRect(ctx, m, hex);
+    }
+  }
+}
+
 // Текст металлической фольгой (градиент из hex + блик). Переиспользуется макетами.
 export function drawFoilText(
   ctx: CanvasRenderingContext2D,
@@ -144,13 +240,7 @@ export function drawFoilText(
   align: CanvasTextAlign, hex: string,
   fontFamily = "Georgia, serif",
 ) {
-  const c = hexToRgb(hex);
-  const g = ctx.createLinearGradient(x, y, x, y + size);
-  g.addColorStop(0, scale(c, 0.45));
-  g.addColorStop(0.42, hex);
-  g.addColorStop(0.5, toWhite(c, 0.75));
-  g.addColorStop(0.58, hex);
-  g.addColorStop(1, scale(c, 0.45));
+  const g = foilFill(ctx, hex, y, size);
 
   ctx.save();
   ctx.textAlign = align;
