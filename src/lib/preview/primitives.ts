@@ -17,15 +17,105 @@ export function roundRect(
   ctx.closePath();
 }
 
-// Контур карточки. Позже сюда же — Path2D из SVG-пути сложной вырубки.
-export function shapePath(ctx: CanvasRenderingContext2D, r: Rect, radius: number, round: boolean) {
-  if (round) {
+export type ShapeKind = "rectangular" | "round" | "complex";
+
+// Фигурная вырубка: лепестковый контур вместо прямоугольника. Конкретного
+// контура у неё нет — макет присылает клиент, — но показывать «сложную форму»
+// прямоугольником нельзя: до этого шесть продуктов (визитки, наклейки,
+// этикетки, трафареты, объёмные наклейки, открытки) предлагали вырубку, а
+// превью рисовало ровно то же, что и без неё.
+// Основа — СУПЕРЭЛЛИПС, а не эллипс: эллипс, вписанный в лист, отрезает углы
+// почти наполовину, и «кукла» на вырубленной визитке теряла монограмму и имя.
+// Суперэллипс заполняет лист почти целиком, оставаясь скруглённым, а лепестки
+// поверх него читаются как фигурный рез.
+function complexPath(ctx: CanvasRenderingContext2D, r: Rect) {
+  const cx = r.x + r.w / 2, cy = r.y + r.h / 2;
+  const rx = r.w / 2, ry = r.h / 2;
+  const p = 2 / 3.6; // показатель суперэллипса: 1 — ромб, 0 — прямоугольник
+  const N = 240;
+  ctx.beginPath();
+  for (let i = 0; i <= N; i++) {
+    const t = (i / N) * Math.PI * 2;
+    const c = Math.cos(t), s = Math.sin(t);
+    const k = 0.94 + 0.06 * Math.cos(6 * t); // шесть мягких лепестков
+    const px = cx + Math.sign(c) * Math.abs(c) ** p * rx * k;
+    const py = cy + Math.sign(s) * Math.abs(s) ** p * ry * k;
+    i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+  }
+  ctx.closePath();
+}
+
+// Контур карточки. Позже сюда же — Path2D из SVG-пути реальной вырубки клиента.
+export function shapePath(
+  ctx: CanvasRenderingContext2D, r: Rect, radius: number, shape: ShapeKind,
+) {
+  if (shape === "round") {
     ctx.beginPath();
     ctx.ellipse(r.x + r.w / 2, r.y + r.h / 2, r.w / 2, r.h / 2, 0, 0, Math.PI * 2);
     ctx.closePath();
+  } else if (shape === "complex") {
+    complexPath(ctx, r);
   } else {
     roundRect(ctx, r.x, r.y, r.w, r.h, radius);
   }
+}
+
+// — ВЫРУБНЫЕ ОТВЕРСТИЯ (сверление, еврослот, люверс) —
+// Общий примитив: дырка в бирке, в бейдже и в ценнике обязана выглядеть
+// одинаково. Настоящей прозрачности здесь нет — что под изделием, движок не
+// знает, — поэтому «сквозь» изображаем приглушённой заливкой плюс тёмный кант
+// реза: именно кант и читается как отверстие.
+export function punchHole(ctx: CanvasRenderingContext2D, path: () => void, u: number) {
+  ctx.save();
+  path();
+  ctx.fillStyle = "rgba(120,126,134,0.28)";
+  ctx.fill();
+  ctx.strokeStyle = "rgba(0,0,0,.4)";
+  ctx.lineWidth = Math.max(1, u * 0.008);
+  ctx.stroke();
+  ctx.restore();
+}
+
+// Сверление: 1 отверстие — подвес по центру, 2 и 4 — под скоросшиватель,
+// то есть в ряд вдоль ЛЕВОГО края (так их и сверлят под папку).
+export function drillHoles(ctx: CanvasRenderingContext2D, r: Rect, count: number) {
+  const u = Math.min(r.w, r.h);
+  const rad = u * 0.045;
+  if (count <= 1) {
+    punchHole(ctx, () => {
+      ctx.beginPath();
+      ctx.arc(r.x + r.w / 2, r.y + u * 0.11, rad, 0, Math.PI * 2);
+    }, u);
+    return;
+  }
+  const x = r.x + u * 0.1;
+  for (let i = 0; i < count; i++) {
+    const cy = r.y + r.h * ((i + 1) / (count + 1));
+    punchHole(ctx, () => {
+      ctx.beginPath();
+      ctx.arc(x, cy, rad, 0, Math.PI * 2);
+    }, u);
+  }
+}
+
+// Еврослот — подвес под торговый крючок. «Стандартный» — замочная скважина
+// (круг + прорезь), «Суперслот» — широкая скруглённая прорезь; это два разных
+// варианта в каталоге, и разными они обязаны быть и в превью.
+export function euroSlot(ctx: CanvasRenderingContext2D, r: Rect, superSlot: boolean) {
+  const u = Math.min(r.w, r.h);
+  const cx = r.x + r.w / 2;
+  if (superSlot) {
+    const w = u * 0.3, h = u * 0.075;
+    punchHole(ctx, () => roundRect(ctx, cx - w / 2, r.y + u * 0.08, w, h, h / 2), u);
+    return;
+  }
+  const rad = u * 0.05;
+  const cy = r.y + u * 0.13;
+  punchHole(ctx, () => {
+    ctx.beginPath();
+    ctx.arc(cx, cy, rad, 0, Math.PI * 2);
+    ctx.rect(cx - rad * 0.45, r.y + u * 0.05, rad * 0.9, cy - r.y - u * 0.05);
+  }, u);
 }
 
 // — цвет-утилиты —

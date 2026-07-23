@@ -7,7 +7,8 @@ import { calcKey } from "../../composables/useCalculator";
 import {
   shapePath, paperTexture, laminationGloss, inkColor,
   drawAccentMarks, defaultAccentMarks, applyFoilStops,
-  drawUvGloss, drawEmboss, drawRaisedVarnish, type Rect,
+  drawUvGloss, drawEmboss, drawRaisedVarnish,
+  drillHoles, euroSlot, type Rect, type ShapeKind,
 } from "../../lib/preview/primitives";
 import { getMockup } from "../../lib/preview/mockups";
 
@@ -16,12 +17,23 @@ const canvasRef = ref<HTMLCanvasElement | null>(null);
 let ro: ResizeObserver | null = null;
 
 const isRound = computed(() => calc.shape === "round");
+// Форма изделия для контура. «Сложная» — фигурная вырубка, у неё свой контур:
+// пока она рисовалась прямоугольником, шесть продуктов предлагали вырубку без
+// единого отличия в превью.
+const shapeKind = computed<ShapeKind>(() =>
+  calc.shape === "round" ? "round" : calc.shape === "complex" ? "complex" : "rectangular",
+);
 const baseColor = computed(() => calc.colors[calc.selectedColorIndex]?.hex ?? "#f3efe6");
 const laminated = computed(() => calc.laminationIndex >= 0);
+// Soft Touch — не «матовая подешевле»: это бархатистая плёнка, она гасит блик
+// почти в ноль и делает цвет глубже. Пока обе давали 0.25, тринадцать продуктов
+// предлагали выбор между двумя одинаковыми картинками.
+const softTouch = computed(() => /soft/i.test(calc.laminationOptions[calc.laminationIndex]?.name ?? ""));
 const glossStrength = computed(() => {
   const name = calc.laminationOptions[calc.laminationIndex]?.name ?? "";
   if (/гл[яа]нц/i.test(name)) return 1;
-  if (/soft|мат/i.test(name)) return 0.25;
+  if (/soft/i.test(name)) return 0.08;
+  if (/мат/i.test(name)) return 0.25;
   return laminated.value ? 0.6 : 0;
 });
 const foilHex = computed(() => calc.foilOption?.colors?.[calc.foilColorIndex]?.hex ?? "#d9b44a");
@@ -45,6 +57,22 @@ const uvOn = computed(() => uvPick.value !== null);
 const uvSolid = computed(() => /сплошн/i.test(uvPick.value ?? ""));
 const embossOn = computed(() => groupPick(/конгрев/i).value !== null);
 const raisedOn = computed(() => groupPick(/3D-лак|объ[её]мный/i).value !== null);
+// Сверление: число отверстий — в `count` варианта («2 отверстия» → 2).
+const drillCount = computed(() => {
+  const g = calc.variantGroups.find((x) => x.unit === "per_hole");
+  const i = g ? calc.finGroupIndex[g.id] ?? -1 : -1;
+  return g && i >= 0 ? g.variants[i]?.count ?? 1 : 0;
+});
+const euroPick = groupPick(/еврослот/i);
+const euroSuper = computed(() => /супер/i.test(euroPick.value ?? ""));
+// Отделка БЕЗ группы идёт чекбоксами (`otherOptions` → `fin[i].checked`).
+const checkedOn = (re: RegExp) =>
+  computed(() => calc.product.finishing.some((o, i) => re.test(o.name) && calc.fin[i]?.checked));
+const numberingOn = checkedOn(/нумерац/i);
+const mountedOn = checkedOn(/каширов/i);
+// Скретч бывает и МАТЕРИАЛОМ (наклейки), и ОПЦИЕЙ поверх печати (билеты).
+// Рендер один, поводов два — иначе галочка на билетах ничего не делает.
+const scratchOptionOn = checkedOn(/скретч/i);
 // Скругление углов переехало в плитки-варианты вместе с остальной доп-обработкой,
 // а проверка осталась на старом пути (`fin[i].checked`) — и скруглённые углы
 // перестали доезжать до превью. Держим оба пути: у части продуктов опция ещё
@@ -105,6 +133,18 @@ const isLuminous = computed(() => /люминесц/i.test(matSignature.value));
 const isVoid = computed(() => /пломбир|void/i.test(matSignature.value));
 const isScratch = computed(() => /скретч|scratch/i.test(matSignature.value));
 const isTransfer = computed(() => /переводн|аппликац/i.test(matSignature.value));
+// Фактура основы. Волокна есть не у всего: на плёнке, пластике и виниле их нет
+// физически, и бумажный шум там читается как грязь. У дизайнерской, наоборот,
+// фактура — то, за что её и берут, и без неё она неотличима от офсетной.
+const isSmooth = computed(() => /пл[её]нк|пластик|винил|металл/i.test(matSignature.value));
+const isDesigner = computed(() => /дизайнерск/i.test(matSignature.value));
+// Толщина торца: картон и каширование заметно толще листа, и это видно с торца.
+const isThick = computed(() => /картон|винил/i.test(matSignature.value) || mountedOn.value);
+// Мелованная глянцевая бликует и без ламинации — иначе выбор между глянцевой и
+// матовой мелованной ничего в превью не менял (а это 156 привязок).
+const isCoatedGloss = computed(
+  () => /мелован|плотн/i.test(matSignature.value) && /гл[яа]нц/i.test(matSignature.value),
+);
 // Наклейки — вид «вырезанной» наклейки: узкое белое поле реза вокруг печати +
 // тонкий пунктир-контур по внешнему краю. Для previewKind='sticker' и
 // 'volume-sticker' (объёмные — те же наклейки, но под куполом смолы) И
@@ -145,6 +185,50 @@ function drawMetallicSheen(ctx: CanvasRenderingContext2D, r: Rect) {
   ctx.save();
   ctx.fillStyle = g;
   ctx.fillRect(r.x, r.y, r.w, r.h);
+  ctx.restore();
+}
+
+// Фактура дизайнерской бумаги — тиснение «лён»: частая сетка тонких штрихов.
+// Без неё дизайнерская неотличима от офсетной, хотя стоит кратно дороже.
+function drawLaidTexture(ctx: CanvasRenderingContext2D, r: Rect) {
+  const step = Math.max(3, Math.min(r.w, r.h) * 0.022);
+  ctx.save();
+  ctx.globalAlpha = 0.1;
+  ctx.strokeStyle = "#3a352c";
+  ctx.lineWidth = 0.7;
+  for (let y = r.y; y < r.y + r.h; y += step) {
+    ctx.beginPath(); ctx.moveTo(r.x, y); ctx.lineTo(r.x + r.w, y); ctx.stroke();
+  }
+  ctx.globalAlpha = 0.06;
+  for (let x = r.x; x < r.x + r.w; x += step) {
+    ctx.beginPath(); ctx.moveTo(x, r.y); ctx.lineTo(x, r.y + r.h); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// Мягкое бархатистое свечение Soft Touch: широкая рассеянная засветка без
+// резкой полосы. Полоса — признак глянца, у soft touch её быть не должно.
+function drawSoftTouchBloom(ctx: CanvasRenderingContext2D, r: Rect) {
+  const g = ctx.createLinearGradient(r.x, r.y, r.x + r.w * 0.6, r.y + r.h);
+  g.addColorStop(0, "rgba(255,255,255,0.14)");
+  g.addColorStop(0.55, "rgba(255,255,255,0.04)");
+  g.addColorStop(1, "rgba(20,18,16,0.06)");
+  ctx.save();
+  ctx.fillStyle = g;
+  ctx.fillRect(r.x, r.y, r.w, r.h);
+  ctx.restore();
+}
+
+// Нумерация: типографский порядковый номер. Его печатают отдельным прогоном и
+// традиционно красным — по цвету он и узнаётся.
+function drawSerial(ctx: CanvasRenderingContext2D, r: Rect) {
+  const u = Math.min(r.w, r.h);
+  ctx.save();
+  ctx.fillStyle = "rgba(178,42,38,0.88)";
+  ctx.textAlign = "right";
+  ctx.textBaseline = "top";
+  ctx.font = `700 ${Math.round(u * 0.07)}px system-ui, sans-serif`;
+  ctx.fillText("№ 000148", r.x + r.w - u * 0.07, r.y + u * 0.07);
   ctx.restore();
 }
 
@@ -326,12 +410,24 @@ function draw() {
       ? Math.min(mMin * 0.35, cornerRadiusMm.value * mmToPx)
       : mMin * 0.03;
 
+  // Торец: картон и каширование заметно толще листа. Смещённая копия контура
+  // под изделием читается как срез. Рисует СТЕЙДЖ, не сцена, — толщина у любого
+  // продукта обязана выглядеть одинаково.
+  if (isThick.value) {
+    const t = Math.max(2, minSide * 0.022);
+    ctx.save();
+    shapePath(ctx, { x: r.x + t * 0.35, y: r.y + t, w: r.w, h: r.h }, radius, shapeKind.value);
+    ctx.fillStyle = "rgba(120,110,96,0.85)";
+    ctx.fill();
+    ctx.restore();
+  }
+
   // тень под наклейкой + подложка (у наклейки поле реза белое, печать — внутри mr)
   ctx.save();
   ctx.shadowColor = "rgba(0,0,0,.25)";
   ctx.shadowBlur = minSide * 0.12;
   ctx.shadowOffsetY = minSide * 0.05;
-  shapePath(ctx, r, radius, isRound.value);
+  shapePath(ctx, r, radius, shapeKind.value);
   ctx.fillStyle = isSticker.value ? "#ffffff" : baseColor.value;
   ctx.fill();
   ctx.restore();
@@ -345,22 +441,39 @@ function draw() {
     foldCount: foldCount.value,
     sizeLabel: sizeLabel.value,
   };
+  // Поле для «куклы». У фигурной вырубки лепестковый контур режет углы, поэтому
+  // ink вписываем внутрь силуэта: без этого на вырубленной визитке обрезало
+  // монограмму и имя. Материю и глянец это не касается — они идут по всему mr.
+  const si = shapeKind.value === "complex" ? mMin * 0.11 : 0;
+  const sr: Rect = { x: mr.x + si, y: mr.y + si, w: mr.w - 2 * si, h: mr.h - 2 * si };
+
   ctx.save();
-  shapePath(ctx, mr, mRadius, isRound.value);
+  shapePath(ctx, mr, mRadius, shapeKind.value);
   ctx.clip();
   if (isSticker.value) { ctx.fillStyle = baseColor.value; ctx.fillRect(mr.x, mr.y, mr.w, mr.h); }
   if (isTransparent.value) drawTransparencyGrid(ctx, mr);
   if (isLuminous.value) drawLuminousBase(ctx, mr);
-  paperTexture(ctx, mr, laminated.value ? 22 : 46, laminated.value ? 0.35 : 0.7);
+  // Волокна — только у бумаги. На плёнке и пластике их нет физически, и шум там
+  // читается как грязь; у дизайнерской вместо шума своё тиснение.
+  if (!isSmooth.value) {
+    paperTexture(ctx, mr, laminated.value ? 22 : 46, laminated.value ? 0.35 : 0.7);
+  }
+  if (isDesigner.value) drawLaidTexture(ctx, mr);
   // VOID — защитный фон, он ПОД печатью; скретч-панель, наоборот, поверх (её
   // работа — прятать), переводная плёнка обрамляет печать носителем.
   if (isVoid.value) drawVoidPattern(ctx, mr);
-  mockup.value.content(ctx, mr, env);
+  mockup.value.content(ctx, sr, env);
+  if (numberingOn.value) drawSerial(ctx, sr);
   if (isMetallic.value) drawMetallicSheen(ctx, mr);
   if (isLuminous.value) drawLuminousGlow(ctx, mr);
-  if (isScratch.value) drawScratchPanel(ctx, mr);
+  if (isScratch.value || scratchOptionOn.value) drawScratchPanel(ctx, sr);
   if (isTransfer.value) drawTransferFilm(ctx, mr);
-  if (glossStrength.value > 0) laminationGloss(ctx, mr, glossStrength.value);
+  // Мелованная глянцевая бликует и без ламинации, но слабее неё.
+  if (isCoatedGloss.value && !laminated.value) laminationGloss(ctx, mr, 0.3);
+  if (glossStrength.value > 0) {
+    if (softTouch.value) drawSoftTouchBloom(ctx, mr);
+    else laminationGloss(ctx, mr, glossStrength.value);
+  }
   // Фольга: сцена только ОБЪЯВЛЯЕТ метки, металл кладёт движок — одинаково на
   // всех продуктах. Сцена без меток получает фолбэк, а не тишину: раньше
   // `mockup.foil` просто отсутствовал у 12 сцен, и на бейджах, буклетах,
@@ -369,7 +482,7 @@ function draw() {
   // считаются один раз. Пустой список — осознанный запрет (QR-код, газета),
   // отсутствие метода — недосмотр сцены, его закрывает фолбэк.
   if (calc.foilOn || uvOn.value || embossOn.value || raisedOn.value) {
-    const marks = mockup.value.accentMarks?.(mr, env) ?? defaultAccentMarks(mr, isRound.value);
+    const marks = mockup.value.accentMarks?.(sr, env) ?? defaultAccentMarks(sr, isRound.value);
     if (calc.foilOn) drawAccentMarks(ctx, marks, foilHex.value);
     // Лак и конгрев идут ПОСЛЕ фольги: лакировать и тиснить по металлу можно,
     // и тогда рельеф обязан лежать поверх него.
@@ -381,8 +494,12 @@ function draw() {
       else drawUvGloss(ctx, marks);
     }
     // купол смолы обязан лечь ПОВЕРХ всего (объёмные наклейки)
-    if (calc.foilOn) mockup.value.afterFoil?.(ctx, mr, env);
+    if (calc.foilOn) mockup.value.afterFoil?.(ctx, sr, env);
   }
+  // Вырубные отверстия — последними: это физический рез сквозь всё, включая
+  // лак и фольгу. Общий примитив, чтобы дырка в бирке и в ценнике совпадали.
+  if (drillCount.value > 0) drillHoles(ctx, sr, drillCount.value);
+  if (euroPick.value !== null) euroSlot(ctx, sr, euroSuper.value);
   // линии сгиба (буклеты): пунктир, делит лист на панели foldCount+1
   if (foldCount.value > 0) {
     ctx.strokeStyle = "rgba(0,0,0,.4)";
@@ -403,7 +520,7 @@ function draw() {
   // контур реза наклейки — пунктир по внешнему краю
   if (isSticker.value) {
     ctx.save();
-    shapePath(ctx, r, radius, isRound.value);
+    shapePath(ctx, r, radius, shapeKind.value);
     ctx.lineWidth = 1;
     ctx.strokeStyle = "rgba(0,0,0,.3)";
     ctx.setLineDash([4, 3]);
@@ -414,7 +531,7 @@ function draw() {
 
   // тонкий контур печати
   ctx.save();
-  shapePath(ctx, mr, mRadius, isRound.value);
+  shapePath(ctx, mr, mRadius, shapeKind.value);
   ctx.lineWidth = 1;
   ctx.strokeStyle = "rgba(0,0,0,.15)";
   ctx.stroke();
@@ -585,6 +702,9 @@ watch(
     isTransparent.value, isMetallic.value, calc.selectedColorIndex,
     isVoid.value, isScratch.value, isTransfer.value, isLuminous.value, sizeLabel.value,
     uvOn.value, uvSolid.value, embossOn.value, raisedOn.value, cornerRadiusMm.value,
+    drillCount.value, euroPick.value, numberingOn.value, mountedOn.value,
+    scratchOptionOn.value, softTouch.value, shapeKind.value,
+    isSmooth.value, isDesigner.value, isThick.value, isCoatedGloss.value,
   ],
   () => draw(),
 );
