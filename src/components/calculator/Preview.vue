@@ -28,6 +28,12 @@ const mockup = computed(() => getMockup(calc.product.previewKind));
 const foldCount = computed(() =>
   calc.foldTypes?.length && calc.selectedFold ? calc.selectedFold.folds : 0,
 );
+// Тип фальцовки из данных продукта (`fold_types[].kind`): рулонная заворачивает
+// панели внутрь одна в другую, гармошка складывает зигзагом. Раньше движок
+// смотрел только на ЧИСЛО сгибов, из-за чего «Евро, 2 сложения» и «Гармошка,
+// 2 сложения» давали пиксель-в-пиксель одинаковую картинку — а это два разных
+// продвигаемых кластера (`/booklets/fold-euro` и `/booklets/fold-garmoshka`).
+const foldKind = computed(() => calc.selectedFold?.kind ?? "accordion");
 
 // Спецрендер материала выводится из имени материала/цвета (как glossStrength от
 // имени ламинации): прозрачная плёнка — «шахматка» сквозь основу; металлик/
@@ -208,11 +214,33 @@ function drawFolded(ctx: CanvasRenderingContext2D, cssW: number, cssH: number) {
   const pw = ph * ((sheetW / panels) / sheetH);
   const depth = ph * 0.12; // глубина зигзага
 
-  // панели зигзагом (аккордеон) — единый вид для всех типов фальцовки
+  // Геометрия панелей по типу фальцовки.
+  // roll («Евро», «Улитка») — панели заворачиваются ВНУТРЬ одна в другую: наклон
+  // растёт монотонно, каждая следующая панель уже предыдущей (на производстве её
+  // и подрезают, иначе не вложится), вглубь рулона темнее.
+  // accordion («Гармошка») и book («Книжка») — зигзаг: наклон чередуется.
   const raw: { c: Pt[]; shade: number }[] = [];
+  const rolled = foldKind.value === "roll";
+  let lx = 0;
   for (let i = 0; i < panels; i++) {
-    const lx = i * pw, rx = lx + pw, lyTop = (i % 2) * depth, ryTop = ((i + 1) % 2) * depth;
-    raw.push({ c: [{ x: lx, y: lyTop }, { x: rx, y: ryTop }, { x: rx, y: ryTop + ph }, { x: lx, y: lyTop + ph }], shade: i % 2 ? -0.18 : 0.06 });
+    let lyTop: number, ryTop: number, shade: number, wI: number;
+    if (rolled) {
+      wI = pw * (1 - i * 0.07); // вложенная панель короче
+      lyTop = i * depth * 0.62;
+      ryTop = (i + 1) * depth * 0.62;
+      shade = 0.06 - i * 0.13; // затемнение вглубь рулона
+    } else {
+      wI = pw;
+      lyTop = (i % 2) * depth;
+      ryTop = ((i + 1) % 2) * depth;
+      shade = i % 2 ? -0.18 : 0.06;
+    }
+    const rx = lx + wI;
+    raw.push({
+      c: [{ x: lx, y: lyTop }, { x: rx, y: ryTop }, { x: rx, y: ryTop + ph }, { x: lx, y: lyTop + ph }],
+      shade,
+    });
+    lx = rx;
   }
 
   // вписать (bbox → масштаб + центрирование)
@@ -313,7 +341,7 @@ watch(
     calc.dims.w, calc.dims.h, isRound.value, baseColor.value,
     calc.laminationIndex, glossStrength.value,
     calc.foilOn, foilHex.value, cornersRounded.value, calc.product.previewKind,
-    foldCount.value, calc.foldTypeIndex,
+    foldCount.value, foldKind.value, calc.foldTypeIndex,
     isTransparent.value, isMetallic.value, calc.selectedColorIndex,
   ],
   () => draw(),
