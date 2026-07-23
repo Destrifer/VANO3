@@ -73,6 +73,48 @@ function parseFont(font: string) {
 const esc = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
+// — МОНОХРОМ —
+// Сцены рисуют «бумажную» картинку: кремовая основа, тёмная краска, цветное фото
+// на обложке. В плитке каталога это выглядело чужеродно — страница у нас
+// нео-нуар, и бежевое читалось как «старое». Поэтому здесь любой цвет сцены
+// сводится к ОДНОЙ оси «сколько краски на белом».
+//
+// Ключевой приём: на белой бумаге «серый 50%» и «чёрный с alpha 0.5» выглядят
+// одинаково, поэтому пару (яркость, альфа) можно свернуть в одно число — долю
+// краски. Отдаём её через `var(--color-base-content)`, а не хардкодом: плитка
+// становится темозависимой и на тёмной теме перевернётся сама.
+function parseColor(css: string): { r: number; g: number; b: number; a: number } | null {
+  const s = css.trim();
+  if (s.startsWith("#")) {
+    const h = s.slice(1);
+    const n = h.length === 3 ? h.split("").map((c) => c + c).join("") : h;
+    if (n.length !== 6) return null;
+    const v = parseInt(n, 16);
+    if (Number.isNaN(v)) return null;
+    return { r: (v >> 16) & 255, g: (v >> 8) & 255, b: v & 255, a: 1 };
+  }
+  const m = /^rgba?\(([^)]+)\)$/i.exec(s);
+  if (!m) return null;
+  const p = m[1].split(",").map((x) => parseFloat(x));
+  if (p.length < 3 || p.some((x) => Number.isNaN(x))) return null;
+  return { r: p[0], g: p[1], b: p[2], a: p.length > 3 ? p[3] : 1 };
+}
+
+// Доля краски 0..1. null — цвет не разобран или это уже CSS-переменная/url:
+// такие пропускаем как есть (ими stage задаёт бумагу и акцент осознанно).
+function inkLevel(css: string): number | null {
+  if (!css || css.startsWith("var(") || css.startsWith("url(") || css === "none") return null;
+  const c = parseColor(css);
+  if (!c) return null;
+  const lum = (0.299 * c.r + 0.587 * c.g + 0.114 * c.b) / 255;
+  return Math.max(0, Math.min(1, c.a * (1 - lum)));
+}
+
+const inkPaint = (ink: number) =>
+  ink <= 0.01 ? "transparent"
+    : ink >= 0.99 ? "var(--color-base-content)"
+      : `color-mix(in oklch, var(--color-base-content) ${Math.round(ink * 100)}%, transparent)`;
+
 export class SvgContext {
   private out: string[] = [];
   private defs: string[] = [];
@@ -86,8 +128,12 @@ export class SvgContext {
   private startLocal: [number, number] | null = null;
   private gid = 0;
   private cid = 0;
+  // Габарит текущего пути в device-координатах: хафтон ставим только на КРУПНЫЕ
+  // заливки, иначе тонкие линии-«рыба» рассыпаются в пунктир и читаются грязью.
+  private bb = { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity };
+  private halftones = new Set<number>();
 
-  constructor(private W: number, private H: number) {
+  constructor(private W: number, private H: number, private opts: { halftone?: boolean } = {}) {
     this.s = {
       m: [...IDENT] as Mat,
       fill: "#000",
@@ -142,16 +188,28 @@ export class SvgContext {
   }
 
   // — построение пути (координаты локальные, в device переводим на выводе) —
-  beginPath() { this.path = ""; this.curLocal = null; this.startLocal = null; }
+  beginPath() {
+    this.path = ""; this.curLocal = null; this.startLocal = null;
+    this.bb = { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity };
+  }
+  private grow(px: number, py: number) {
+    const b = this.bb;
+    if (px < b.x0) b.x0 = px;
+    if (py < b.y0) b.y0 = py;
+    if (px > b.x1) b.x1 = px;
+    if (py > b.y1) b.y1 = py;
+  }
   moveTo(x: number, y: number) {
     const [px, py] = apply(this.s.m, x, y);
     this.path += `M${n2(px)} ${n2(py)}`;
+    this.grow(px, py);
     this.curLocal = [x, y]; this.startLocal = [x, y];
   }
   lineTo(x: number, y: number) {
     if (!this.curLocal) { this.moveTo(x, y); return; }
     const [px, py] = apply(this.s.m, x, y);
     this.path += `L${n2(px)} ${n2(py)}`;
+    this.grow(px, py);
     this.curLocal = [x, y];
   }
   closePath() {
@@ -167,6 +225,7 @@ export class SvgContext {
     const [pcx, pcy] = apply(this.s.m, cx, cy);
     const [px, py] = apply(this.s.m, x, y);
     this.path += `Q${n2(pcx)} ${n2(pcy)} ${n2(px)} ${n2(py)}`;
+    this.grow(pcx, pcy); this.grow(px, py);
     this.curLocal = [x, y];
   }
   bezierCurveTo(c1x: number, c1y: number, c2x: number, c2y: number, x: number, y: number) {
@@ -175,6 +234,7 @@ export class SvgContext {
     const [a2, b2] = apply(this.s.m, c2x, c2y);
     const [px, py] = apply(this.s.m, x, y);
     this.path += `C${n2(a1)} ${n2(b1)} ${n2(a2)} ${n2(b2)} ${n2(px)} ${n2(py)}`;
+    this.grow(a1, b1); this.grow(a2, b2); this.grow(px, py);
     this.curLocal = [x, y];
   }
 
@@ -238,18 +298,53 @@ export class SvgContext {
   }
 
   // — заливка/обводка —
+  // Хафтон: крупную заливку средней «серости» заменяем точечным растром — тем
+  // самым «печатным» видом. Плотность точки подбираем так, чтобы её площадь
+  // относительно ячейки равнялась доле краски: тогда издалека пятно совпадает
+  // по тону со сплошной заливкой, которую оно заменило.
+  private halftoneRef(ink: number): string {
+    const step = Math.max(1, Math.min(9, Math.round(ink * 10))); // бакеты по 10%
+    this.halftones.add(step);
+    return `url(#ht${step})`;
+  }
+  private useHalftone(ink: number) {
+    if (!this.opts.halftone) return false;
+    // только средние тона: светлее — точки не видно, темнее — сливается в плашку
+    if (ink < 0.08 || ink > 0.62) return false;
+    const b = this.bb;
+    if (!Number.isFinite(b.x0)) return false;
+    return b.x1 - b.x0 > 14 && b.y1 - b.y0 > 14;
+  }
+
   private paint(kind: "fill" | "stroke") {
     if (!this.path) return;
     const style = kind === "fill" ? this.s.fill : this.s.stroke;
     const attrs: string[] = [`d="${this.path}"`];
     if (kind === "fill") {
-      attrs.push(`fill="${this.styleRef(style)}"`, `stroke="none"`);
-      if (this.s.alpha < 1) attrs.push(`fill-opacity="${n2(this.s.alpha)}"`);
+      // Полная «краска» элемента = его цвет × globalAlpha. Считаем ОДИН раз и
+      // кладём в fill, не разделяя на fill-opacity: иначе хафтон-точки получают
+      // ещё и прозрачность сверху и тон уезжает вдвое.
+      const lvl = typeof style === "string" ? inkLevel(style) : null;
+      if (lvl !== null) {
+        const ink = lvl * this.s.alpha;
+        attrs.push(
+          `fill="${this.useHalftone(ink) ? this.halftoneRef(ink) : inkPaint(ink)}"`,
+          `stroke="none"`,
+        );
+      } else {
+        attrs.push(`fill="${this.styleRef(style)}"`, `stroke="none"`);
+        if (this.s.alpha < 1) attrs.push(`fill-opacity="${n2(this.s.alpha)}"`);
+      }
     } else {
       const lw = this.s.lineWidth * avgScale(this.s.m);
-      attrs.push(`fill="none"`, `stroke="${this.styleRef(style)}"`,
-        `stroke-width="${n2(lw)}"`);
-      if (this.s.alpha < 1) attrs.push(`stroke-opacity="${n2(this.s.alpha)}"`);
+      const lvl = typeof style === "string" ? inkLevel(style) : null;
+      // Линии — всегда сплошные: точечная обводка на плитке читается как грязь.
+      attrs.push(
+        `fill="none"`,
+        `stroke="${lvl !== null ? inkPaint(lvl * this.s.alpha) : this.styleRef(style)}"`,
+        `stroke-width="${n2(lw)}"`,
+      );
+      if (lvl === null && this.s.alpha < 1) attrs.push(`stroke-opacity="${n2(this.s.alpha)}"`);
       if (this.s.dash.length) {
         attrs.push(`stroke-dasharray="${this.s.dash.map((d) => n2(d * avgScale(this.s.m))).join(" ")}"`);
       }
@@ -291,9 +386,14 @@ export class SvgContext {
       `font-weight="${f.weight}"`,
       `text-anchor="${anchor}"`,
       `dominant-baseline="${dom}"`,
-      `fill="${this.styleRef(this.s.fill)}"`,
     ];
-    if (this.s.alpha < 1) attrs.push(`fill-opacity="${n2(this.s.alpha)}"`);
+    const lvl = typeof this.s.fill === "string" ? inkLevel(this.s.fill) : null;
+    if (lvl !== null) {
+      attrs.push(`fill="${inkPaint(lvl * this.s.alpha)}"`);
+    } else {
+      attrs.push(`fill="${this.styleRef(this.s.fill)}"`);
+      if (this.s.alpha < 1) attrs.push(`fill-opacity="${n2(this.s.alpha)}"`);
+    }
     if (this.s.clip) attrs.push(`clip-path="url(#${this.s.clip})"`);
     this.out.push(`<text ${attrs.join(" ")}>${esc(text)}</text>`);
   }
@@ -364,8 +464,13 @@ export class SvgContext {
     if (typeof style === "string") return style;
     if (this.registered.has(style.id)) return `url(#${style.id})`;
     this.registered.add(style.id);
+    // Каждый стоп — на ту же ось «доля краски». Градиент тени корешка, неба на
+    // обложке и купола смолы становится монохромным вместе со всем остальным.
     const stops = style.stops
-      .map((s) => `<stop offset="${n2(s.off)}" stop-color="${s.color}"/>`)
+      .map((s) => {
+        const lvl = inkLevel(s.color);
+        return `<stop offset="${n2(s.off)}" stop-color="${lvl !== null ? inkPaint(lvl) : s.color}"/>`;
+      })
       .join("");
     if (style.__grad === "linear") {
       const [x1, y1, x2, y2] = style.coords;
@@ -383,7 +488,17 @@ export class SvgContext {
 
   // — вывод —
   toSVG(): string {
-    const defs = this.defs.length ? `<defs>${this.defs.join("")}</defs>` : "";
+    // Паттерны хафтона: ячейка 5×5, радиус точки из условия «площадь точки к
+    // площади ячейки = доля краски» (πr² / 25 = ink) — тон пятна совпадает со
+    // сплошной заливкой, которую хафтон заменил.
+    const pats = [...this.halftones].map((step) => {
+      const ink = step / 10;
+      const r = Math.min(2.2, Math.sqrt((ink * 25) / Math.PI));
+      return `<pattern id="ht${step}" width="5" height="5" patternUnits="userSpaceOnUse">` +
+        `<circle cx="2.5" cy="2.5" r="${n2(r)}" fill="var(--color-base-content)"/></pattern>`;
+    });
+    const all = [...this.defs, ...pats];
+    const defs = all.length ? `<defs>${all.join("")}</defs>` : "";
     return defs + this.out.join("");
   }
   get width() { return this.W; }

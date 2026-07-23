@@ -8,8 +8,9 @@
 // реализация макета на оба места (инвариант 1). Multipage-обложки (covers.ts)
 // пока не покрыты: у них свой stage (книжка), это отдельный заход.
 import { getMockup } from "../mockups";
-import { shapePath, inkColor, type Rect, type ShapeKind } from "../primitives";
+import { shapePath, defaultAccentMarks, type Rect, type ShapeKind } from "../primitives";
 import { SvgContext } from "./context";
+import { paintAccentMarks } from "./accent";
 
 export type TileInput = {
   previewKind?: string | null;
@@ -26,15 +27,21 @@ export type TileInput = {
 export const W = 300;
 export const H = 198;
 
-// Нейтральная кремовая бумага: тёмный ink на ней читается, и плитка выглядит
-// одинаково независимо от материала кластера (материал — забота движка, не плитки).
-const BASE = "#f4efe6";
+// Бумага изделия — CSS-переменная, а не hex: адаптер пропускает `var(...)` мимо
+// монохромной перекраски, и плитка становится темозависимой (на тёмной теме
+// бумага и краска меняются местами сами). Раньше здесь был кремовый #f4efe6, и
+// на белой нео-нуар странице плитки читались как выцветшие.
+const BASE = "var(--color-base-100)";
+// Краска сцены. Сцены считают от него свои полутона (`globalAlpha`), а адаптер
+// сводит результат к доле `--color-base-content`, поэтому нужен ЧИСТО чёрный:
+// любой оттенок здесь просто отнял бы контраст у всей куклы.
+const INK = "#000000";
 
 export function productTileSvg(input: TileInput): string {
   const round = !!input.round;
   const shape: ShapeKind = round ? "round" : "rectangular";
   const base = input.base ?? BASE;
-  const ctx = new SvgContext(W, H);
+  const ctx = new SvgContext(W, H, { halftone: true });
   const c = ctx as unknown as CanvasRenderingContext2D;
 
   // вписать карточку нужной пропорции в рамку с полями (как в Preview.vue)
@@ -55,19 +62,26 @@ export function productTileSvg(input: TileInput): string {
   c.fillStyle = base;
   c.fill();
 
-  // ink-«кукла» внутри контура
+  // ink-«кукла» внутри контура.
+  // `foilOn: true` — не про фольгу: так сцена ОСТАВЛЯЕТ свой декорируемый
+  // элемент движку (не печатает его краской), и мы кладём туда акцент.
   const env = {
     round,
-    ink: inkColor(base),
-    foilOn: false,
+    ink: INK,
+    foilOn: true,
     foilHex: "#d9b44a",
     foldCount: 0,
     sizeLabel: input.sizeLabel ?? "",
   };
+  const mockup = getMockup(input.previewKind);
   c.save();
   shapePath(c, r, radius, shape);
   c.clip();
-  getMockup(input.previewKind).content(c, r, env);
+  mockup.content(c, r, env);
+  // Единственное цветное пятно — там, где сцена сама объявила акцент.
+  paintAccentMarks(c, mockup.accentMarks?.(r, env) ?? defaultAccentMarks(r, round));
+  // Купол смолы обязан лечь ПОВЕРХ акцента — как и поверх фольги в живом превью.
+  mockup.afterFoil?.(c, r, env);
   c.restore();
 
   // тонкий контур печати

@@ -464,18 +464,65 @@ body > main {
   font-weight: 600;
 }
 
+/* Цена — главный якорь плитки: плашка «краской навыворот» плюс акцентная грань
+   слева. Базу берём у daisyUI (`badge badge-neutral` в разметке), здесь только
+   то, чего у бейджа нет. Наш CSS не в слое, поэтому перебивает daisyUI без
+   `!important` — см. грабли каскада в дизайн-заметках. */
 .product-tile__price {
-  font-weight: 600;
-  color: var(--color-accent-ink); /* единственное цветное пятно */
+  align-self: flex-start;
+  margin-top: 0.15rem;
+  font-weight: 700;
+  font-size: 0.95rem;
+  border: none;
+  border-left: 3px solid var(--color-accent-ink);
+  border-radius: var(--radius-field, 0.25rem);
+  padding-inline: 0.5rem;
 }
 
+/* Срок — контурная пилюля с часами: второй по важности сигнал, поэтому читается
+   как метка, а не как строка текста. */
 .product-tile__lead {
-  font-size: 0.8rem;
-  color: color-mix(in oklch, var(--color-base-content) 55%, transparent);
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.35rem;
+  font-size: 0.75rem;
+  line-height: 1;
+  padding: 0.2rem 0.45rem;
+  border: var(--border) solid color-mix(in oklch, var(--color-base-content) 25%, transparent);
+  border-radius: 2rem;
+  color: color-mix(in oklch, var(--color-base-content) 65%, transparent);
+}
+
+.product-tile__lead-icon {
+  width: 0.85em;
+  height: 0.85em;
+  flex: none;
+}
+
+/* Ховер — СПЛОШНАЯ смещённая тень (без размытия): плитка «отрывается» от листа.
+   Сдвигаем саму плитку навстречу тени, иначе она выглядит съехавшей, а не
+   приподнятой. Тень цветом краски, а не акцентом: акцент в плитке уже занят
+   ценой и пятном в кукле, третье цветное пятно превратит сетку в мешанину. */
+.product-tile {
+  transition:
+    box-shadow 0.14s ease,
+    transform 0.14s ease;
 }
 
 .product-tile:hover {
-  box-shadow: inset 0 3px 0 0 var(--color-accent-ink); /* акцентная полоса, без заливки */
+  box-shadow: 0.4rem 0.4rem 0 0 var(--color-base-content);
+  transform: translate(-0.15rem, -0.15rem);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .product-tile {
+    transition: none;
+  }
+  .product-tile:hover {
+    transform: none;
+  }
 }
 
 /* Цена «от …» в плитках, рендерящихся старой разметкой ProductTile.astro

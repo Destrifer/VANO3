@@ -9,12 +9,15 @@
 import type { ProductPricing } from "../../pricing/data";
 import { PAGE_STEP } from "../../pricing/engine";
 import { bindingKindOf, getCover, type BindingKind, type CoverEnv } from "../covers";
-import { inkColor, roundRect, type Rect } from "../primitives";
+import { defaultAccentMarks, roundRect, type Rect } from "../primitives";
 import { SvgContext } from "./context";
+import { paintAccentMarks } from "./accent";
 import { W, H } from "./tile";
 
-// Нейтральная обложка — тот же дефолт, что у живого превью (BookletPreview).
-const COVER = "#ece7dc";
+// Обложка и краска — как у листовой плитки: бумага через CSS-переменную (мимо
+// монохромной перекраски, темозависимо), краска — чистый чёрный.
+const COVER = "var(--color-base-100)";
+const INK = "#000000";
 
 export type CoverTileInput = {
   previewKind?: string | null;
@@ -47,20 +50,24 @@ export function defaultCoverTileInput(cfg: ProductPricing): CoverTileInput {
     binding: bindingKindOf(chosen?.name),
     pages,
     ruling: cfg.rulingOptions[0]?.name ?? null,
-    cover: cfg.coverPapers[0]?.colors?.[0]?.hex ?? COVER,
+    // Цвет бумаги обложки сознательно НЕ берём из каталога: плитка монохромная,
+    // и хекс материала адаптер свёл бы к почти прозрачному. Материал — забота
+    // живого превью, где его и выбирают.
   };
 }
 
 export function coverTileSvg(input: CoverTileInput): string {
   const coverHex = input.cover ?? COVER;
-  const ctx = new SvgContext(W, H);
+  const ctx = new SvgContext(W, H, { halftone: true });
   const c = ctx as unknown as CanvasRenderingContext2D;
   const scene = getCover(input.previewKind);
 
+  // `foilOn: true` — не про фольгу: так обложка оставляет свой декорируемый
+  // элемент движку, и мы кладём туда единственное цветное пятно (см. accent.ts).
   const env: CoverEnv = {
-    ink: inkColor(coverHex),
+    ink: INK,
     cover: coverHex,
-    foilOn: false,
+    foilOn: true,
     foilHex: "#d9b44a",
     binding: input.binding,
     pages: input.pages,
@@ -169,6 +176,8 @@ export function coverTileSvg(input: CoverTileInput): string {
     w: coverRect.w - coilW, h: coverRect.h,
   };
   scene.content(c, contentRect, env);
+  // Единственное цветное пятно — там, где обложка сама объявила акцент.
+  paintAccentMarks(c, scene.accentMarks?.(contentRect, env) ?? defaultAccentMarks(contentRect, false));
   c.restore();
 
   // контур обложки

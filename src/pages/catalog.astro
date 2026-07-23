@@ -10,8 +10,7 @@ import Breadcrumbs from "../components/Breadcrumbs.astro";
 import { getCategories } from "../lib/categories";
 import { getProducts } from "../lib/products";
 import { getPricingData, getProductPricing, minPrice } from "../lib/pricing/data";
-import { productTileSvg } from "../lib/preview/svg/tile";
-import { coverTileSvg, defaultCoverTileInput } from "../lib/preview/svg/coverTile";
+import { tileSvgForProduct } from "../lib/preview/svg";
 
 const [categories, products, pricing] = await Promise.all([
   getCategories(),
@@ -32,22 +31,8 @@ await Promise.all(
     const cfg = await getProductPricing(p.slug);
     if (!cfg) return;
     priceBySlug.set(p.slug, minPrice(cfg, pricing));
-    // Многостраничные рисует свой stage (книжка: корешок, переплёт, кант,
-    // кольца, ремешок) из реестра covers.ts; листовые — плоский лист из mockups.
-    // Ключ preview_kind общий, просто резолвится в своём реестре.
-    if (cfg.strategy === "multipage") {
-      tileBySlug.set(p.slug, coverTileSvg(defaultCoverTileInput(cfg)));
-    } else if (cfg.previewKind) {
-      const size = cfg.sizes[0];
-      tileBySlug.set(
-        p.slug,
-        productTileSvg({
-          previewKind: cfg.previewKind,
-          mm: size ? { w: size.width, h: size.height } : null,
-          sizeLabel: size?.label,
-        }),
-      );
-    }
+    const svg = tileSvgForProduct(cfg);
+    if (svg) tileBySlug.set(p.slug, svg);
   }),
 );
 
@@ -102,12 +87,15 @@ const money = (n: number) => n.toLocaleString("ru-RU", { maximumFractionDigits: 
                 </span>
                 <span class="product-tile__body">
                   <span class="product-tile__name">{product.name}</span>
-                  <span class="product-tile__price">
+                  <span class="product-tile__price badge badge-neutral">
                     {priceBySlug.get(product.slug) != null
                       ? `от ${money(priceBySlug.get(product.slug)!)} ₽`
                       : "Рассчитать"}
                   </span>
-                  <span class="product-tile__lead">{lead}</span>
+                  <span class="product-tile__lead">
+                    <Icon name="tabler:clock-hour-4" class="product-tile__lead-icon" />
+                    {lead}
+                  </span>
                 </span>
               </a>
             </li>
