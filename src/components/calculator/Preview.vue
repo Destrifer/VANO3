@@ -100,8 +100,12 @@ function draw() {
   ctx.scale(dpr, dpr);
   ctx.clearRect(0, 0, cssW, cssH);
 
-  // Буклеты: 3D-вид сложенного изделия (аккордеон) вместо плоского листа.
-  if (foldCount.value > 0) {
+  // Буклеты: 3D-вид сложенного изделия вместо плоского листа.
+  // Биговка (`crease`, у чертежей) — НЕ сложение: линию продавливают, а лист
+  // остаётся плоским. Показываем его листом с пунктиром по линиям бига — этот
+  // код ниже уже был, но до сюда не доходил, потому что любой folds > 0
+  // уводил в drawFolded, и чертёж показывался сложенным гармошкой.
+  if (foldCount.value > 0 && foldKind.value !== "crease") {
     drawFolded(ctx, cssW, cssH);
     return;
   }
@@ -221,18 +225,31 @@ function drawFolded(ctx: CanvasRenderingContext2D, cssW: number, cssH: number) {
   // accordion («Гармошка») и book («Книжка») — зигзаг: наклон чередуется.
   const raw: { c: Pt[]; shade: number }[] = [];
   const rolled = foldKind.value === "roll";
+  // У рулонной угол должен читаться сильнее, чем у гармошки: там панели просто
+  // качаются вокруг фронтальной плоскости, здесь крайние реально загнуты внутрь.
+  const d = rolled ? depth * 2.4 : depth;
   let lx = 0;
   for (let i = 0; i < panels; i++) {
     let lyTop: number, ryTop: number, shade: number, wI: number;
     if (rolled) {
-      wI = pw * (1 - i * 0.07); // вложенная панель короче
-      lyTop = i * depth * 0.62;
-      ryTop = (i + 1) * depth * 0.62;
-      shade = 0.06 - i * 0.13; // затемнение вглубь рулона
+      // Крайние панели завёрнуты ВНУТРЬ: дальний край поднят (уходит от зрителя),
+      // ширина перспективно сжата. Средние стоят фронтально с лёгкой ступенькой,
+      // чтобы у «Улитки» (4 панели) они не слиплись в одну плиту.
+      if (i === 0) {
+        wI = pw * 0.62; lyTop = 0; ryTop = d; shade = -0.24;
+      } else if (i === panels - 1) {
+        wI = pw * 0.62; lyTop = d; ryTop = 0; shade = -0.3;
+      } else {
+        wI = pw;
+        const k = (i - 1) / Math.max(1, panels - 3);
+        lyTop = d - k * d * 0.16;
+        ryTop = d - (k + 0.5) * d * 0.16;
+        shade = 0.06 - (i - 1) * 0.09;
+      }
     } else {
       wI = pw;
-      lyTop = (i % 2) * depth;
-      ryTop = ((i + 1) % 2) * depth;
+      lyTop = (i % 2) * d;
+      ryTop = ((i + 1) % 2) * d;
       shade = i % 2 ? -0.18 : 0.06;
     }
     const rx = lx + wI;
