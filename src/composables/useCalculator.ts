@@ -425,6 +425,17 @@ export function useCalculator(props: {
     return cfg ? computePrice(cfg, pricing) : null;
   });
 
+  // — Сцена превью —
+  // По умолчанию берётся с продукта, но КЛАСТЕР может переопределить пресетом:
+  // «Стикерпаки» и «Наклейки с QR-кодом» живут продуктом «Наклейки», а изделие
+  // физически другое (лист с россыпью / QR-модуль во всю наклейку). Ровно тот же
+  // механизм, что у газеты в multipage: `preset.previewKind` — JSON-поле
+  // promoted_pages, схему трогать не нужно. Неизвестное имя молча падает на
+  // сцену продукта (реестр отдаёт фолбэк).
+  const previewKindOverride = ref<string | null>(null);
+  const previewKind = computed(() => previewKindOverride.value ?? product.previewKind ?? null);
+  const setPreviewKind = (k: string | null) => { previewKindOverride.value = k; };
+
   // Превью регистрирует функцию снятия миниатюры; OrderPlate её зовёт при добавлении.
   let thumbFn: (() => string | null) | null = null;
   const setThumbProvider = (fn: () => string | null) => { thumbFn = fn; };
@@ -548,6 +559,8 @@ export function useCalculator(props: {
     variantGroups, finGroupIndex,
     // расчёт
     perUnit, priceForCell, result, money, currentConfig, currentSpec, details,
+    // сцена превью (кластер может переопределить)
+    previewKind, setPreviewKind,
     // миниатюра превью
     setThumbProvider, captureThumb,
   });

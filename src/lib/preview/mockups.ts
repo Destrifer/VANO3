@@ -213,6 +213,138 @@ const volumeSticker: Mockup = {
   },
 };
 
+// Звезда — одна из форм в стикерпаке (нужна, чтобы россыпь читалась как набор
+// РАЗНЫХ вырубок, а не как сетка одинаковых кружков).
+function starPath(ctx: CanvasRenderingContext2D, cx: number, cy: number, R: number) {
+  ctx.beginPath();
+  for (let i = 0; i < 10; i++) {
+    const a = -Math.PI / 2 + (i * Math.PI) / 5;
+    const rad = i % 2 ? R * 0.45 : R;
+    const px = cx + Math.cos(a) * rad, py = cy + Math.sin(a) * rad;
+    i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+  }
+  ctx.closePath();
+}
+
+// Макет «стикерпак» (кластер /stickers/sticker-packs): изделие — не одна
+// наклейка, а ЛИСТ с россыпью разных вырубленных стикеров. Поэтому у него своя
+// сцена, а не куклы `sticker`: движок вывести это из материала не может.
+// Белое поле реза и пунктир каждая наклейка несёт сама (внешний край листа
+// остаётся ровным — см. STICKER_KINDS в Preview.vue).
+const stickerPack: Mockup = {
+  content(ctx, r, env) {
+    const { x, y, w, h } = r;
+    const ink = env.ink;
+    const cols = 3, rows = 2;
+    const cw = w / cols, ch = h / rows;
+    const R = Math.min(cw, ch) * 0.36;
+    // Формы по ячейкам + разброс центра: на производстве стикеры раскладывают
+    // плотно и вразнобой, ровная сетка выглядит как лист этикеток.
+    const kinds = ["circle", "rect", "star", "rect", "star", "circle"] as const;
+    const jitter = [
+      [0.02, -0.04], [-0.05, 0.05], [0.04, 0.03],
+      [-0.03, -0.05], [0.05, -0.02], [-0.02, 0.04],
+    ];
+
+    for (let i = 0; i < cols * rows; i++) {
+      const col = i % cols, row = Math.floor(i / cols);
+      const cx = x + (col + 0.5) * cw + cw * jitter[i][0];
+      const cy = y + (row + 0.5) * ch + ch * jitter[i][1];
+
+      // белое поле реза (die-cut) под стикером
+      ctx.save();
+      if (kinds[i] === "circle") {
+        ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2);
+      } else if (kinds[i] === "star") {
+        starPath(ctx, cx, cy, R);
+      } else {
+        roundRect(ctx, cx - R, cy - R * 0.78, R * 2, R * 1.56, R * 0.3);
+      }
+      ctx.fillStyle = "rgba(255,255,255,0.92)";
+      ctx.fill();
+      ctx.setLineDash([R * 0.18, R * 0.14]);
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = "rgba(0,0,0,.35)";
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+
+      // ink внутри вырубки: монограмма в круге/звезде, две строки в плашке
+      ctx.save();
+      ctx.fillStyle = ink;
+      if (kinds[i] === "rect") {
+        ctx.globalAlpha = 0.55;
+        ctx.fillRect(cx - R * 0.6, cy - R * 0.2, R * 1.2, Math.max(1, R * 0.14));
+        ctx.globalAlpha = 0.28;
+        ctx.fillRect(cx - R * 0.42, cy + R * 0.15, R * 0.84, Math.max(1, R * 0.1));
+      } else {
+        ctx.globalAlpha = 0.85;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        // в звезде монограмма мельче — иначе выходит за лучи
+        ctx.font = `800 ${Math.round(R * (kinds[i] === "star" ? 0.38 : 0.62))}px Georgia, serif`;
+        ctx.fillText("PM", cx, cy);
+      }
+      ctx.restore();
+    }
+  },
+};
+
+// QR-матрица: три поисковых квадрата по углам + модули из LCG с ФИКСИРОВАННЫМ
+// семенем. Math.random дал бы новый узор на каждый кадр (и другой — в снимке
+// корзины). Поисковый квадрат рисуем обводкой в толщину модуля + центром 3×3:
+// вырезать «белое» нечем — под нами бумага, а её цвет сцене не передаётся.
+function qrMatrix(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number, size: number, ink: string,
+) {
+  const N = 21; // QR версии 1
+  const cell = size / N;
+  let seed = 20260723;
+  const rnd = () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+
+  ctx.save();
+  ctx.fillStyle = ink;
+  ctx.strokeStyle = ink;
+
+  const inFinder = (i: number, j: number) =>
+    (i < 8 && j < 8) || (i > N - 9 && j < 8) || (i < 8 && j > N - 9);
+  for (let j = 0; j < N; j++) {
+    for (let i = 0; i < N; i++) {
+      if (inFinder(i, j)) continue;
+      if (rnd() > 0.5) ctx.fillRect(x + i * cell, y + j * cell, cell, cell);
+    }
+  }
+
+  ctx.lineWidth = cell;
+  for (const [fx, fy] of [[0, 0], [N - 7, 0], [0, N - 7]]) {
+    ctx.strokeRect(x + (fx + 0.5) * cell, y + (fy + 0.5) * cell, cell * 6, cell * 6);
+    ctx.fillRect(x + (fx + 2) * cell, y + (fy + 2) * cell, cell * 3, cell * 3);
+  }
+  ctx.restore();
+}
+
+// Макет «наклейка с QR» (кластер /stickers/qr): весь смысл изделия — код,
+// который сканируют, поэтому он занимает наклейку целиком, а бренд уходит в
+// подпись. Фольга сюда не идёт: фольгированный QR не читается сканером.
+const stickerQr: Mockup = {
+  content(ctx, r, env) {
+    const { x, y, w, h } = r;
+    const m = Math.min(w, h);
+    const size = m * (env.round ? 0.5 : 0.6);
+    qrMatrix(ctx, x + (w - size) / 2, y + h * 0.5 - size * 0.58, size, env.ink);
+
+    ctx.save();
+    ctx.fillStyle = env.ink;
+    ctx.globalAlpha = 0.7;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+    ctx.font = `600 ${Math.round(m * 0.09)}px system-ui, sans-serif`;
+    ctx.fillText("PRINTMOS", x + w / 2, y + h * 0.5 + size * 0.5);
+    ctx.restore();
+  },
+};
+
 // Макет «буклет/листовка»: контент колонками по числу панелей (foldCount+1).
 // Каждая панель — плашка изображения сверху, заголовок, строки текста (нечитаемо,
 // но обозначает структуру). Линии сгиба рисует Preview.vue поверх.
@@ -1122,8 +1254,32 @@ const invite: Mockup = {
   },
 };
 
+// Штрихкод: штрихи фиксированного шаблона (НЕ Math.random — иначе узор дрожит
+// на каждой перерисовке и в снимке для корзины). Ширины разной толщины, иначе
+// читается как гребёнка, а не как код.
+const BARS = [2, 1, 1, 3, 1, 2, 1, 1, 2, 3, 1, 1, 2, 1, 3, 1];
+function barcode(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number, w: number, h: number, ink: string,
+) {
+  const total = BARS.reduce((a, b) => a + b, 0) + BARS.length; // +пробел на штрих
+  const unit = w / total;
+  ctx.save();
+  ctx.fillStyle = ink;
+  ctx.globalAlpha = 0.75;
+  let bx = x;
+  for (const b of BARS) {
+    ctx.fillRect(bx, y, Math.max(0.7, unit * b), h);
+    bx += unit * (b + 1);
+  }
+  ctx.restore();
+}
+
 // Макет «этикетка» (labels): рамка-этикетка, бренд сверху, эмблема, название,
-// объём. Кластеры — вино/пиво/косметика/на бутылку (форму/материал даёт движок).
+// штрихкод + объём. Кластеры — вино/пиво/косметика/кофе/продукты/на бутылку
+// (форму и материал даёт движок). Штрихкод здесь не только ради кластера
+// /labels/barcode: на настоящей этикетке он есть почти всегда, и с ним кукла
+// перестаёт быть чисто винной.
 const label: Mockup = {
   content(ctx, r, env) {
     const { x, y, w, h } = r;
@@ -1132,11 +1288,17 @@ const label: Mockup = {
     const cx = x + w / 2;
     const p = u * 0.1;
 
-    // внутренняя рамка этикетки
+    // Внутренняя рамка этикетки. У круглой прямоугольную рамку срезает контуром
+    // изделия — оставались висящие обрубки сверху и снизу, поэтому там кольцо.
     ctx.strokeStyle = ink;
     ctx.globalAlpha = 0.35;
     ctx.lineWidth = Math.max(1, u * 0.006);
-    roundRect(ctx, x + p, y + p, w - 2 * p, h - 2 * p, u * 0.04);
+    if (env.round) {
+      ctx.beginPath();
+      ctx.arc(cx, y + h / 2, u / 2 - p * 0.8, 0, Math.PI * 2);
+    } else {
+      roundRect(ctx, x + p, y + p, w - 2 * p, h - 2 * p, u * 0.04);
+    }
     ctx.stroke();
     ctx.globalAlpha = 1;
 
@@ -1170,18 +1332,28 @@ const label: Mockup = {
     ctx.textBaseline = "top";
     ctx.fillStyle = ink;
     ctx.globalAlpha = 0.5;
-    ctx.fillRect(cx - w * 0.2, y + h * 0.62, w * 0.4, Math.max(1, h * 0.02));
+    ctx.fillRect(cx - w * 0.2, y + h * 0.6, w * 0.4, Math.max(1, h * 0.02));
     ctx.globalAlpha = 0.25;
-    ctx.fillRect(cx - w * 0.13, y + h * 0.68, w * 0.26, Math.max(1, h * 0.012));
+    ctx.fillRect(cx - w * 0.13, y + h * 0.66, w * 0.26, Math.max(1, h * 0.012));
     ctx.globalAlpha = 1;
 
-    // объём
-    ctx.textAlign = "center";
+    // Низ этикетки: штрихкод + объём. У круглой они не влезают в строку (угол
+    // среза съедает края), поэтому там — колонкой по центру.
     ctx.textBaseline = "middle";
     ctx.fillStyle = ink;
-    ctx.globalAlpha = 0.55;
     ctx.font = `500 ${Math.round(u * 0.06)}px system-ui, sans-serif`;
-    ctx.fillText("0,75 л", cx, y + h * 0.8);
+    if (env.round) {
+      barcode(ctx, cx - w * 0.15, y + h * 0.71, w * 0.3, h * 0.07, ink);
+      ctx.textAlign = "center";
+      ctx.globalAlpha = 0.55;
+      ctx.fillText("0,75 л", cx, y + h * 0.85);
+    } else {
+      const bandY = y + h * 0.77;
+      barcode(ctx, x + p + u * 0.05, bandY, w * 0.26, h * 0.1, ink);
+      ctx.textAlign = "right";
+      ctx.globalAlpha = 0.55;
+      ctx.fillText("0,75 л", x + w - p - u * 0.05, bandY + h * 0.05);
+    }
     ctx.globalAlpha = 1;
   },
   foil(ctx, r, env) {
@@ -1513,8 +1685,15 @@ export const mockups: Record<string, Mockup> = {
   "business-card": businessCard, award, badge, blueprint, plan, invite, label,
   map, menu, postcard, ticket, stencil, pricetag,
   "volume-sticker": volumeSticker,
+  // сцены КЛАСТЕРОВ наклеек (назначаются через preset.previewKind, не полем продукта)
+  "sticker-pack": stickerPack,
+  "sticker-qr": stickerQr,
 };
 
-export function getMockup(kind?: string | null): Mockup {
-  return (kind && mockups[kind]) || card;
+// `fallback` — сцена ПРОДУКТА, когда кластер переопределил её пресетом. Без неё
+// опечатка или ещё не выкаченная сцена роняли кластер на визитку (`card`) —
+// то есть наклейка показывалась визиткой. Теперь худший случай — сцена продукта,
+// то есть ровно то, что было до переопределения.
+export function getMockup(kind?: string | null, fallback?: string | null): Mockup {
+  return (kind && mockups[kind]) || (fallback && mockups[fallback]) || card;
 }

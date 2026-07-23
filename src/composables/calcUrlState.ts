@@ -36,8 +36,9 @@ export type CalcPreset = {
   coverPaperId?: number; // id бумаги обложки (product.coverPapers) — multipage
   innerPaperId?: number; // id бумаги блока (product.innerPapers) — multipage
   // Сцена превью для КЛАСТЕРА, когда его изделие физически не то же, что у
-  // продукта: «Печать газет» сидит на продукте «Журналы». Ключ реестра
-  // `covers.ts`; неизвестное имя молча падает на сцену продукта.
+  // продукта: «Печать газет» сидит на продукте «Журналы», «Стикерпаки» — на
+  // «Наклейках». Ключ реестра `covers.ts` (multipage) или `mockups.ts`
+  // (листовые); неизвестное имя молча падает на сцену продукта.
   previewKind?: string;
 };
 
@@ -132,6 +133,7 @@ export function applyPreset(calc: CalculatorState, p: CalcPreset): void {
       if (i >= 0 && calc.fin[i]) calc.fin[i].checked = true;
     }
   }
+  if (p.previewKind) calc.setPreviewKind(p.previewKind);
 }
 
 // Пресет для МНОГОСТРАНИЧНОГО конфигуратора (брошюры/каталоги). Поля sheet-ветки

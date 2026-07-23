@@ -24,7 +24,9 @@ const foilHex = computed(() => calc.foilOption?.colors?.[calc.foilColorIndex]?.h
 const cornersRounded = computed(() =>
   calc.product.finishing.some((o, i) => o.unit === "per_corner" && calc.fin[i]?.checked),
 );
-const mockup = computed(() => getMockup(calc.product.previewKind));
+// Сцена: с продукта, но кластер может переопределить (`preset.previewKind`);
+// второй аргумент — фолбэк на сцену продукта, если имя из пресета неизвестно.
+const mockup = computed(() => getMockup(calc.previewKind, calc.product.previewKind));
 const foldCount = computed(() =>
   calc.foldTypes?.length && calc.selectedFold ? calc.selectedFold.folds : 0,
 );
@@ -43,15 +45,27 @@ const matSignature = computed(
 );
 const isTransparent = computed(() => /прозрач/i.test(matSignature.value));
 const isMetallic = computed(() => /серебр|металл|световозвр|золот/i.test(matSignature.value));
+// Ещё три материала наклеек, у которых внешний вид — свойство САМОГО материала,
+// а не печати: пломбировочная плёнка (при отрыве оставляет сетку «VOID»),
+// скретч-слой (серая стираемая панель) и переводная плёнка-аппликация (печать
+// сидит на плёнке-носителе, край которой видно). Раньше движок их не отличал —
+// кластеры /stickers/void, /scratch и /transfer показывали обычную самоклейку.
+// Место им здесь, а не в сцене: это отделка поверх любого макета (инвариант 1),
+// как шахматка прозрачности и металлик-блик выше.
+const isVoid = computed(() => /пломбир|void/i.test(matSignature.value));
+const isScratch = computed(() => /скретч|scratch/i.test(matSignature.value));
+const isTransfer = computed(() => /переводн|аппликац/i.test(matSignature.value));
 // Наклейки — вид «вырезанной» наклейки: узкое белое поле реза вокруг печати +
 // тонкий пунктир-контур по внешнему краю. Для previewKind='sticker' и
 // 'volume-sticker' (объёмные — те же наклейки, но под куполом смолы) И
 // когда выбран рез по контуру (надсечка/вырубка). «На листе» (cutType='none') —
 // печать во весь лист, без белого поля и пунктира.
+// Стикерпак — не одна вырубленная наклейка, а ЛИСТ с россыпью: белого поля реза
+// и пунктира по краю у него быть не должно, рез рисует сцена вокруг каждой.
 const STICKER_KINDS = ["sticker", "volume-sticker"];
 const isSticker = computed(
   () =>
-    STICKER_KINDS.includes(calc.product.previewKind ?? "") &&
+    STICKER_KINDS.includes(calc.previewKind ?? "") &&
     (!calc.allowContourCut || calc.cutType !== "none"),
 );
 
@@ -81,6 +95,100 @@ function drawMetallicSheen(ctx: CanvasRenderingContext2D, r: Rect) {
   ctx.save();
   ctx.fillStyle = g;
   ctx.fillRect(r.x, r.y, r.w, r.h);
+  ctx.restore();
+}
+
+// Пломбировочная (VOID): сетка ячеек со словом VOID — тот самый след, который
+// плёнка оставляет на поверхности при попытке отклеить. Рисуем ПОД печатью и
+// приглушённо: на целой пломбе он едва проступает, читается как защитный фон.
+function drawVoidPattern(ctx: CanvasRenderingContext2D, r: Rect) {
+  const cell = Math.max(14, Math.min(r.w, r.h) / 6);
+  ctx.save();
+  ctx.globalAlpha = 0.22;
+  ctx.strokeStyle = "#5a6470";
+  ctx.lineWidth = 1;
+  ctx.fillStyle = "#5a6470";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = `700 ${Math.round(cell * 0.3)}px system-ui, sans-serif`;
+  for (let iy = 0, y = r.y; y < r.y + r.h; iy++, y += cell) {
+    for (let ix = 0, x = r.x; x < r.x + r.w; ix++, x += cell) {
+      ctx.strokeRect(x, y, cell, cell);
+      // шахматный порядок: сплошная «VOID» по всем ячейкам читается как каша
+      if ((ix + iy) % 2 === 0) ctx.fillText("VOID", x + cell / 2, y + cell / 2);
+    }
+  }
+  ctx.restore();
+}
+
+// Скретч-слой: непрозрачная серая панель, которую стирают монетой. Кладём ПОВЕРХ
+// печати и по ЦЕНТРУ — панель и должна прятать то, что под ней, а подпись бренда
+// внизу сцены остаётся видимой (в нижней трети она их перекрывала).
+// Сам материал серебристый, поэтому панели нужны обводка и тёмный градиент —
+// иначе она сливается с основой и читается как блик, а не как слой.
+function drawScratchPanel(ctx: CanvasRenderingContext2D, r: Rect) {
+  const u = Math.min(r.w, r.h);
+  const pw = r.w * 0.62, ph = r.h * 0.26;
+  const px = r.x + (r.w - pw) / 2, py = r.y + r.h * 0.32;
+  ctx.save();
+  const g = ctx.createLinearGradient(px, py, px + pw, py + ph);
+  g.addColorStop(0, "#9aa2aa");
+  g.addColorStop(0.45, "#767f88");
+  g.addColorStop(0.55, "#8d959d");
+  g.addColorStop(1, "#69727b");
+  ctx.fillStyle = g;
+  ctx.fillRect(px, py, pw, ph);
+  // зерно скретч-краски
+  ctx.globalAlpha = 0.18;
+  ctx.fillStyle = "#2b3038";
+  for (let i = 0; i < 90; i++) {
+    ctx.fillRect(px + Math.random() * pw, py + Math.random() * ph, 1, 1);
+  }
+  // следы монеты по диагонали
+  ctx.globalAlpha = 0.55;
+  ctx.strokeStyle = "#eef1f4";
+  ctx.lineWidth = Math.max(1, u * 0.012);
+  for (let i = 0; i < 3; i++) {
+    const oy = py + ph * (0.28 + i * 0.22);
+    ctx.beginPath();
+    ctx.moveTo(px + pw * 0.12, oy);
+    ctx.lineTo(px + pw * (0.42 + i * 0.14), oy - ph * 0.1);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 0.55;
+  ctx.strokeStyle = "#3d444c";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(px, py, pw, ph);
+  ctx.restore();
+}
+
+// Переводная (аппликация): печать лежит на плёнке-носителе, поверх — монтажный
+// слой. Показываем это рамкой-кантом носителя с отогнутым уголком.
+function drawTransferFilm(ctx: CanvasRenderingContext2D, r: Rect) {
+  const u = Math.min(r.w, r.h);
+  const inset = u * 0.07;
+  ctx.save();
+  ctx.strokeStyle = "rgba(90,110,130,0.55)";
+  ctx.lineWidth = Math.max(1, u * 0.008);
+  ctx.setLineDash([u * 0.05, u * 0.035]);
+  ctx.strokeRect(r.x + inset, r.y + inset, r.w - 2 * inset, r.h - 2 * inset);
+  ctx.setLineDash([]);
+  // отогнутый уголок носителя (правый нижний): светлый треугольник + тень сгиба
+  const c = u * 0.28;
+  const bx = r.x + r.w - inset, by = r.y + r.h - inset;
+  ctx.beginPath();
+  ctx.moveTo(bx - c, by);
+  ctx.lineTo(bx, by - c);
+  ctx.lineTo(bx, by);
+  ctx.closePath();
+  ctx.fillStyle = "rgba(255,255,255,0.88)";
+  ctx.fill();
+  ctx.strokeStyle = "rgba(50,70,92,0.7)";
+  ctx.lineWidth = Math.max(1, u * 0.01);
+  ctx.beginPath();
+  ctx.moveTo(bx - c, by);
+  ctx.lineTo(bx, by - c);
+  ctx.stroke();
   ctx.restore();
 }
 
@@ -158,8 +266,13 @@ function draw() {
   if (isSticker.value) { ctx.fillStyle = baseColor.value; ctx.fillRect(mr.x, mr.y, mr.w, mr.h); }
   if (isTransparent.value) drawTransparencyGrid(ctx, mr);
   paperTexture(ctx, mr, laminated.value ? 22 : 46, laminated.value ? 0.35 : 0.7);
+  // VOID — защитный фон, он ПОД печатью; скретч-панель, наоборот, поверх (её
+  // работа — прятать), переводная плёнка обрамляет печать носителем.
+  if (isVoid.value) drawVoidPattern(ctx, mr);
   mockup.value.content(ctx, mr, env);
   if (isMetallic.value) drawMetallicSheen(ctx, mr);
+  if (isScratch.value) drawScratchPanel(ctx, mr);
+  if (isTransfer.value) drawTransferFilm(ctx, mr);
   if (glossStrength.value > 0) laminationGloss(ctx, mr, glossStrength.value);
   if (calc.foilOn && mockup.value.foil) mockup.value.foil(ctx, mr, env);
   // линии сгиба (буклеты): пунктир, делит лист на панели foldCount+1
@@ -357,9 +470,10 @@ watch(
   () => [
     calc.dims.w, calc.dims.h, isRound.value, baseColor.value,
     calc.laminationIndex, glossStrength.value,
-    calc.foilOn, foilHex.value, cornersRounded.value, calc.product.previewKind,
+    calc.foilOn, foilHex.value, cornersRounded.value, calc.previewKind,
     foldCount.value, foldKind.value, calc.foldTypeIndex,
     isTransparent.value, isMetallic.value, calc.selectedColorIndex,
+    isVoid.value, isScratch.value, isTransfer.value,
   ],
   () => draw(),
 );
