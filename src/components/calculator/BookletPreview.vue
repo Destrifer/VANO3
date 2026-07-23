@@ -8,7 +8,7 @@ import { computed, inject, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { mpCalcKey } from "../../composables/useMultipageCalculator";
 import {
   laminationGloss, paperTexture, inkColor,
-  drawFoilMarks, defaultFoilMarks, type Rect,
+  drawAccentMarks, defaultAccentMarks, type Rect,
 } from "../../lib/preview/primitives";
 import { bindingKindOf, getCover, type CoverEnv } from "../../lib/preview/covers";
 
@@ -192,12 +192,17 @@ function draw() {
   scene.content(ctx, contentRect, env);
 
   // 4. Ламинация обложки и фольга — общими механизмами, поверх сцены.
-  // Обложка только ОБЪЯВЛЯЕТ метки фольги, металл кладёт `drawFoilMarks` — тот
+  // Обложка только ОБЪЯВЛЯЕТ метки фольги, металл кладёт `drawAccentMarks` — тот
   // же, что у листовых. Без меток берётся фолбэк, поэтому забыть реализацию
   // нельзя: раньше `scene.foil` просто отсутствовал у тетрадей и газеты.
+  // УФ-лак / конгрев / 3D-лак сюда НЕ подключены намеренно: `coverExtras` в
+  // useMultipageCalculator берёт только отделку БЕЗ группы, а у этих трёх группа
+  // есть — значит в многостраничном калькуляторе их вообще нельзя выбрать,
+  // хотя у брошюр и ежедневников они привязаны в Directus. Отвечать превью
+  // не на что, пока опция не появилась в интерфейсе (см. 07 §Что дальше).
   if (glossStrength.value > 0) laminationGloss(ctx, coverRect, glossStrength.value);
   if (calc.foilOn) {
-    drawFoilMarks(ctx, scene.foilMarks?.(contentRect, env) ?? defaultFoilMarks(contentRect, false), foilHex.value);
+    drawAccentMarks(ctx, scene.accentMarks?.(contentRect, env) ?? defaultAccentMarks(contentRect, false), foilHex.value);
   }
   ctx.restore();
 

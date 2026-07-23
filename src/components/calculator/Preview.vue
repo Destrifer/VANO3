@@ -6,7 +6,8 @@ import { computed, inject, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { calcKey } from "../../composables/useCalculator";
 import {
   shapePath, paperTexture, laminationGloss, inkColor,
-  drawFoilMarks, defaultFoilMarks, applyFoilStops, type Rect,
+  drawAccentMarks, defaultAccentMarks, applyFoilStops,
+  drawUvGloss, drawEmboss, drawRaisedVarnish, type Rect,
 } from "../../lib/preview/primitives";
 import { getMockup } from "../../lib/preview/mockups";
 
@@ -24,9 +25,46 @@ const glossStrength = computed(() => {
   return laminated.value ? 0.6 : 0;
 });
 const foilHex = computed(() => calc.foilOption?.colors?.[calc.foilColorIndex]?.hex ?? "#d9b44a");
-const cornersRounded = computed(() =>
-  calc.product.finishing.some((o, i) => o.unit === "per_corner" && calc.fin[i]?.checked),
+// Выбран ли вариант ГРУППЫ доп-обработки. Сгруппированные опции (УФ-лак,
+// конгрев, 3D-лак, скругление, сверление, еврослот) ведёт `finGroupIndex`, а НЕ
+// `fin[]`: чекбокса у них нет, `otherOptions` их из списка исключает. Пока это
+// не учитывалось, ни одна из них до превью не доезжала.
+// Возвращает ИМЯ выбранного варианта (или null): у части групп варианты значат
+// разные вещи, а не просто цену. `УФ-лак` — ровно такой случай.
+const groupPick = (re: RegExp) =>
+  computed(() => {
+    const g = calc.variantGroups.find((x) => re.test(x.heading));
+    if (!g) return null;
+    const i = calc.finGroupIndex[g.id] ?? -1;
+    return i >= 0 ? g.variants[i]?.name ?? "" : null;
+  });
+const uvPick = groupPick(/УФ-лак/i);
+const uvOn = computed(() => uvPick.value !== null);
+// «Сплошной» — глянец по ВСЕЙ поверхности, «Выборочный» — только по акценту.
+// Рисовать их одинаково значит показать один товар вместо двух.
+const uvSolid = computed(() => /сплошн/i.test(uvPick.value ?? ""));
+const embossOn = computed(() => groupPick(/конгрев/i).value !== null);
+const raisedOn = computed(() => groupPick(/3D-лак|объ[её]мный/i).value !== null);
+// Скругление углов переехало в плитки-варианты вместе с остальной доп-обработкой,
+// а проверка осталась на старом пути (`fin[i].checked`) — и скруглённые углы
+// перестали доезжать до превью. Держим оба пути: у части продуктов опция ещё
+// может быть заведена без группы.
+const cornersRounded = computed(
+  () =>
+    calc.product.finishing.some((o, i) => o.unit === "per_corner" && calc.fin[i]?.checked) ||
+    calc.variantGroups.some(
+      (g) => g.unit === "per_corner" && (calc.finGroupIndex[g.id] ?? -1) >= 0,
+    ),
 );
+// Радиус берём из имени варианта («Радиус 5 мм»): три плитки радиуса иначе дают
+// одну и ту же картинку. 0 — вариант не выбран, скругления нет.
+const cornerRadiusMm = computed(() => {
+  const g = calc.variantGroups.find((x) => x.unit === "per_corner");
+  const i = g ? calc.finGroupIndex[g.id] ?? -1 : -1;
+  if (!g || i < 0) return 0;
+  const m = /(\d+(?:[.,]\d+)?)\s*мм/i.exec(g.variants[i]?.name ?? "");
+  return m ? parseFloat(m[1].replace(",", ".")) : 3;
+});
 // Сцена: с продукта, но кластер может переопределить (`preset.previewKind`);
 // второй аргумент — фолбэк на сцену продукта, если имя из пресета неизвестно.
 const mockup = computed(() => getMockup(calc.previewKind, calc.product.previewKind));
@@ -266,9 +304,10 @@ function draw() {
   if (ch > availH) { ch = availH; cw = ch * aspect; }
   const x = (cssW - cw) / 2, y = (cssH - ch) / 2;
   const minSide = Math.min(cw, ch);
+  const cornerPx = Math.min(minSide * 0.35, cornerRadiusMm.value * (cw / (calc.dims.w || 90)));
   const radius = isRound.value
     ? minSide / 2
-    : cornersRounded.value ? minSide * 0.12 : minSide * 0.03;
+    : cornersRounded.value ? cornerPx : minSide * 0.03;
   const r: Rect = { x, y, w: cw, h: ch };
 
   // Наклейка: внешний контур r — линия реза; печать вписана в mr с узким белым
@@ -276,9 +315,16 @@ function draw() {
   const margin = isSticker.value ? minSide * 0.06 : 0;
   const mr: Rect = { x: r.x + margin, y: r.y + margin, w: r.w - 2 * margin, h: r.h - 2 * margin };
   const mMin = Math.min(mr.w, mr.h);
+  // Радиус скругления — в МИЛЛИМЕТРАХ изделия, переведённых в пиксели по
+  // текущему масштабу: «Радиус 3 мм» на визитке и на плакате обязаны отличаться
+  // так же, как отличаются в жизни. Кламп сверху — чтобы на мелком изделии
+  // радиус не съел его в круг.
+  const mmToPx = cw / (calc.dims.w || 90);
   const mRadius = isRound.value
     ? mMin / 2
-    : cornersRounded.value ? mMin * 0.12 : mMin * 0.03;
+    : cornersRounded.value
+      ? Math.min(mMin * 0.35, cornerRadiusMm.value * mmToPx)
+      : mMin * 0.03;
 
   // тень под наклейкой + подложка (у наклейки поле реза белое, печать — внутри mr)
   ctx.save();
@@ -319,11 +365,23 @@ function draw() {
   // всех продуктах. Сцена без меток получает фолбэк, а не тишину: раньше
   // `mockup.foil` просто отсутствовал у 12 сцен, и на бейджах, буклетах,
   // открытках, билетах и POS-материалах галочка фольги не давала ничего.
-  if (calc.foilOn) {
-    const marks = mockup.value.foilMarks?.(mr, env) ?? defaultFoilMarks(mr, isRound.value);
-    drawFoilMarks(ctx, marks, foilHex.value);
-    // купол смолы обязан лечь ПОВЕРХ металла (объёмные наклейки)
-    mockup.value.afterFoil?.(ctx, mr, env);
+  // Все четыре отделки украшают ОДИН и тот же элемент куклы, поэтому метки
+  // считаются один раз. Пустой список — осознанный запрет (QR-код, газета),
+  // отсутствие метода — недосмотр сцены, его закрывает фолбэк.
+  if (calc.foilOn || uvOn.value || embossOn.value || raisedOn.value) {
+    const marks = mockup.value.accentMarks?.(mr, env) ?? defaultAccentMarks(mr, isRound.value);
+    if (calc.foilOn) drawAccentMarks(ctx, marks, foilHex.value);
+    // Лак и конгрев идут ПОСЛЕ фольги: лакировать и тиснить по металлу можно,
+    // и тогда рельеф обязан лежать поверх него.
+    if (embossOn.value) drawEmboss(ctx, marks);
+    if (raisedOn.value) drawRaisedVarnish(ctx, marks);
+    // сплошной лак — глянец по всему изделию, выборочный — только по акценту
+    if (uvOn.value) {
+      if (uvSolid.value) laminationGloss(ctx, mr, 0.9);
+      else drawUvGloss(ctx, marks);
+    }
+    // купол смолы обязан лечь ПОВЕРХ всего (объёмные наклейки)
+    if (calc.foilOn) mockup.value.afterFoil?.(ctx, mr, env);
   }
   // линии сгиба (буклеты): пунктир, делит лист на панели foldCount+1
   if (foldCount.value > 0) {
@@ -526,6 +584,7 @@ watch(
     foldCount.value, foldKind.value, calc.foldTypeIndex,
     isTransparent.value, isMetallic.value, calc.selectedColorIndex,
     isVoid.value, isScratch.value, isTransfer.value, isLuminous.value, sizeLabel.value,
+    uvOn.value, uvSolid.value, embossOn.value, raisedOn.value, cornerRadiusMm.value,
   ],
   () => draw(),
 );

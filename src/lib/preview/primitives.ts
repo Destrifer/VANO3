@@ -136,13 +136,19 @@ export function dieCutWindow(ctx: CanvasRenderingContext2D, r: Rect, depth: numb
   ctx.restore();
 }
 
-// — ФОЛЬГА —
-// Как БЛЕСТИТ металл, знает только этот файл. Сцена объявляет, ГДЕ на кукле
-// лежит фольга (`FoilMark`), рисует движок — иначе каждая сцена шьёт себе свою
-// фольгу, что и произошло: из 26 сцен `foil()` написали 14, и на бейджах,
-// буклетах, открытках, билетах и POS-материалах галочка «фольгирование» в
-// калькуляторе не давала в превью ровно ничего.
-export type FoilMark =
+// — АКЦЕНТ: фольга, выборочный УФ-лак, конгрев, объёмный 3D-лак —
+// Сцена объявляет ОДИН раз, где на кукле лежит декорируемый элемент (лого,
+// заголовок, плашка) — `AccentMark`. Все четыре отделки украшают именно его,
+// поэтому объявление одно, а отрисовок четыре, и все живут здесь.
+//
+// Как это ломалось: фольгу рисовал метод в КАЖДОЙ сцене — из 26 её написали 14,
+// и на бейджах, буклетах, открытках, билетах и POS-материалах галочка
+// «фольгирование» не давала в превью ровно ничего.
+//
+// Разница отделок по существу: фольга ЗАМЕНЯЕТ краску металлом (поэтому сцены
+// не печатают ink под ней), а лак и конгрев работают ПОВЕРХ краски — она
+// остаётся видна, меняется только рельеф и блеск.
+export type AccentMark =
   | {
       kind: "text";
       text: string;
@@ -176,7 +182,7 @@ function foilFill(ctx: CanvasRenderingContext2D, hex: string, top: number, heigh
 // текст. Тот же металл, что у drawFoilText, чтобы вид не разъезжался.
 function drawFoilRect(
   ctx: CanvasRenderingContext2D,
-  m: Extract<FoilMark, { kind: "rect" }>,
+  m: Extract<AccentMark, { kind: "rect" }>,
   hex: string,
 ) {
   const rad = m.radius ?? 0;
@@ -206,7 +212,7 @@ function drawFoilRect(
 // молчала именно потому, что сцена просто не написала свою реализацию.
 // Монограмма в углу (у круглого — по центру сверху) — самая частая конвенция
 // среди сцен, которые фольгу объявляют.
-export function defaultFoilMarks(r: Rect, round: boolean): FoilMark[] {
+export function defaultAccentMarks(r: Rect, round: boolean): AccentMark[] {
   const u = Math.min(r.w, r.h);
   const size = Math.round(u * 0.16);
   return [{
@@ -217,10 +223,10 @@ export function defaultFoilMarks(r: Rect, round: boolean): FoilMark[] {
   }];
 }
 
-// Единственная точка входа для движка: список меток → металл на канвасе.
-export function drawFoilMarks(
+// Единственная точка входа движка для ФОЛЬГИ: список меток → металл на канвасе.
+export function drawAccentMarks(
   ctx: CanvasRenderingContext2D,
-  marks: readonly FoilMark[],
+  marks: readonly AccentMark[],
   hex: string,
 ) {
   for (const m of marks) {
@@ -230,6 +236,102 @@ export function drawFoilMarks(
       drawFoilRect(ctx, m, hex);
     }
   }
+}
+
+// Залить метку заданным стилем, опц. со сдвигом. Ключевой приём для лака и
+// конгрева: метку ПЕРЕРИСОВЫВАЕМ той же формой, а не накрываем прямоугольной
+// плашкой — тогда глянец и рельеф повторяют буквы, а не бокс вокруг них.
+function paintMark(
+  ctx: CanvasRenderingContext2D,
+  m: AccentMark,
+  fill: string | CanvasGradient,
+  dx = 0, dy = 0,
+) {
+  ctx.fillStyle = fill;
+  if (m.kind === "text") {
+    ctx.textAlign = m.align ?? "left";
+    ctx.textBaseline = "top";
+    ctx.font = `700 ${m.size}px ${m.font ?? "Georgia, serif"}`;
+    ctx.fillText(m.text, m.x + dx, m.y + dy);
+  } else {
+    roundRect(ctx, m.x + dx, m.y + dy, m.w, m.h, m.radius ?? 0);
+    ctx.fill();
+  }
+}
+
+// Габарит метки — нужен, чтобы задать ось градиента блика. У текста ширину
+// приходится мерить: она зависит от шрифта и выравнивания.
+function markBox(ctx: CanvasRenderingContext2D, m: AccentMark): Rect {
+  if (m.kind === "rect") return { x: m.x, y: m.y, w: m.w, h: m.h };
+  ctx.save();
+  ctx.font = `700 ${m.size}px ${m.font ?? "Georgia, serif"}`;
+  const w = ctx.measureText(m.text).width;
+  ctx.restore();
+  const align = m.align ?? "left";
+  const x = align === "center" ? m.x - w / 2 : align === "right" ? m.x - w : m.x;
+  return { x, y: m.y, w, h: m.size };
+}
+
+// Толщина рельефа: конгрев продавливает бумагу, 3D-лак наращивает слой поверх —
+// второй заметно выше, отсюда множитель.
+// Сдвиг намеренно МАЛЕНЬКИЙ. При заметном (пробовали 0.07 кегля) светлая и
+// тёмная копии расходятся настолько, что буква читается не как рельефная, а как
+// расфокусированная и потерявшая краску: на превью в 300 px рельеф — это
+// один-два пикселя канта, не больше.
+const markDepth = (m: AccentMark, k: number) =>
+  Math.max(1, (m.kind === "text" ? m.size : m.h) * 0.028 * k);
+
+// Выборочный УФ-лак: прозрачный глянец ТОЛЬКО по акценту. Режим `screen` —
+// лак не красит, а добавляет блеск: краска под ним обязана остаться видимой.
+export function drawUvGloss(
+  ctx: CanvasRenderingContext2D,
+  marks: readonly AccentMark[],
+  strength = 1,
+) {
+  for (const m of marks) {
+    const b = markBox(ctx, m);
+    ctx.save();
+    ctx.globalCompositeOperation = "screen";
+    const g = ctx.createLinearGradient(b.x, b.y, b.x + b.w, b.y + b.h);
+    g.addColorStop(0, "rgba(255,255,255,0)");
+    g.addColorStop(0.38, `rgba(255,255,255,${0.5 * strength})`);
+    g.addColorStop(0.5, `rgba(255,255,255,${0.85 * strength})`);
+    g.addColorStop(0.62, `rgba(255,255,255,${0.5 * strength})`);
+    g.addColorStop(1, "rgba(255,255,255,0)");
+    paintMark(ctx, m, g);
+    ctx.restore();
+  }
+}
+
+// Конгрев: рельефное тиснение. Светлая копия со сдвигом вверх-влево и тёмная
+// вниз-вправо — свет падает сверху-слева, как и во всех прочих слоях движка
+// (тень ламинации, купол смолы), иначе рельеф спорит с ними и читается плоско.
+export function drawEmboss(
+  ctx: CanvasRenderingContext2D,
+  marks: readonly AccentMark[],
+  k = 1,
+) {
+  for (const m of marks) {
+    const d = markDepth(m, k);
+    ctx.save();
+    ctx.globalCompositeOperation = "screen";
+    paintMark(ctx, m, "rgba(255,255,255,0.62)", -d, -d);
+    ctx.restore();
+    ctx.save();
+    ctx.globalCompositeOperation = "multiply";
+    paintMark(ctx, m, "rgba(70,64,56,0.45)", d, d);
+    ctx.restore();
+  }
+}
+
+// Объёмный 3D-лак: тот же рельеф, но выше, и обязательно с влажным блеском —
+// это толстая капля лака поверх краски, а не продавленная бумага.
+export function drawRaisedVarnish(
+  ctx: CanvasRenderingContext2D,
+  marks: readonly AccentMark[],
+) {
+  drawEmboss(ctx, marks, 1.8);
+  drawUvGloss(ctx, marks, 1.15);
 }
 
 // Текст металлической фольгой (градиент из hex + блик). Переиспользуется макетами.

@@ -1,7 +1,7 @@
 // Реестр макетов превью по продуктам. Каждый макет рисует ТОЛЬКО содержимое
 // («рыбу»), а универсальные слои (контур, материя, глянец) даёт Preview.vue.
 // Новый продукт со своей сценой = +1 запись здесь, движок не трогаем.
-import type { FoilMark, Rect } from "./primitives";
+import type { AccentMark, Rect } from "./primitives";
 import { roundRect } from "./primitives";
 
 export type MockupEnv = {
@@ -22,14 +22,14 @@ export type Mockup = {
   // ink-слой (до глянца ламинации)
   content: (ctx: CanvasRenderingContext2D, r: Rect, env: MockupEnv) => void;
   // ГДЕ на этой кукле лежит фольга. Сцена ОБЪЯВЛЯЕТ метки и не рисует металл
-  // сама — как он блестит, знает движок (`drawFoilMarks`), чтобы фольга
+  // сама — как он блестит, знает движок (`drawAccentMarks`), чтобы фольга
   // выглядела одинаково на всех продуктах.
   //
   // Раньше здесь был `foil()`, который рисовал: из 26 сцен его реализовали 14,
   // и на бейджах, буклетах, открытках, билетах и POS-материалах галочка
   // «фольгирование» не давала в превью ничего. Метод остался необязательным,
-  // но молчания больше нет — движок подставляет `defaultFoilMarks()`.
-  foilMarks?: (r: Rect, env: MockupEnv) => FoilMark[];
+  // но молчания больше нет — движок подставляет `defaultAccentMarks()`.
+  accentMarks?: (r: Rect, env: MockupEnv) => AccentMark[];
   // Слой ПОСЛЕ фольги. Нужен ровно там, где эффект и есть изделие и обязан
   // накрывать металл: эпоксидный купол объёмной наклейки.
   afterFoil?: (ctx: CanvasRenderingContext2D, r: Rect, env: MockupEnv) => void;
@@ -88,7 +88,7 @@ const card: Mockup = {
     ctx.font = `700 ${Math.round(h * 0.12 * fs)}px system-ui, sans-serif`;
     ctx.fillText("Иван Петров", anchorX, titleBaseline - h * 0.105 * fs);
   },
-  foilMarks(r, env) {
+  accentMarks(r, env) {
     const { x, y, w, h } = r;
     const p = pad(r, env.round);
     const size = Math.round(h * 0.18 * (env.round ? 0.85 : 1));
@@ -120,7 +120,7 @@ const sticker: Mockup = {
     ctx.fillText("PRINTMOS", cx, cy + h * 0.22);
     ctx.globalAlpha = 1;
   },
-  foilMarks(r) {
+  accentMarks(r) {
     const { x, y, w, h } = r;
     const size = Math.round(Math.min(w, h) * 0.34);
     return [{ kind: "text", text: "PM", x: x + w / 2, y: y + h / 2 - h * 0.04 - size / 2, size, align: "center" }];
@@ -225,7 +225,7 @@ const volumeSticker: Mockup = {
   // Фольга лежит ПОД смолой: движок кладёт металл по меткам наклейки, а купол
   // возвращается сверху через afterFoil. Единственная сцена, которой нужен свой
   // слой ПОСЛЕ фольги, — потому что купол и есть само изделие.
-  foilMarks: sticker.foilMarks,
+  accentMarks: sticker.accentMarks,
   afterFoil(ctx, r, env) {
     resinDome(ctx, r, env.round);
   },
@@ -250,7 +250,7 @@ function starPath(ctx: CanvasRenderingContext2D, cx: number, cy: number, R: numb
 // Белое поле реза и пунктир каждая наклейка несёт сама (внешний край листа
 // остаётся ровным — см. STICKER_KINDS в Preview.vue).
 // Раскладка стикерпака вынесена из сцены: её должны видеть И `content`, И
-// `foilMarks` — иначе метки фольги разъедутся с вырубками при первой же правке
+// `accentMarks` — иначе метки фольги разъедутся с вырубками при первой же правке
 // сетки, а поймать это можно только глазами.
 type PackCell = { cx: number; cy: number; R: number; kind: "circle" | "rect" | "star" };
 function packCells(r: Rect): PackCell[] {
@@ -331,7 +331,7 @@ const stickerPack: Mockup = {
   },
   // Фольгируются монограммы в КРУГЛЫХ вырубках: золотить весь лист неправдоподобно
   // (фольга идёт акцентом), а круг — самая крупная и читаемая вырубка в паке.
-  foilMarks(r) {
+  accentMarks(r) {
     return packCells(r)
       .filter((c) => c.kind === "circle")
       .map((c) => {
@@ -400,7 +400,7 @@ const stickerQr: Mockup = {
   // Фольгируется ТОЛЬКО подпись, не код: фольгированный QR бликует и перестаёт
   // читаться сканером — этого в превью показывать нельзя, чтобы не продавать
   // заведомо нерабочее сочетание.
-  foilMarks(r, env) {
+  accentMarks(r, env) {
     const { x, y, w, h } = r;
     const m = Math.min(w, h);
     const qr = m * (env.round ? 0.5 : 0.6);
@@ -441,7 +441,7 @@ const leaflet: Mockup = {
   },
   // Фольгируется заголовок ПЕРВОЙ панели — она лицевая при любой фальцовке.
   // Локальная переменная названа gap, а не pad: модульный pad() — это функция.
-  foilMarks(r, env) {
+  accentMarks(r, env) {
     const { x, y, w, h } = r;
     const pw = w / Math.max(1, (env.foldCount || 0) + 1);
     const gap = Math.min(pw, h) * 0.08;
@@ -506,7 +506,7 @@ const letterhead: Mockup = {
     }
     ctx.globalAlpha = 1;
   },
-  foilMarks(r) {
+  accentMarks(r) {
     const { x, y, w } = r;
     return [{ kind: "text", text: "PM", x: x + w * 0.1, y: y + w * 0.1, size: Math.round(w * 0.11) }];
   },
@@ -584,7 +584,7 @@ const envelope: Mockup = {
     });
     ctx.globalAlpha = 1;
   },
-  foilMarks(r) {
+  accentMarks(r) {
     const { x, y, w, h } = r;
     const u = Math.min(w, h);
     return [{ kind: "text", text: "PM", x: x + u * 0.09, y: y + h * 0.17, size: Math.round(u * 0.2) }];
@@ -638,7 +638,7 @@ const poster: Mockup = {
     ctx.fillRect(x + p, y + h - p - u * 0.06, iw * 0.4, u * 0.06);
     ctx.globalAlpha = 1;
   },
-  foilMarks(r) {
+  accentMarks(r) {
     const { x, y, w, h } = r;
     const u = Math.min(w, h);
     return [{ kind: "text", text: "PRINTMOS", x: x + u * 0.08, y: y + h * 0.6, size: Math.round(u * 0.16), font: SANS }];
@@ -688,7 +688,7 @@ const tag: Mockup = {
     ctx.fillText("артикул · размер", cx, y + h * 0.82);
     ctx.globalAlpha = 1;
   },
-  foilMarks(r) {
+  accentMarks(r) {
     const { x, y, w, h } = r;
     const size = Math.round(Math.min(w, h) * 0.24);
     return [{ kind: "text", text: "PM", x: x + w / 2, y: y + h * 0.45 - size / 2, size, align: "center" }];
@@ -734,7 +734,7 @@ const sign: Mockup = {
     ctx.fillText("Кабинет", cx, y + h * 0.56 + u * 0.16);
     ctx.globalAlpha = 1;
   },
-  foilMarks(r) {
+  accentMarks(r) {
     const { x, y, w, h } = r;
     return [{
       kind: "text", text: "101", x: x + w / 2, y: y + h * 0.56,
@@ -785,7 +785,7 @@ const folder: Mockup = {
     ctx.fill();
     ctx.globalAlpha = 1;
   },
-  foilMarks(r) {
+  accentMarks(r) {
     const { x, y } = r;
     const u = Math.min(r.w, r.h);
     return [{ kind: "text", text: "PM", x: x + u * 0.1, y: y + u * 0.1, size: Math.round(u * 0.16) }];
@@ -900,7 +900,7 @@ const forms: Mockup = {
     ctx.fillText("М.П.", x + w - m - w * 0.09, fy - h * 0.022);
     ctx.globalAlpha = 1;
   },
-  foilMarks(r) {
+  accentMarks(r) {
     const { x, y, w } = r;
     return [{ kind: "text", text: "PM", x: x + w * 0.09, y: y + w * 0.09, size: Math.round(w * 0.1) }];
   },
@@ -1007,7 +1007,7 @@ const businessCard: Mockup = {
     );
     ctx.globalAlpha = 1;
   },
-  foilMarks(r, env) {
+  accentMarks(r, env) {
     const { x, y, w, h } = r;
     const u = Math.min(w, h);
     return env.round
@@ -1100,7 +1100,7 @@ const award: Mockup = {
     ctx.stroke();
     ctx.globalAlpha = 1;
   },
-  foilMarks(r) {
+  accentMarks(r) {
     const { x, y, w, h } = r;
     const er = Math.min(w, h) * 0.08;
     return [{ kind: "text", text: "PM", x: x + w / 2, y: y + h * 0.2 - er * 0.55, size: Math.round(er * 1.1), align: "center" }];
@@ -1158,7 +1158,7 @@ const badge: Mockup = {
     ctx.globalAlpha = 1;
   },
   // фольгируется акцентная плашка-подвал (её же рисует ink — металл её накрывает)
-  foilMarks(r) {
+  accentMarks(r) {
     const { x, y, w, h } = r;
     return [{ kind: "rect", x: x + w * 0.15, y: y + h * 0.82, w: w * 0.7, h: h * 0.06 }];
   },
@@ -1327,7 +1327,7 @@ const invite: Mockup = {
     ctx.fillText("00.00.0000", cx, y + h * 0.76 + dh * 0.55);
     ctx.globalAlpha = 1;
   },
-  foilMarks(r) {
+  accentMarks(r) {
     const { x, y, w, h } = r;
     return [{ kind: "text", text: "PM", x: x + w / 2, y: y + h * 0.2, size: Math.round(Math.min(w, h) * 0.16), align: "center" }];
   },
@@ -1435,7 +1435,7 @@ const label: Mockup = {
     }
     ctx.globalAlpha = 1;
   },
-  foilMarks(r) {
+  accentMarks(r) {
     const { x, y, w, h } = r;
     const er = Math.min(w, h) * 0.11;
     return [{ kind: "text", text: "PM", x: x + w / 2, y: y + h * 0.4 - er * 0.55, size: Math.round(er), align: "center" }];
@@ -1555,7 +1555,7 @@ const menu: Mockup = {
     }
   },
   // фольгируется шапка «МЕНЮ»
-  foilMarks(r) {
+  accentMarks(r) {
     const { x, y, w, h } = r;
     return [{ kind: "text", text: "МЕНЮ", x: x + w / 2, y: y + h * 0.07, size: Math.round(w * 0.09), align: "center" }];
   },
@@ -1595,7 +1595,7 @@ const postcard: Mockup = {
     ctx.globalAlpha = 1;
   },
   // фольгируется поздравление — на открытках золотят именно его
-  foilMarks(r) {
+  accentMarks(r) {
     const { x, y, w, h } = r;
     const size = Math.round(Math.min(w, h) * 0.12);
     return [{ kind: "text", text: "С праздником!", x: x + w / 2, y: y + h * 0.66 - size * 0.5, size, align: "center" }];
@@ -1684,7 +1684,7 @@ const ticket: Mockup = {
   },
   // Фольгируется «ВХОД». Раскладка билета ветвится по ориентации (инвариант 3),
   // метка обязана ветвиться вместе с ней — иначе на портрете металл уедет.
-  foilMarks(r) {
+  accentMarks(r) {
     const { x, y, w, h } = r;
     const u = Math.min(w, h);
     if (h >= w) {
@@ -1946,7 +1946,7 @@ const pricetag: Mockup = {
   // Фольгируется акцент, и он у каждого изделия свой: у ценника — ярлык-плашка,
   // у воблера и хенгера — слово «АКЦИЯ». Метки ветвятся тем же posKindOf, что и
   // раскладка, иначе металл ляжет мимо силуэта.
-  foilMarks(r, env) {
+  accentMarks(r, env) {
     const { x, y, w, h } = r;
     const u = Math.min(w, h);
     switch (posKindOf(env.sizeLabel)) {
