@@ -444,6 +444,14 @@ body > main {
   height: 3.25rem;
 }
 
+/* SVG-кукла сцены в плитке каталога: заполняет медиа-зону по ширине, высота от
+   viewBox (0.66). Рисуется на сборке (см. lib/preview/svg/tile.ts). */
+.product-tile__svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
 .product-tile__body {
   display: flex;
   flex-direction: column;

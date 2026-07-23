@@ -1,14 +1,16 @@
 ---
 // Общий каталог: все опубликованные продукты, сгруппированные по категориям.
 // Плитки и сетка переиспользуют разметку/стили главной (.product-grid /
-// .product-tile) — визуал живёт в .product-tile__media (пока иконка astro-icon;
-// следующий шаг — заменить на SVG-мокап сцены продукта, точечно в этом слоте).
+// .product-tile). Визуал в .product-tile__media — инлайновый SVG сцены продукта,
+// отрисованный на сборке (lib/preview/svg/tile.ts, reuse mockups.ts). Multipage
+// (книжки, свой stage) пока падают на иконку astro-icon — отдельный заход.
 import BaseLayout from "../layouts/BaseLayout.astro";
 import { Icon } from "astro-icon/components";
 import Breadcrumbs from "../components/Breadcrumbs.astro";
 import { getCategories } from "../lib/categories";
 import { getProducts } from "../lib/products";
 import { getPricingData, getProductPricing, minPrice } from "../lib/pricing/data";
+import { productTileSvg } from "../lib/preview/svg/tile";
 
 const [categories, products, pricing] = await Promise.all([
   getCategories(),
@@ -16,16 +18,31 @@ const [categories, products, pricing] = await Promise.all([
   getPricingData(),
 ]);
 
-// Цена «от» — честный минимум minPrice(), как на главной и в title хабов:
-// плитка каталога и целевой хаб считаются одной функцией и совпадают.
-// Пересборка при правке цен в Directus пересчитает все плитки.
-const priceBySlug = new Map<string, number | null>(
-  await Promise.all(
-    products.map(async (p): Promise<[string, number | null]> => {
-      const cfg = await getProductPricing(p.slug);
-      return [p.slug, cfg ? minPrice(cfg, pricing) : null];
-    }),
-  ),
+// Один проход по продуктам считает И цену «от», И SVG-плитку сцены: конфиг
+// продукта тянется один раз. Цена — честный минимум minPrice(), как на главной
+// и в title хабов, чтобы плитка каталога и целевой хаб совпадали.
+// Плитка рисуется той же сценой, что и живое превью (reuse mockups.ts), на
+// сборке → инлайн-вектор, ноль запросов и JS. Multipage-обложки (свой stage)
+// пока падают на иконку — отдельный заход.
+const priceBySlug = new Map<string, number | null>();
+const tileBySlug = new Map<string, string>();
+await Promise.all(
+  products.map(async (p) => {
+    const cfg = await getProductPricing(p.slug);
+    if (!cfg) return;
+    priceBySlug.set(p.slug, minPrice(cfg, pricing));
+    if (cfg.strategy !== "multipage" && cfg.previewKind) {
+      const size = cfg.sizes[0];
+      tileBySlug.set(
+        p.slug,
+        productTileSvg({
+          previewKind: cfg.previewKind,
+          mm: size ? { w: size.width, h: size.height } : null,
+          sizeLabel: size?.label,
+        }),
+      );
+    }
+  }),
 );
 
 // Категории в ручном порядке, каждая — со своими опубликованными продуктами.
@@ -69,8 +86,12 @@ const money = (n: number) => n.toLocaleString("ru-RU", { maximumFractionDigits: 
             <li>
               <a class="product-tile" href={`/${product.slug}`}>
                 <span class="product-tile__media">
-                  {product.icon && (
-                    <Icon name={product.icon} class="product-tile__icon" />
+                  {tileBySlug.has(product.slug) ? (
+                    <Fragment set:html={tileBySlug.get(product.slug)} />
+                  ) : (
+                    product.icon && (
+                      <Icon name={product.icon} class="product-tile__icon" />
+                    )
                   )}
                 </span>
                 <span class="product-tile__body">
