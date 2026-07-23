@@ -13,7 +13,13 @@ export type CalcPreset = {
   sides?: "4+0" | "4+4";
   quantity?: number;
   sizeIndex?: number; // индекс размера (product.sizes) — листовой
-  foldTypeIndex?: number; // индекс типа фальцовки (product.foldTypes) — буклеты/листовки
+  // Фальцовка ПО ЗНАЧЕНИЮ (предпочтительно): вид + число сгибов. Позиция в
+  // product.foldTypes съезжает при любой перестановке вариантов в админке — так
+  // и случилось: «Без сложения» переехало в начало списка, и все пять кластеров
+  // буклетов молча стали показывать соседнюю фальцовку («Печать листовок» —
+  // улитку в 3 сложения). Та же болезнь, что у paperIndex → paperId.
+  fold?: { kind?: string; folds: number };
+  foldTypeIndex?: number; // устаревшее: позиция в product.foldTypes
   cutType?: "none" | "kiss" | "die"; // резка наклеек (страницы вырубки → 'die')
   paperId?: number; // id материала (стабилен к сортировке/скрытию) — предпочтителен
   paperIndex?: number; // устаревшее: позиция в product.papers; съезжает при правке каталога
@@ -61,6 +67,29 @@ export function resolvePaperIndex(
   return clampIndex(p.paperIndex, papers.length);
 }
 
+// Фальцовка пресета → индекс в product.foldTypes.
+// `fold` (kind+folds) устойчив к перестановке вариантов в админке; при точном
+// совпадении вида и числа сгибов берём его, иначе ищем по одному числу сгибов
+// (вид мог быть не задан), и лишь затем откатываемся на устаревшую позицию.
+// null — применять нечего, вызывающий оставляет дефолт.
+export function resolveFoldIndex(
+  foldTypes: readonly { kind: string; folds: number }[],
+  p: Pick<CalcPreset, "fold" | "foldTypeIndex">,
+): number | null {
+  if (p.fold) {
+    if (p.fold.kind) {
+      const exact = foldTypes.findIndex(
+        (f) => f.kind === p.fold!.kind && f.folds === p.fold!.folds,
+      );
+      if (exact >= 0) return exact;
+    }
+    const byFolds = foldTypes.findIndex((f) => f.folds === p.fold!.folds);
+    if (byFolds >= 0) return byFolds;
+  }
+  if (p.foldTypeIndex == null) return null;
+  return clampIndex(p.foldTypeIndex, foldTypes.length);
+}
+
 // Применить пресет к реактивному состоянию (с защитой диапазонов/доступности).
 export function applyPreset(calc: CalculatorState, p: CalcPreset): void {
   if (!p) return;
@@ -75,10 +104,10 @@ export function applyPreset(calc: CalculatorState, p: CalcPreset): void {
     const i = clampIndex(p.sizeIndex, calc.product.sizes.length);
     if (i != null) calc.sizeIndex = i;
   }
-  if (p.foldTypeIndex != null) {
-    const i = clampIndex(p.foldTypeIndex, calc.foldTypes.length);
-    if (i != null) calc.foldTypeIndex = i;
-  }
+  // Фальцовка: сначала пробуем по значению (kind+folds), позиция — только как
+  // запасной путь для старых пресетов.
+  const foldIdx = resolveFoldIndex(calc.foldTypes, p);
+  if (foldIdx != null) calc.foldTypeIndex = foldIdx;
   if (p.cutType && calc.allowContourCut) calc.cutType = p.cutType;
   const paperIdx = resolvePaperIndex(calc.product.papers, p, calc.product.paperOrder);
   if (paperIdx != null) calc.paperIndex = paperIdx;
