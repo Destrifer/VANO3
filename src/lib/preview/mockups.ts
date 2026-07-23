@@ -235,9 +235,12 @@ const stickerPack: Mockup = {
   content(ctx, r, env) {
     const { x, y, w, h } = r;
     const ink = env.ink;
-    const cols = 3, rows = 2;
+    // Сетка от пропорции листа, а не жёсткая 3×2: дефолтный размер наклейки —
+    // 50×50 мм, и шесть штук на квадрате вырождаются в нечитаемую мелочь.
+    const ratio = w / h;
+    const [cols, rows] = ratio > 1.35 ? [3, 2] : ratio < 0.75 ? [2, 3] : [2, 2];
     const cw = w / cols, ch = h / rows;
-    const R = Math.min(cw, ch) * 0.36;
+    const R = Math.min(cw, ch) * 0.38;
     // Формы по ячейкам + разброс центра: на производстве стикеры раскладывают
     // плотно и вразнобой, ровная сетка выглядит как лист этикеток.
     const kinds = ["circle", "rect", "star", "rect", "star", "circle"] as const;
@@ -251,20 +254,32 @@ const stickerPack: Mockup = {
       const cx = x + (col + 0.5) * cw + cw * jitter[i][0];
       const cy = y + (row + 0.5) * ch + ch * jitter[i][1];
 
-      // белое поле реза (die-cut) под стикером
+      // Белое поле реза (die-cut) под стикером. Тень обязательна: без неё белая
+      // подложка на кремовой бумаге не видна вовсе, и лист читается как пустой
+      // с редкими значками — проверено на живом превью 339×224.
       ctx.save();
-      if (kinds[i] === "circle") {
-        ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2);
-      } else if (kinds[i] === "star") {
-        starPath(ctx, cx, cy, R);
-      } else {
-        roundRect(ctx, cx - R, cy - R * 0.78, R * 2, R * 1.56, R * 0.3);
-      }
-      ctx.fillStyle = "rgba(255,255,255,0.92)";
+      const shape = () => {
+        if (kinds[i] === "circle") {
+          ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2);
+        } else if (kinds[i] === "star") {
+          starPath(ctx, cx, cy, R);
+        } else {
+          roundRect(ctx, cx - R, cy - R * 0.78, R * 2, R * 1.56, R * 0.3);
+        }
+      };
+      ctx.shadowColor = "rgba(0,0,0,.28)";
+      ctx.shadowBlur = R * 0.3;
+      ctx.shadowOffsetY = R * 0.1;
+      shape();
+      ctx.fillStyle = "#ffffff";
       ctx.fill();
+      ctx.restore();
+
+      ctx.save();
+      shape();
       ctx.setLineDash([R * 0.18, R * 0.14]);
       ctx.lineWidth = 1;
-      ctx.strokeStyle = "rgba(0,0,0,.35)";
+      ctx.strokeStyle = "rgba(0,0,0,.45)";
       ctx.stroke();
       ctx.setLineDash([]);
       ctx.restore();
