@@ -11,6 +11,7 @@ import { getCategories } from "../lib/categories";
 import { getProducts } from "../lib/products";
 import { getPricingData, getProductPricing, minPrice } from "../lib/pricing/data";
 import { productTileSvg } from "../lib/preview/svg/tile";
+import { coverTileSvg, defaultCoverTileInput } from "../lib/preview/svg/coverTile";
 
 const [categories, products, pricing] = await Promise.all([
   getCategories(),
@@ -31,7 +32,12 @@ await Promise.all(
     const cfg = await getProductPricing(p.slug);
     if (!cfg) return;
     priceBySlug.set(p.slug, minPrice(cfg, pricing));
-    if (cfg.strategy !== "multipage" && cfg.previewKind) {
+    // Многостраничные рисует свой stage (книжка: корешок, переплёт, кант,
+    // кольца, ремешок) из реестра covers.ts; листовые — плоский лист из mockups.
+    // Ключ preview_kind общий, просто резолвится в своём реестре.
+    if (cfg.strategy === "multipage") {
+      tileBySlug.set(p.slug, coverTileSvg(defaultCoverTileInput(cfg)));
+    } else if (cfg.previewKind) {
       const size = cfg.sizes[0];
       tileBySlug.set(
         p.slug,

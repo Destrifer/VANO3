@@ -159,6 +159,25 @@ export class SvgContext {
     if (this.startLocal) this.curLocal = [...this.startLocal] as [number, number];
   }
 
+  // Безье переводим точками, а не сэмплом: аффинное преобразование сохраняет
+  // кривую, поэтому достаточно перевести контрольные точки. Нужен выпуклому
+  // корешку 7БЦ (BookletPreview) и обложкам covers.ts.
+  quadraticCurveTo(cx: number, cy: number, x: number, y: number) {
+    if (!this.curLocal) this.moveTo(cx, cy);
+    const [pcx, pcy] = apply(this.s.m, cx, cy);
+    const [px, py] = apply(this.s.m, x, y);
+    this.path += `Q${n2(pcx)} ${n2(pcy)} ${n2(px)} ${n2(py)}`;
+    this.curLocal = [x, y];
+  }
+  bezierCurveTo(c1x: number, c1y: number, c2x: number, c2y: number, x: number, y: number) {
+    if (!this.curLocal) this.moveTo(c1x, c1y);
+    const [a1, b1] = apply(this.s.m, c1x, c1y);
+    const [a2, b2] = apply(this.s.m, c2x, c2y);
+    const [px, py] = apply(this.s.m, x, y);
+    this.path += `C${n2(a1)} ${n2(b1)} ${n2(a2)} ${n2(b2)} ${n2(px)} ${n2(py)}`;
+    this.curLocal = [x, y];
+  }
+
   rect(x: number, y: number, w: number, h: number) {
     this.moveTo(x, y); this.lineTo(x + w, y); this.lineTo(x + w, y + h);
     this.lineTo(x, y + h); this.closePath();
