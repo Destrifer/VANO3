@@ -6,8 +6,8 @@
 // Почему отдельный реестр, а не общий с `mockups`: у обложки другой контракт
 // окружения (переплёт, число полос, разлиновка) и другие слои вокруг. Ключ при
 // этом ОБЩИЙ — `products.preview_kind`, просто резолвится в своём реестре.
-import type { Rect } from "./primitives";
-import { dieCutWindow, drawFoilText, roundRect } from "./primitives";
+import type { FoilMark, Rect } from "./primitives";
+import { dieCutWindow, roundRect } from "./primitives";
 
 // Вид переплёта, выведенный из имени в Directus. `hardcover` — 7БЦ: до этого
 // он не распознавался и молча падал в «скрепку», из-за чего подарочный
@@ -36,7 +36,12 @@ export type CoverFeatures = {
 
 export type Cover = {
   content: (ctx: CanvasRenderingContext2D, r: Rect, env: CoverEnv) => void;
-  foil?: (ctx: CanvasRenderingContext2D, r: Rect, env: CoverEnv) => void;
+  // ГДЕ на обложке лежит фольга. Как блестит металл — знает `drawFoilMarks()`,
+  // тот же, что у листовых: тиснение на ежедневнике и на визитке обязаны
+  // выглядеть одинаково. Обложка без меток получает `defaultFoilMarks()` —
+  // раньше здесь был рисующий `foil()`, и тетради с газетой на выбор фольги
+  // не отвечали вовсе.
+  foilMarks?: (r: Rect, env: CoverEnv) => FoilMark[];
   features?: CoverFeatures;
   // Полный self-render в обход общего stage. Прецедент-исключение: изделие
   // физически НЕ книжка (газета — сфальцованный лист без переплёта), общая
@@ -142,9 +147,9 @@ const booklet: Cover = {
     ctx.restore();
     textLines(ctx, cx - r.w * 0.25, r.y + r.h * 0.62, r.w * 0.5, m * 0.014, 3, env.ink, 0.25);
   },
-  foil(ctx, r, env) {
+  foilMarks(r) {
     const m = Math.min(r.w, r.h);
-    drawFoilText(ctx, "Брошюра", r.x + r.w / 2, r.y + r.h * 0.28, m * 0.13, "center", env.foilHex);
+    return [{ kind: "text", text: "Брошюра", x: r.x + r.w / 2, y: r.y + r.h * 0.28, size: m * 0.13, align: "center" }];
   },
 };
 
@@ -191,9 +196,9 @@ const book: Cover = {
     ctx.fillText("PM", cx, r.y + r.h * 0.8);
     ctx.restore();
   },
-  foil(ctx, r, env) {
+  foilMarks(r) {
     const m = Math.min(r.w, r.h);
-    drawFoilText(ctx, "Дорога домой", r.x + r.w / 2, r.y + r.h * 0.34, m * 0.115, "center", env.foilHex);
+    return [{ kind: "text", text: "Дорога домой", x: r.x + r.w / 2, y: r.y + r.h * 0.34, size: m * 0.115, align: "center" }];
   },
 };
 
@@ -237,9 +242,9 @@ const catalog: Cover = {
       }
     }
   },
-  foil(ctx, r, env) {
+  foilMarks(r) {
     const m = Math.min(r.w, r.h);
-    drawFoilText(ctx, "КАТАЛОГ", r.x + r.w / 2, r.y + r.h * 0.09, m * 0.11, "center", env.foilHex, SANS);
+    return [{ kind: "text", text: "КАТАЛОГ", x: r.x + r.w / 2, y: r.y + r.h * 0.09, size: m * 0.11, align: "center", font: SANS }];
   },
 };
 
@@ -295,9 +300,9 @@ const magazine: Cover = {
     ctx.fillText("№ 7 · 2026", cx, r.y + r.h * 0.185);
     ctx.restore();
   },
-  foil(ctx, r, env) {
+  foilMarks(r) {
     const m = Math.min(r.w, r.h);
-    drawFoilText(ctx, "ЖУРНАЛ", r.x + r.w / 2, r.y + r.h * 0.04, m * 0.155, "center", env.foilHex, SANS);
+    return [{ kind: "text", text: "ЖУРНАЛ", x: r.x + r.w / 2, y: r.y + r.h * 0.04, size: m * 0.155, align: "center", font: SANS }];
   },
 };
 
@@ -327,9 +332,9 @@ const photobook: Cover = {
 
     heading(ctx, "Наше лето", r.x + r.w / 2, r.y + r.h * 0.85, m * 0.085, env);
   },
-  foil(ctx, r, env) {
+  foilMarks(r) {
     const m = Math.min(r.w, r.h);
-    drawFoilText(ctx, "Наше лето", r.x + r.w / 2, r.y + r.h * 0.85, m * 0.085, "center", env.foilHex);
+    return [{ kind: "text", text: "Наше лето", x: r.x + r.w / 2, y: r.y + r.h * 0.85, size: m * 0.085, align: "center" }];
   },
 };
 
@@ -379,10 +384,10 @@ const planner: Cover = {
     ctx.fillText("ЕЖЕДНЕВНИК", cx, r.y + r.h * 0.77);
     ctx.restore();
   },
-  foil(ctx, r, env) {
+  foilMarks(r) {
     const m = Math.min(r.w, r.h);
     const size = m * 0.12;
-    drawFoilText(ctx, "PM", r.x + r.w / 2, r.y + r.h * 0.42 - size / 2, size, "center", env.foilHex);
+    return [{ kind: "text", text: "PM", x: r.x + r.w / 2, y: r.y + r.h * 0.42 - size / 2, size, align: "center" }];
   },
 };
 
@@ -411,9 +416,9 @@ const notepad: Cover = {
     ctx.fillText("блокнот для записей", cx, r.y + r.h * 0.58);
     ctx.restore();
   },
-  foil(ctx, r, env) {
+  foilMarks(r) {
     const m = Math.min(r.w, r.h);
-    drawFoilText(ctx, "PRINTMOS", r.x + r.w / 2, r.y + r.h * 0.48, m * 0.07, "center", env.foilHex, SANS);
+    return [{ kind: "text", text: "PRINTMOS", x: r.x + r.w / 2, y: r.y + r.h * 0.48, size: m * 0.07, align: "center", font: SANS }];
   },
 };
 
@@ -500,6 +505,12 @@ const copybook: Cover = {
     ctx.fillText(env.ruling ? env.ruling.toLowerCase() : "чистый лист", cx, sy + sh + m * 0.03);
     ctx.restore();
   },
+  // Фольга у тетради — тиснёный логотип в подвале: шильдик сверху занят полями
+  // для подписи, а образец разлиновки перекрывать нельзя, он отвечает на выбор.
+  foilMarks(r) {
+    const m = Math.min(r.w, r.h);
+    return [{ kind: "text", text: "PM", x: r.x + r.w / 2, y: r.y + r.h * 0.87, size: m * 0.09, align: "center" }];
+  },
 };
 
 // Выпускной альбом — фото-окно с силуэтами класса, «ВЫПУСК 2026», школа.
@@ -552,9 +563,9 @@ const yearbook: Cover = {
     ctx.fillText("школа № 1 · 11 «А»", cx, r.y + r.h * 0.88);
     ctx.restore();
   },
-  foil(ctx, r, env) {
+  foilMarks(r) {
     const m = Math.min(r.w, r.h);
-    drawFoilText(ctx, "ВЫПУСК", r.x + r.w / 2, r.y + r.h * 0.09, m * 0.1, "center", env.foilHex, SANS);
+    return [{ kind: "text", text: "ВЫПУСК", x: r.x + r.w / 2, y: r.y + r.h * 0.09, size: m * 0.1, align: "center", font: SANS }];
   },
 };
 
@@ -564,6 +575,12 @@ const newspaper: Cover = {
   content() {
     /* не используется — рисует render() */
   },
+  // Фольги у газеты НЕТ, и это осознанно, а не забытая реализация: газетную
+  // полосу печатают ротацией на газетной бумаге, фольгу там не припрессовывают.
+  // Пустой список гасит и фолбэк движка — тот же приём, что у `sticker-qr`,
+  // где фольга убила бы читаемость кода. Показывать сочетание, которого не
+  // бывает в производстве, — врать пользователю.
+  foilMarks: () => [],
   render(ctx, cssW, cssH, env) {
     const pad = Math.min(cssW, cssH) * 0.12;
     const availW = cssW - 2 * pad;

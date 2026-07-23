@@ -6,7 +6,10 @@
 // Реактивно перерисовывается от mpCalc и по ресайзу.
 import { computed, inject, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { mpCalcKey } from "../../composables/useMultipageCalculator";
-import { laminationGloss, paperTexture, inkColor, type Rect } from "../../lib/preview/primitives";
+import {
+  laminationGloss, paperTexture, inkColor,
+  drawFoilMarks, defaultFoilMarks, type Rect,
+} from "../../lib/preview/primitives";
 import { bindingKindOf, getCover, type CoverEnv } from "../../lib/preview/covers";
 
 const calc = inject(mpCalcKey)!;
@@ -188,9 +191,14 @@ function draw() {
   };
   scene.content(ctx, contentRect, env);
 
-  // 4. Ламинация обложки и фольга — общими механизмами, поверх сцены
+  // 4. Ламинация обложки и фольга — общими механизмами, поверх сцены.
+  // Обложка только ОБЪЯВЛЯЕТ метки фольги, металл кладёт `drawFoilMarks` — тот
+  // же, что у листовых. Без меток берётся фолбэк, поэтому забыть реализацию
+  // нельзя: раньше `scene.foil` просто отсутствовал у тетрадей и газеты.
   if (glossStrength.value > 0) laminationGloss(ctx, coverRect, glossStrength.value);
-  if (calc.foilOn && scene.foil) scene.foil(ctx, contentRect, env);
+  if (calc.foilOn) {
+    drawFoilMarks(ctx, scene.foilMarks?.(contentRect, env) ?? defaultFoilMarks(contentRect, false), foilHex.value);
+  }
   ctx.restore();
 
   // контур обложки
