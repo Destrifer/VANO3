@@ -29,6 +29,10 @@ export type CalcPreset = {
   pages?: number; // число полос (кратно PAGE_STEP, клампится)
   coverPaperId?: number; // id бумаги обложки (product.coverPapers) — multipage
   innerPaperId?: number; // id бумаги блока (product.innerPapers) — multipage
+  // Сцена превью для КЛАСТЕРА, когда его изделие физически не то же, что у
+  // продукта: «Печать газет» сидит на продукте «Журналы». Ключ реестра
+  // `covers.ts`; неизвестное имя молча падает на сцену продукта.
+  previewKind?: string;
 };
 
 const clampIndex = (i: number, len: number) =>
@@ -131,6 +135,7 @@ export function applyMultipagePreset(calc: MultipageCalcState, p: CalcPreset): v
     if (i != null) calc.laminationIndex = i;
   }
   if (p.foil != null && calc.foilOption) calc.foilOn = p.foil;
+  if (p.previewKind) calc.setPreviewKind(p.previewKind);
 }
 
 // URL → пресет (короткие читаемые параметры).

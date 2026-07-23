@@ -128,6 +128,14 @@ export function useMultipageCalculator(props: {
   );
   const selectRuling = (i: number) => { rulingIndex.value = i; };
 
+  // — Сцена превью (реестр `covers.ts`) —
+  // По умолчанию берётся с продукта, но КЛАСТЕР может переопределить пресетом:
+  // «Печать газет» живёт продуктом «Журналы», а газета физически не журнал.
+  // Пресет — JSON-поле promoted_pages, схему трогать не нужно.
+  const previewKindOverride = ref<string | null>(null);
+  const previewKind = computed(() => previewKindOverride.value ?? product.previewKind ?? null);
+  const setPreviewKind = (k: string | null) => { previewKindOverride.value = k; };
+
   // — Печать: блок всегда двусторонний (4 полосы на лист → 4+4), обложка на выбор —
   const innerSides: Sides = "4+4";
   const coverSides = ref<Sides>("4+0");
@@ -281,6 +289,8 @@ export function useMultipageCalculator(props: {
     innerSides, coverSides, sides, presets, quantity, totalQty, selectQty,
     // разлиновка блока (на цену не влияет)
     rulingOptions, hasRuling, rulingIndex, ruling, selectRuling,
+    // сцена превью
+    previewKind, setPreviewKind,
     // отделка обложки
     laminationOptions, foilOption, laminationIndex, foilOn, foilColorIndex, laminationLocked,
     coverExtras, extraChecked,

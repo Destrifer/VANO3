@@ -466,11 +466,21 @@ Goal: turn the current technical prototype into a coherent first public site ske
 - Add unresolved issues to the tech debt/open questions section.
 - Content & images are authored in PROD Directus (`admin.printmos.ru`), not locally. Never assume `git push` moves data/images — it ships code (and, semi-manually, schema) only. Do not seed/overwrite prod content from local test data.
 - Keep code changes small and explain the TypeScript/Astro/Vue concept being practiced.
-- Before touching deploy, tokens, or Directus schema, read **Ops & Deploy Runbook** below — it is the single source of truth, do not re-derive it.
+- Before touching deploy, tokens, or Directus schema, read **Ops & Deploy Runbook** below — it is the single source of truth, do not re-derive it. Особенно «Сага bindings.image» и «Локаль ≠ прод»: обе ловушки стоили по несколько часов каждая и обе выглядят как мистика, если рунбук не прочитан.
 
 ## Ops & Deploy Runbook
 
-Операционная память проекта — чтобы в новой ветке/сессии НЕ проходить эти «открытия» заново (доступы, CI/CD, снапшот). Всё проверено 2026-07-11.
+Операционная память проекта — чтобы в новой ветке/сессии НЕ проходить эти «открытия» заново (доступы, CI/CD, снапшот). Проверено 2026-07-11, существенно обновлено **2026-07-22** (см. «Сага bindings.image» — раздел, ради которого стоит читать всё остальное).
+
+### 🎯 Сага bindings.image: разгадка, стоившая дня (2026-07-22)
+
+Симптом: новое file-поле в коллекции `bindings` жило минуты и «умирало» — колонка пропадала из БД. Пересоздавали 4 раза, каждый раз после сборки поле исчезало. Ложные подозреваемые (все проверены и НЕвиновны): имя поля, рестарт контейнера, крон, лимиты лицензии, кэш Directus.
+
+**Настоящая причина:** `repository_dispatch` (пересборку шлёт Directus Flow при ЛЮБОЙ правке контента) запускает воркфлоу **из ДЕФОЛТНОЙ ветки — `master`**, независимо от того, в какой ветке ты работаешь. В master оставался старый `deploy.yml` со `schema apply` и снапшотом БЕЗ этого поля → apply приводил схему в «точное соответствие» → колонку сносило. Загрузка фото — это правка контента, поэтому поле умирало ровно после того, как его начинали использовать. Фикс в рабочей ветке `design/rework` не помогал, потому что dispatch его не видел.
+
+**Что сделано, чтобы это не повторилось:** `schema apply` **УБРАН из `deploy.yml` в обеих ветках**. Деплой больше НЕ трогает схему вообще. Снапшот `directus/snapshot.yaml` теперь — версионированная документация и способ поднять окружение с нуля (`npx directus schema apply` руками, осознанно), а не приказ прод-схеме.
+
+**Правило на будущее:** если ловишь «магию», которая происходит после сборки, — сначала посмотри `deploy.yml` **в master**, а не в своей ветке. И проверь `/actions/runs`: `repository_dispatch` за секунды до странности = виноват он.
 
 ### Доступы и токены — агент МОЖЕТ править прод сам
 - `.env` (в корне, локальный) содержит `DIRECTUS_ADMIN_TOKEN` — он **валиден и на ПРОДЕ** `https://admin.printmos.ru` (чтение И запись через REST). Значит агент может сам инспектировать и чинить прод-Directus (схема/поля/права/контент) — **отдельный токен просить НЕ нужно** (в прошлый раз я зря решил, что без него никак).
@@ -478,9 +488,11 @@ Goal: turn the current technical prototype into a coherent first public site ske
 - Directus CLI внутри контейнера: `/directus/node_modules/.pnpm/node_modules/.bin/directus` (в образе 12 нет `npx`). Из Git Bash оборачивать `export MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*'`, иначе пути `/directus/...` мангулятся.
 
 ### CI/CD — деплой полностью автоматический, токен для деплоя не нужен
-- `git push origin master` → GitHub Actions `.github/workflows/deploy.yml`. Шаги: по SSH (ключ/хост в **GitHub Secrets**, локально не нужны) копирует `directus/snapshot.yaml` на сервер и делает `directus schema apply --yes` на прод-Directus **ДО** сборки → собирает Astro-образ (ghcr) → перезапускает `astro`+`caddy` (⚠️ `directus` НЕ рестартит).
+- `git push` (ветки `master` и `design/rework`) → GitHub Actions `.github/workflows/deploy.yml`. Шаги: собирает Astro-образ (ghcr) → по SSH (ключ/хост в **GitHub Secrets**, локально не нужны) сервер тянет образ → перезапускает `astro`+`caddy` (⚠️ `directus` НЕ рестартит). **Схему деплой НЕ трогает** (шаг `schema apply` убран 2026-07-22, см. сагу выше).
 - `paths-ignore`: `**.md`, `docs/**`, `seo/**`, `ops/**` — коммит ТОЛЬКО из этих путей деплой не триггерит (нужен хоть один код-файл/снапшот).
 - Ручной прогон/пересборка: GitHub → Actions → «Build & Deploy» → Run workflow (`workflow_dispatch`). Публикация контента шлёт `repository_dispatch: deploy-site` через Directus Flow.
+- ⚠️ **`repository_dispatch` и `workflow_dispatch` берут воркфлоу И КОД из ДЕФОЛТНОЙ ветки (`master`)** — не из той, где ты работаешь. Практический вывод: пока рабочая ветка не влита в master, правка контента пересобирает прод **кодом master**, и прод «мигает» между ветками. Держи master смерженным, если работаешь долгоживущей веткой.
+- Транзиентный провал сборки: `Connect Timeout` к `admin.printmos.ru` на шаге prerender (сборка делает сотни запросов к Directus на 2 ГБ сервере). Это не код — перезапустить деплой. В `directusFetch` есть 3 ретрая на сетевые ошибки и 5xx; 4xx не ретраится намеренно.
 
 ### Правки прод-Directus через API — агент ДЕЛАЕТ САМ, не просит владельца
 > Не перекладывать на пользователя «добавьте поле/значение в админке». Токен есть — сделать самому. (Ошибка этой практики: 2026-07-15 зря попросил владельца вручную завести `settings.free_delivery_threshold`, хотя мог сам.)
@@ -491,12 +503,36 @@ Goal: turn the current technical prototype into a coherent first public site ske
 - Cyrillic/JSON из Git Bash → писать payload файлом и слать `--data-binary @file` (`Content-Type: application/json; charset=utf-8`), иначе mojibake.
 
 ### Схема Directus — источник истины ПРОД
-- Схему меняем **на проде** (в admin.printmos.ru или прод-API токеном), потом `ops/schema-snapshot.sh` тянет прод→`directus/snapshot.yaml`, и коммитим. **НЕ** генерировать снапшот из локали (`docker exec … schema snapshot`): если локаль дрейфнула, `apply --yes` в CI **снесёт** на проде всё, чего нет в снапшоте (apply приводит схему в ТОЧНОЕ соответствие; контент и права не трогает).
-- Проверка «снапшот == прод, apply будет no-op» (read-only): `POST https://admin.printmos.ru/schema/diff` с `-F file=@directus/snapshot.yaml;type=application/yaml` → **пустой ответ = разницы нет**.
+- Схему меняем **на проде** (в admin.printmos.ru или прод-API через `ops/directus-api.sh`), потом `ops/schema-snapshot.sh` тянет прод→`directus/snapshot.yaml`, и коммитим. Снапшот — слепок-документация; деплой его больше не применяет, так что устаревший снапшот сам по себе прод не ломает — но и не чинит, поэтому дисциплина «поправил → сразу снапшот» остаётся.
+- **НЕ** генерировать снапшот из локали (`docker exec … schema snapshot`) — он перезапишет слепок прода дрейфнувшей локалью. Только `ops/schema-snapshot.sh`.
+- Проверка «снапшот == прод» (read-only): `POST https://admin.printmos.ru/schema/diff` с `-F file=@directus/snapshot.yaml;type=application/yaml` → **пустой ответ = разницы нет**.
+- ⚠️ **Если когда-нибудь вернёшь `schema apply` в деплой — вернёшь и всю сагу.** Не возвращать без явного решения владельца и без ответа на вопрос «что применит dispatch из master».
+
+### Новое поле Directus — порядок (после 2026-07-22 стало проще)
+1. Завести поле на проде: `bash ops/directus-api.sh POST /fields/{collection} @payload` — **обязательно с явным блоком `schema`** (без него Directus создаёт alias без колонки), для file/M2O плюс `POST /relations` с `on_delete: SET NULL`.
+2. `ops/schema-snapshot.sh` → коммит.
+3. Только теперь добавлять поле в `fields=` запроса в коде и пушить.
+4. Заполнять контент можно сразу — apply больше не снесёт колонку.
+- **Порядок 3→4 важен по другой причине:** `directusFetch` с несуществующим полем в `fields=` даёт **403 на весь запрос** (Directus не игнорирует лишнее поле). Значит код, опережающий схему, роняет сборку целиком. «Безопасных фолбэков» тут не бывает — сначала схема, потом код.
+- Кириллицу в `note`/значениях слать файлом через `--data-binary @file` — Git Bash бьёт UTF-8 в аргументах (в `ops/directus-api.sh` это уже учтено, но payload лучше писать файлом).
 - Cyrillic в curl из Git Bash бьётся в mojibake → payload писать файлом и слать `--data-binary @file` (`Content-Type: application/json; charset=utf-8`).
 
 ### Данные ≠ код, страницы пререндерятся
-- Контент и картинки — только в ПРОД-Directus; `git push` возит код (и полу-ручно схему), НЕ данные. Публичные страницы — SSG (`getStaticPaths`, `output` hybrid), Directus читается на СБОРКЕ. Загруженная в Directus картинка/контент видна на сайте только **после пересборки** (re-run деплоя / `repository_dispatch`).
+- Контент и картинки — только в ПРОД-Directus; `git push` возит код, НЕ данные. Публичные страницы — SSG (`getStaticPaths`, `output` hybrid), Directus читается на СБОРКЕ. Загруженная в Directus картинка/контент видна на сайте только **после пересборки** — её Flow триггерит сам, цикл ~5 мин, руками дёргать не надо.
+
+### Локаль ≠ прод — РЕШЕНО 2026-07-22: разработка идёт против ПРОДА
+
+**Решение владельца:** в `.env` `DIRECTUS_URL` и `DIRECTUS_PUBLIC_URL` = `https://admin.printmos.ru`. Локальный Directus в разработке больше не участвует (контейнеры оставлены, но не используются). Класс проблем «локаль отстала → 403 → сборка упала» закрыт.
+
+**Почему не «догнали локаль», как советовали раньше:** локальный Directus работает в Core-режиме и упирается в **лимит на число коллекций** — `schema apply` прод-снапшота падает с `LIMIT_EXCEEDED` на создании `delivery_methods`; не создаются также `product_fold_types` и `promoted_pages_gallery` (прод — 34 пользовательских коллекции, локаль — 31). `LICENSE_KEY` в локальном контейнере задан, но лимит всё равно действует (ключ, судя по всему, привязан к прод-инстансу). **Совет «`npx directus schema apply`» на хосте — вредный:** ставит Directus в систему и всё равно не знает, к какой БД подключаться. Если когда-нибудь понадобится — только внутри контейнера: `docker exec vano3-directus-1 node /directus/cli.js schema apply --yes /tmp/snapshot.yaml` (снапшот туда `docker cp`, из Git Bash с `MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*'`, сперва `--dry-run`).
+
+⚠️ **Запись с dev теперь смотрит на прод — и это НАМЕРЕННО обезврежено.** `/api/order`, `/api/request`, `/api/upload*` шлют POST по `DIRECTUS_URL` с `DIRECTUS_TOKEN`. Токен в `.env` остался **локальным** — на проде он даёт 401, поэтому тестовый заказ с dev физически не может создать строку в боевой базе. Формы на dev отвечают ошибкой — **так и должно быть**. ⛔ Не подставлять в `DIRECTUS_TOKEN` админ-токен «чтобы формы заработали»: это откроет запись в прод с локальной машины.
+
+**Два токена в `.env` — по-прежнему знать:** `DIRECTUS_TOKEN` (58 симв.) — сервисный/локальный, на проде `401 INVALID_CREDENTIALS`. `DIRECTUS_ADMIN_TOKEN` (32 симв.) — **валиден на проде на запись**, им работает `ops/directus-api.sh`. Получил 401 — это НЕ «нет доступа», это просто второй токен. Проверка: `curl -H "Authorization: Bearer $DIRECTUS_ADMIN_TOKEN" https://admin.printmos.ru/users/me` → 200. Наступали трижды и трижды зря просили у владельца доступ.
+
+**Следствие для dev:** `astro dev` теперь показывает РЕАЛЬНЫЙ прод-контент, а не локальный. Нужен интернет; страницы рендерятся чуть медленнее.
 
 ### Ловушка: `schema apply` может применяться ПОЛУ-путём (было 2026-07-11)
+> Исторически: apply из деплоя убран (2026-07-22), так что сам собой этот разлом больше не возникнет. Держим описание, потому что симптомы «битого поля» (мета без колонки / колонка без меты) распознавать всё равно надо, а apply руками никто не запрещал.
+
 Для новых **file-полей** CI-шный `apply` создал `relations`, но НЕ физические колонки и не fields-мету. Симптом: `GET /fields/{coll}/{f}` отдаёт мету, но `schema:null`; список полей, `/items` и админка поля НЕ видят; `POST /utils/cache/clear` не помогает (колонок реально нет). Диагностика (read-only): `GET /schema/snapshot?export=yaml` — если поля нет в fields-секции, колонки нет. Починка (деструктивная запись в прод-схему → спросить владельца): `DELETE /fields/{coll}/{f}` (снять осиротевшую мету) → пересоздать через ЖИВОЙ API `POST /fields` (со `schema.is_nullable` — создаёт колонку) + `POST /relations` → при нужде допатчить мету `PATCH /fields/{coll}/{f}`.

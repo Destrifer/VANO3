@@ -104,6 +104,38 @@ export function laminationGloss(ctx: CanvasRenderingContext2D, r: Rect, strength
   ctx.restore();
 }
 
+// Вырубное окно в обложке: кант по периметру + тень внутрь, чтобы читалась
+// толщина картона. Общий механизм (как drawFoilText): окно фотокниги и окно
+// выпускного альбома обязаны выглядеть одинаково.
+export function dieCutWindow(ctx: CanvasRenderingContext2D, r: Rect, depth: number) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(r.x, r.y, r.w, r.h);
+  ctx.clip();
+  const top = ctx.createLinearGradient(0, r.y, 0, r.y + depth);
+  top.addColorStop(0, "rgba(0,0,0,.4)");
+  top.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = top;
+  ctx.fillRect(r.x, r.y, r.w, depth);
+  const left = ctx.createLinearGradient(r.x, 0, r.x + depth, 0);
+  left.addColorStop(0, "rgba(0,0,0,.3)");
+  left.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = left;
+  ctx.fillRect(r.x, r.y, depth, r.h);
+  const bottom = ctx.createLinearGradient(0, r.y + r.h - depth, 0, r.y + r.h);
+  bottom.addColorStop(0, "rgba(255,255,255,0)");
+  bottom.addColorStop(1, "rgba(255,255,255,.22)");
+  ctx.fillStyle = bottom;
+  ctx.fillRect(r.x, r.y + r.h - depth, r.w, depth);
+  ctx.restore();
+
+  ctx.save();
+  ctx.strokeStyle = "rgba(0,0,0,.35)";
+  ctx.lineWidth = Math.max(1, depth * 0.25);
+  ctx.strokeRect(r.x, r.y, r.w, r.h);
+  ctx.restore();
+}
+
 // Текст металлической фольгой (градиент из hex + блик). Переиспользуется макетами.
 export function drawFoilText(
   ctx: CanvasRenderingContext2D,
