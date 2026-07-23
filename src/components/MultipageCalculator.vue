@@ -10,7 +10,9 @@ import CoatingField from "./calculator/CoatingField.vue";
 import QuantitySelect from "./calculator/QuantitySelect.vue";
 import OptionTile from "./calculator/OptionTile.vue";
 import ImageLightbox from "./calculator/ImageLightbox.vue";
-import { extraGlyph } from "../lib/calculator/finishingGlyph";
+import InfoTip from "./InfoTip.vue";
+import { optionInfo } from "../lib/optionInfo";
+import { extraGlyph, groupGlyph } from "../lib/calculator/finishingGlyph";
 import { ref } from "vue";
 
 const calc = inject(mpCalcKey)!;
@@ -164,9 +166,34 @@ function ruleGlyph(name: string): string {
         v-model:foilOn="calc.foilOn"
         v-model:foilColorIndex="calc.foilColorIndex"
       />
-      <!-- Доп. обработка обложки: ungrouped-опции (УФ-лак, конгрев, объёмный
-           лак). Плитки-переключатели, как в листовом FinishingField: опции
-           независимые → multi (role=checkbox), картинка из finishing_options.image. -->
+      <!-- Группы доп-обработки плитками-вариантами (УФ-лак: Выборочный/Сплошной,
+           конгрев, объёмный 3D-лак) — как в листовом FinishingField. Услуга
+           включается выбором варианта, снимается повторным кликом → role=group. -->
+      <div v-for="g in calc.variantGroups" :key="g.id" class="flex flex-col gap-1.5">
+        <span class="text-sm font-semibold">
+          {{ g.heading }}
+          <InfoTip v-if="optionInfo(g.heading)" :text="optionInfo(g.heading)!" />
+        </span>
+        <div class="flex flex-wrap gap-2" role="group" :aria-label="g.heading">
+          <OptionTile
+            v-for="(v, i) in g.variants"
+            :key="i"
+            multi
+            :label="v.name"
+            :thumb="v.thumb"
+            :glyph="groupGlyph(g.heading)"
+            :active="calc.finGroupIndex[g.id] === i"
+            :title="`${g.heading} — ${v.name}`"
+            :zoom="!!v.full"
+            :full="v.full"
+            @select="calc.finGroupIndex[g.id] = calc.finGroupIndex[g.id] === i ? -1 : i"
+            @zoom="extraLightbox?.open(v.name, v.full ?? null)"
+          />
+        </div>
+      </div>
+
+      <!-- Доп. обработка обложки без группы (каширование и т.п.). Плитки-
+           переключатели: опции независимые → multi (role=checkbox). -->
       <div v-if="calc.coverExtras.length" class="flex flex-col gap-1.5">
         <span class="text-sm font-semibold">Дополнительная обработка</span>
         <div class="flex flex-wrap gap-2" role="group" aria-label="Дополнительная обработка обложки">
@@ -185,8 +212,10 @@ function ruleGlyph(name: string): string {
             @zoom="extraLightbox?.open(o.name, o.full ?? null)"
           />
         </div>
-        <ImageLightbox ref="extraLightbox" />
       </div>
+      <!-- Один лайтбокс на обе группы отделки: у брошюр/ежедневников coverExtras
+           пуст (там только вариант-группы), и внутри его блока он бы не отрисовался. -->
+      <ImageLightbox ref="extraLightbox" />
     </div>
 
     <!-- Блок: бумага (всегда белая) + печать всегда двусторонняя -->

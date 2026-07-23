@@ -151,10 +151,20 @@ export function useMultipageCalculator(props: {
     const idx = forcedLaminationIndex(on, laminationOptions.value.map((o) => o.name));
     if (idx >= 0) laminationIndex.value = idx;
   });
-  // Доп. обработка обложки: ungrouped-опции (УФ-лак, конгрев, объёмный лак).
-  // Чекбоксы; все per_item → цена на весь тираж, ручной count не нужен.
+  // Доп. обработка обложки БЕЗ группы (каширование, клеевая точка…): чекбоксы,
+  // все per_item → цена на весь тираж, ручной count не нужен.
   const coverExtras = product.finishing.filter((o) => !o.group);
   const extraChecked = ref<boolean[]>(coverExtras.map(() => false));
+  // Группы доп-обработки плитками-вариантами (УФ-лак: Выборочный/Сплошной,
+  // конгрев, объёмный 3D-лак). У них есть `group`, поэтому в `coverExtras` они не
+  // попадали — и до 2026-07-23 у брошюр и ежедневников их НЕЛЬЗЯ было выбрать,
+  // хотя в Directus они привязаны. Ведём тем же приёмом, что листовой калькулятор:
+  // индекс выбранного варианта на группу (-1 = «не выбрано»).
+  const finById = (id: number) => product.finishing.find((o) => o.id === id) ?? null;
+  const variantGroups = product.variantGroups;
+  const finGroupIndex = reactive<Record<number, number>>(
+    Object.fromEntries(variantGroups.map((g) => [g.id, -1])),
+  );
 
   // — Тираж —
   // Плитки — из продукта (Directus `qty_presets`): у фотокниги/книги минимум 1
@@ -178,6 +188,11 @@ export function useMultipageCalculator(props: {
     if (laminationIndex.value >= 0 && lam) f.push({ option: lam });
     if (foilOn.value && foilOption.value) f.push({ option: foilOption.value });
     coverExtras.forEach((o, i) => { if (extraChecked.value[i]) f.push({ option: o }); });
+    for (const g of variantGroups) {
+      const idx = finGroupIndex[g.id] ?? -1;
+      const opt = finById(g.id);
+      if (idx >= 0 && opt) f.push({ option: opt, count: g.variants[idx]?.count });
+    }
     return f;
   }
 
@@ -240,6 +255,10 @@ export function useMultipageCalculator(props: {
     coverExtras.forEach((o, i) => {
       if (extraChecked.value[i]) d.push({ label: "Отделка обложки", value: o.name });
     });
+    for (const g of variantGroups) {
+      const idx = finGroupIndex[g.id] ?? -1;
+      if (idx >= 0) d.push({ label: g.heading, value: g.variants[idx]?.name ?? "да" });
+    }
     d.push({ label: "Печать", value: `обложка ${coverSides.value}, блок ${innerSides}` });
     d.push({ label: "Тираж", value: `${totalQty.value} шт` });
     if (artworkMode.value === "design") d.push({ label: "Макет", value: "нужен дизайн" });
@@ -266,9 +285,14 @@ export function useMultipageCalculator(props: {
       foilOn.value && foilOption.value
         ? { id: foilOption.value.id, colorId: foilOption.value.colors[foilColorIndex.value]?.id ?? null }
         : null,
-    finishing: coverExtras
-      .filter((_, i) => extraChecked.value[i])
-      .map((o) => ({ id: o.id, count: 1 })), // per_item — count игнорируется движком
+    finishing: [
+      ...coverExtras
+        .filter((_, i) => extraChecked.value[i])
+        .map((o) => ({ id: o.id, count: 1 })), // per_item — count игнорируется движком
+      ...variantGroups
+        .filter((g) => (finGroupIndex[g.id] ?? -1) >= 0)
+        .map((g) => ({ id: g.id, count: g.variants[finGroupIndex[g.id]]?.count })),
+    ],
     needsDesign: artworkMode.value === "design" || undefined,
   });
 
@@ -293,7 +317,7 @@ export function useMultipageCalculator(props: {
     previewKind, setPreviewKind,
     // отделка обложки
     laminationOptions, foilOption, laminationIndex, foilOn, foilColorIndex, laminationLocked,
-    coverExtras, extraChecked,
+    coverExtras, extraChecked, variantGroups, finGroupIndex,
     // макет
     artworkMode, artworkId, artworkName, artworkPreflight,
     // расчёт / контракт

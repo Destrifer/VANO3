@@ -8,7 +8,8 @@ import { computed, inject, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { mpCalcKey } from "../../composables/useMultipageCalculator";
 import {
   laminationGloss, paperTexture, inkColor,
-  drawAccentMarks, defaultAccentMarks, type Rect,
+  drawAccentMarks, defaultAccentMarks,
+  drawUvGloss, drawEmboss, drawRaisedVarnish, type Rect,
 } from "../../lib/preview/primitives";
 import { bindingKindOf, getCover, type CoverEnv } from "../../lib/preview/covers";
 
@@ -22,6 +23,20 @@ const bindingKind = computed(() => bindingKindOf(calc.binding?.name));
 const cover = computed(() => getCover(calc.previewKind));
 // Ламинация обложки до сих пор не доезжала до превью, хотя в калькуляторе
 // выбирается: сила блика выводится из имени, как в Preview.vue.
+// Отделка обложки, ведомая группами-вариантами (УФ-лак/конгрев/3D-лак). Тот же
+// приём, что в Preview.vue: `null` — вариант не выбран.
+const groupPick = (re: RegExp) =>
+  computed(() => {
+    const g = calc.variantGroups.find((x) => re.test(x.heading));
+    if (!g) return null;
+    const i = calc.finGroupIndex[g.id] ?? -1;
+    return i >= 0 ? g.variants[i]?.name ?? "" : null;
+  });
+const uvPick = groupPick(/УФ-лак/i);
+const uvOn = computed(() => uvPick.value !== null);
+const uvSolid = computed(() => /сплошн/i.test(uvPick.value ?? ""));
+const embossOn = computed(() => groupPick(/конгрев/i).value !== null);
+const raisedOn = computed(() => groupPick(/3D-лак|объ[её]мный/i).value !== null);
 const glossStrength = computed(() => {
   const name = calc.laminationOptions[calc.laminationIndex]?.name ?? "";
   if (calc.laminationIndex < 0) return 0;
@@ -195,14 +210,18 @@ function draw() {
   // Обложка только ОБЪЯВЛЯЕТ метки фольги, металл кладёт `drawAccentMarks` — тот
   // же, что у листовых. Без меток берётся фолбэк, поэтому забыть реализацию
   // нельзя: раньше `scene.foil` просто отсутствовал у тетрадей и газеты.
-  // УФ-лак / конгрев / 3D-лак сюда НЕ подключены намеренно: `coverExtras` в
-  // useMultipageCalculator берёт только отделку БЕЗ группы, а у этих трёх группа
-  // есть — значит в многостраничном калькуляторе их вообще нельзя выбрать,
-  // хотя у брошюр и ежедневников они привязаны в Directus. Отвечать превью
-  // не на что, пока опция не появилась в интерфейсе (см. 07 §Что дальше).
+  // Отделка обложки поверх сцены. Метки объявляет обложка (`accentMarks`), а как
+  // блестит фольга / лак / рельеф — общий движок, тот же, что у листовых.
   if (glossStrength.value > 0) laminationGloss(ctx, coverRect, glossStrength.value);
-  if (calc.foilOn) {
-    drawAccentMarks(ctx, scene.accentMarks?.(contentRect, env) ?? defaultAccentMarks(contentRect, false), foilHex.value);
+  if (calc.foilOn || uvOn.value || embossOn.value || raisedOn.value) {
+    const marks = scene.accentMarks?.(contentRect, env) ?? defaultAccentMarks(contentRect, false);
+    if (calc.foilOn) drawAccentMarks(ctx, marks, foilHex.value);
+    if (embossOn.value) drawEmboss(ctx, marks);
+    if (raisedOn.value) drawRaisedVarnish(ctx, marks);
+    if (uvOn.value) {
+      if (uvSolid.value) laminationGloss(ctx, coverRect, 0.9);
+      else drawUvGloss(ctx, marks);
+    }
   }
   ctx.restore();
 
@@ -334,6 +353,7 @@ watch(
     calc.dims.w, calc.dims.h, coverHex.value, calc.foilOn, foilHex.value,
     bindingKind.value, calc.pages, calc.previewKind, calc.ruling,
     calc.laminationIndex, glossStrength.value,
+    uvOn.value, uvSolid.value, embossOn.value, raisedOn.value,
   ],
   () => draw(),
 );
