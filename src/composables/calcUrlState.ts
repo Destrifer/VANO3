@@ -12,7 +12,13 @@ export type CalcPreset = {
   shape?: "rectangular" | "round" | "complex";
   sides?: "4+0" | "4+4";
   quantity?: number;
-  sizeIndex?: number; // индекс размера (product.sizes) — листовой
+  // Размер ПО ЗНАЧЕНИЮ (предпочтительно) — мм, как заведено в каталоге.
+  // Та же болезнь, что у paperIndex и foldTypeIndex: позиция съезжает при любой
+  // перестановке размеров в админке. У POS-материалов это особенно больно —
+  // там размер называет ИЗДЕЛИЕ («Ценник A7» / «Воблер 80×80» / «Хенгер»),
+  // и съехавший индекс открывает кластер на чужом товаре.
+  size?: { w: number; h: number };
+  sizeIndex?: number; // устаревшее: позиция в product.sizes
   // Фальцовка ПО ЗНАЧЕНИЮ (предпочтительно): вид + число сгибов. Позиция в
   // product.foldTypes съезжает при любой перестановке вариантов в админке — так
   // и случилось: «Без сложения» переехало в начало списка, и все пять кластеров
@@ -91,6 +97,22 @@ export function resolveFoldIndex(
   return clampIndex(p.foldTypeIndex, foldTypes.length);
 }
 
+// Размер пресета → индекс в product.sizes. Сначала по значению (ширина×высота),
+// позиция — только запасной путь для старых пресетов. См. resolvePaperIndex и
+// resolveFoldIndex: третий случай той же мины.
+// null — применять нечего, вызывающий оставляет дефолт.
+export function resolveSizeIndex(
+  sizes: readonly { width: number; height: number }[],
+  p: Pick<CalcPreset, "size" | "sizeIndex">,
+): number | null {
+  if (p.size) {
+    const i = sizes.findIndex((s) => s.width === p.size!.w && s.height === p.size!.h);
+    if (i >= 0) return i;
+  }
+  if (p.sizeIndex == null) return null;
+  return clampIndex(p.sizeIndex, sizes.length);
+}
+
 // Применить пресет к реактивному состоянию (с защитой диапазонов/доступности).
 export function applyPreset(calc: CalculatorState, p: CalcPreset): void {
   if (!p) return;
@@ -101,10 +123,8 @@ export function applyPreset(calc: CalculatorState, p: CalcPreset): void {
     calc.sides = p.sides;
   }
   if (p.quantity != null && p.quantity > 0) calc.quantity = Math.floor(p.quantity);
-  if (p.sizeIndex != null) {
-    const i = clampIndex(p.sizeIndex, calc.product.sizes.length);
-    if (i != null) calc.sizeIndex = i;
-  }
+  const sizeIdx = resolveSizeIndex(calc.product.sizes, p);
+  if (sizeIdx != null) calc.sizeIndex = sizeIdx;
   // Фальцовка: сначала пробуем по значению (kind+folds), позиция — только как
   // запасной путь для старых пресетов.
   const foldIdx = resolveFoldIndex(calc.foldTypes, p);

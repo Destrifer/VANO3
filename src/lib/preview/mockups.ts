@@ -10,6 +10,12 @@ export type MockupEnv = {
   foilOn: boolean;
   foilHex: string;
   foldCount: number; // число сгибов (буклеты) → панелей = foldCount + 1
+  // Метка ВЫБРАННОГО размера как она заведена в каталоге. Нужна там, где размер
+  // называет само изделие, а не только габарит: у POS-материалов плитки — это
+  // «Ценник A7», «Воблер 80×80», «Хенгер дверной 95×280», то есть пользователь
+  // выбирает размером, ЧТО он печатает. Сцены, которым это не нужно, поле
+  // просто игнорируют.
+  sizeLabel?: string;
 };
 
 export type Mockup = {
@@ -1651,47 +1657,212 @@ const stencil: Mockup = {
   },
 };
 
-// Макет «ценник / POS» (pos-materials): крупная цена, старая цена зачёркнута,
-// название, ярлык «АКЦИЯ». Кластеры — ценники / воблеры / хенгеры.
+// Подобрать кегль так, чтобы строка ВЛЕЗЛА в ширину. Инвариант «метрики от
+// меньшей стороны» задаёт стартовый размер, но одного его мало: на узком
+// портрете (Ценник A7 74×105 — дефолт продукта) «990 ₽» обрезало ровно на
+// символе рубля. Считать ширину, а не надеяться на пропорцию.
+function fitFont(
+  ctx: CanvasRenderingContext2D,
+  text: string, maxW: number, startPx: number,
+  weight: string, family: string,
+): number {
+  let size = startPx;
+  for (let i = 0; i < 24 && size > 4; i++) {
+    ctx.font = `${weight} ${Math.round(size)}px ${family}`;
+    if (ctx.measureText(text).width <= maxW) break;
+    size *= 0.92;
+  }
+  ctx.font = `${weight} ${Math.round(size)}px ${family}`;
+  return Math.round(size);
+}
+
+const SANS = "system-ui, sans-serif";
+
+// У POS-материалов метка размера называет ИЗДЕЛИЕ, а не только габарит, и все
+// три изделия сидят на одном продукте. Ведём силуэт от неё, а не от кластера:
+// плитки размера («Ценник A7», «Воблер 80×80», «Хенгер дверной 95×280») стоят
+// прямо в калькуляторе, и переключение плитки обязано менять картинку —
+// переопределение сцены кластером закрыло бы только вход на посадочную.
+type PosKind = "pricetag" | "wobbler" | "hanger";
+const posKindOf = (label?: string): PosKind =>
+  /вобл/i.test(label ?? "") ? "wobbler"
+    : /хенгер/i.test(label ?? "") ? "hanger"
+      : "pricetag";
+
+// Ценник: название, старая цена зачёркнута, крупная цена, ярлык «АКЦИЯ».
+// Раскладка ведётся ОТ НИЗА — так цена остаётся крупной и на портрете, и на
+// ландшафте, а не уезжает за край на одном из них.
+function drawPricetag(ctx: CanvasRenderingContext2D, r: Rect, ink: string, round: boolean) {
+  const { x, y, w, h } = r;
+  const u = Math.min(w, h);
+  const m = u * (round ? 0.2 : 0.12);
+  const innerW = w - 2 * m;
+
+  // ярлык «АКЦИЯ» — от меньшей стороны, иначе на хенгере 95×280 он вытягивался
+  // в вертикальную пилюлю во всю высоту
+  const tw = Math.min(innerW * 0.34, u * 0.4);
+  const tH = Math.min(h * 0.16, u * 0.18);
+  ctx.fillStyle = ink;
+  ctx.globalAlpha = 0.85;
+  roundRect(ctx, x + w - m - tw, y + m, tw, tH, tH * 0.25);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+
+  // название сверху слева — ровно до ярлыка
+  ctx.globalAlpha = 0.45;
+  ctx.fillRect(x + m, y + m, Math.max(0, innerW - tw - u * 0.08), Math.max(1, u * 0.05));
+  ctx.globalAlpha = 1;
+
+  ctx.textAlign = "left";
+  ctx.textBaseline = "bottom";
+  // Кегль ограничен И шириной, И остатком высоты под шапкой: на ландшафтном
+  // ценнике 60×40 стопка «старая цена + крупная цена» иначе наезжает на шапку —
+  // по ширине-то она влезает, а по высоте нет.
+  const stackH = Math.max(u * 0.2, h - 2 * m - tH * 0.6);
+  const price = "990 ₽";
+  const pSize = fitFont(ctx, price, innerW, Math.min(u * 0.42, stackH * 0.6), "800", SANS);
+  const priceBase = y + h - m;
+  ctx.fillStyle = ink;
+  ctx.fillText(price, x + m, priceBase);
+
+  // старая цена — над крупной, зачёркнута
+  const old = "1 200 ₽";
+  ctx.globalAlpha = 0.4;
+  const oSize = fitFont(ctx, old, innerW * 0.7, Math.min(u * 0.16, stackH * 0.24), "500", SANS);
+  const oldBase = priceBase - pSize * 1.05;
+  ctx.fillText(old, x + m, oldBase);
+  const ow = ctx.measureText(old).width;
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = Math.max(1, u * 0.012);
+  ctx.beginPath();
+  ctx.moveTo(x + m, oldBase - oSize * 0.32);
+  ctx.lineTo(x + m + ow, oldBase - oSize * 0.32);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+}
+
+// Воблер: плашка-вспышка на полке. Ножка физически КЛЕИТСЯ сзади и в габарит
+// изделия не входит, поэтому наружу её не вывести (сцена живёт внутри контура) —
+// обозначаем пятаком крепления и полоской, уходящей за нижний край: клип делает
+// вид, будто она продолжается за плашкой.
+function drawWobbler(ctx: CanvasRenderingContext2D, r: Rect, ink: string) {
+  const { x, y, w, h } = r;
+  const u = Math.min(w, h);
+  const cx = x + w / 2, cy = y + h * 0.44;
+
+  // вспышка-звезда под текстом
+  const R = u * 0.44, rays = 16;
+  ctx.save();
+  ctx.globalAlpha = 0.14;
+  ctx.fillStyle = ink;
+  ctx.beginPath();
+  for (let i = 0; i < rays * 2; i++) {
+    const a = -Math.PI / 2 + (i * Math.PI) / rays;
+    const rad = i % 2 ? R * 0.78 : R;
+    const px = cx + Math.cos(a) * rad, py = cy + Math.sin(a) * rad;
+    i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+
+  ctx.textAlign = "center";
+  ctx.fillStyle = ink;
+
+  ctx.textBaseline = "bottom";
+  ctx.globalAlpha = 0.75;
+  fitFont(ctx, "АКЦИЯ", R * 1.3, u * 0.13, "700", SANS);
+  ctx.fillText("АКЦИЯ", cx, cy - u * 0.06);
+
+  ctx.textBaseline = "top";
+  ctx.globalAlpha = 1;
+  fitFont(ctx, "-30%", R * 1.5, u * 0.34, "800", SANS);
+  ctx.fillText("-30%", cx, cy - u * 0.03);
+  ctx.globalAlpha = 1;
+
+  // Ножка: прозрачная пластиковая полоса, уходящая за нижний край (клип делает
+  // вид, что она продолжается за плашкой). БЕЗ обведённого кружка — с ним она
+  // читалась как вырез и зеркалила отверстие хенгера, то есть два разных
+  // изделия выглядели похоже. Полоса со скруглённым верхом на это не похожа.
+  ctx.save();
+  ctx.fillStyle = ink;
+  const fw = u * 0.11, ftop = y + h * 0.8;
+  ctx.globalAlpha = 0.16;
+  roundRect(ctx, cx - fw / 2, ftop, fw, y + h - ftop + 1, fw * 0.45);
+  ctx.fill();
+  // точка приклейки
+  ctx.globalAlpha = 0.3;
+  ctx.beginPath();
+  ctx.arc(cx, ftop + fw * 0.5, fw * 0.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+// Хенгер (дорхенгер): подвес на дверную ручку. Опознаётся вырезом — круглое
+// отверстие с прорезью к верхнему краю. Вырубка тут и есть изделие (прецедент
+// volume-sticker), поэтому рисует её сцена, а не движок.
+function drawHanger(ctx: CanvasRenderingContext2D, r: Rect, ink: string) {
+  const { x, y, w, h } = r;
+  const u = Math.min(w, h);
+  const cx = x + w / 2;
+  const hole = u * 0.17;
+  const holeY = y + h * 0.055 + hole * 1.5;
+
+  // отверстие + прорезь: светлая заливка «сквозь» и тёмный кант реза
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, holeY, hole, 0, Math.PI * 2);
+  ctx.rect(cx - hole * 0.42, y - 1, hole * 0.84, holeY - y + 1);
+  ctx.fillStyle = "rgba(120,126,134,0.28)";
+  ctx.fill();
+  ctx.strokeStyle = "rgba(0,0,0,.4)";
+  ctx.lineWidth = Math.max(1, u * 0.008);
+  ctx.beginPath();
+  ctx.arc(cx, holeY, hole, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(cx - hole * 0.42, y);
+  ctx.lineTo(cx - hole * 0.42, holeY);
+  ctx.moveTo(cx + hole * 0.42, y);
+  ctx.lineTo(cx + hole * 0.42, holeY);
+  ctx.stroke();
+  ctx.restore();
+
+  // контент ниже выреза: заголовок, строки, плашка-призыв
+  const top = holeY + hole * 1.6;
+  const m = u * 0.16;
+  const innerW = w - 2 * m;
+  ctx.fillStyle = ink;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+  ctx.globalAlpha = 0.85;
+  fitFont(ctx, "АКЦИЯ", innerW, u * 0.2, "800", SANS);
+  ctx.fillText("АКЦИЯ", cx, top);
+
+  ctx.globalAlpha = 0.3;
+  const lh = Math.max(2, u * 0.09);
+  for (let i = 0; i < 3; i++) {
+    const lw = innerW * (i === 2 ? 0.55 : 0.85);
+    ctx.fillRect(cx - lw / 2, top + u * 0.3 + i * lh, lw, Math.max(1, u * 0.035));
+  }
+  ctx.globalAlpha = 0.8;
+  const bw = innerW * 0.8, bh = u * 0.16;
+  roundRect(ctx, cx - bw / 2, y + h - m - bh, bw, bh, bh * 0.3);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+}
+
+// Макет «POS-материалы» (ключ реестра остался `pricetag` — им помечен продукт).
+// Три изделия одного продукта, силуэт выбирается меткой размера.
 const pricetag: Mockup = {
   content(ctx, r, env) {
-    const { x, y, w, h } = r;
-    const ink = env.ink;
-    const u = Math.min(w, h);
-    const m = u * 0.12;
-
-    // название сверху
-    ctx.textAlign = "left";
-    ctx.textBaseline = "top";
-    ctx.fillStyle = ink;
-    ctx.globalAlpha = 0.45;
-    ctx.fillRect(x + m, y + m, w * 0.5, Math.max(1, h * 0.06));
-    ctx.globalAlpha = 1;
-
-    // крупная цена
-    ctx.fillStyle = ink;
-    ctx.font = `800 ${Math.round(h * 0.34)}px system-ui, sans-serif`;
-    ctx.fillText("990 ₽", x + m, y + h * 0.4);
-
-    // старая цена зачёркнута
-    ctx.globalAlpha = 0.4;
-    ctx.font = `500 ${Math.round(h * 0.13)}px system-ui, sans-serif`;
-    const oldT = "1 200 ₽";
-    ctx.fillText(oldT, x + m, y + h * 0.24);
-    const owM = ctx.measureText(oldT).width;
-    ctx.strokeStyle = ink;
-    ctx.lineWidth = Math.max(1, u * 0.01);
-    ctx.beginPath();
-    ctx.moveTo(x + m, y + h * 0.305); ctx.lineTo(x + m + owM, y + h * 0.305); ctx.stroke();
-    ctx.globalAlpha = 1;
-
-    // ярлык «АКЦИЯ» справа
-    const tw = w * 0.24, tH = h * 0.16, tx = x + w - m - tw, ty = y + m;
-    ctx.fillStyle = ink;
-    ctx.globalAlpha = 0.85;
-    roundRect(ctx, tx, ty, tw, tH, tH * 0.25);
-    ctx.fill();
-    ctx.globalAlpha = 1;
+    ctx.save();
+    switch (posKindOf(env.sizeLabel)) {
+      case "wobbler": drawWobbler(ctx, r, env.ink); break;
+      case "hanger": drawHanger(ctx, r, env.ink); break;
+      default: drawPricetag(ctx, r, env.ink, env.round);
+    }
+    ctx.restore();
   },
 };
 

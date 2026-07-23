@@ -36,6 +36,11 @@ const foldCount = computed(() =>
 // 2 сложения» давали пиксель-в-пиксель одинаковую картинку — а это два разных
 // продвигаемых кластера (`/booklets/fold-euro` и `/booklets/fold-garmoshka`).
 const foldKind = computed(() => calc.selectedFold?.kind ?? "accordion");
+// Метка выбранного размера как она заведена в каталоге. Нужна сцене там, где
+// размер называет ИЗДЕЛИЕ: у POS-материалов плитки — «Ценник A7», «Воблер
+// 80×80», «Хенгер дверной 95×280», то есть выбор размера меняет сам предмет.
+// В своём размере (customMode, sizeIndex = -1) метки нет — сцена берёт дефолт.
+const sizeLabel = computed(() => calc.product.sizes[calc.sizeIndex]?.label ?? "");
 
 // Спецрендер материала выводится из имени материала/цвета (как glossStrength от
 // имени ламинации): прозрачная плёнка — «шахматка» сквозь основу; металлик/
@@ -259,6 +264,7 @@ function draw() {
     foilOn: calc.foilOn,
     foilHex: foilHex.value,
     foldCount: foldCount.value,
+    sizeLabel: sizeLabel.value,
   };
   ctx.save();
   shapePath(ctx, mr, mRadius, isRound.value);
@@ -473,7 +479,7 @@ watch(
     calc.foilOn, foilHex.value, cornersRounded.value, calc.previewKind,
     foldCount.value, foldKind.value, calc.foldTypeIndex,
     isTransparent.value, isMetallic.value, calc.selectedColorIndex,
-    isVoid.value, isScratch.value, isTransfer.value,
+    isVoid.value, isScratch.value, isTransfer.value, sizeLabel.value,
   ],
   () => draw(),
 );
