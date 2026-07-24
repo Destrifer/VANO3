@@ -9,9 +9,9 @@
 import type { ProductPricing } from "../../pricing/data";
 import { PAGE_STEP } from "../../pricing/engine";
 import { bindingKindOf, getCover, type BindingKind, type CoverEnv } from "../covers";
-import { defaultAccentMarks, roundRect, type Rect } from "../primitives";
+import { roundRect, type Rect } from "../primitives";
 import { SvgContext } from "./context";
-import { paintAccentMarks } from "./accent";
+import { paintAccentMarks, resolveAccent } from "./accent";
 import { W, H } from "./tile";
 
 // Обложка и краска — как у листовой плитки: бумага через CSS-переменную (мимо
@@ -62,12 +62,13 @@ export function coverTileSvg(input: CoverTileInput): string {
   const c = ctx as unknown as CanvasRenderingContext2D;
   const scene = getCover(input.previewKind);
 
-  // `foilOn: true` — не про фольгу: так обложка оставляет свой декорируемый
-  // элемент движку, и мы кладём туда единственное цветное пятно (см. accent.ts).
+  // `foilOn` — не про фольгу: им обложка решает, печатать ли свой декорируемый
+  // элемент краской или уступить его движку. Ставим true ровно тогда, когда
+  // акцент будет положен (ниже), иначе элемент исчезнет — его не нарисует никто.
   const env: CoverEnv = {
     ink: INK,
     cover: coverHex,
-    foilOn: true,
+    foilOn: false,
     foilHex: "#d9b44a",
     binding: input.binding,
     pages: input.pages,
@@ -175,9 +176,13 @@ export function coverTileSvg(input: CoverTileInput): string {
     x: coverRect.x + coilW, y: coverRect.y,
     w: coverRect.w - coilW, h: coverRect.h,
   };
+  // Решаем про акцент ДО отрисовки: от него зависит `foilOn`, то есть напечатает
+  // ли обложка декорируемый элемент сама или уступит его нам.
+  const accent = resolveAccent(scene, contentRect, env);
+  env.foilOn = accent !== null;
   scene.content(c, contentRect, env);
   // Единственное цветное пятно — там, где обложка сама объявила акцент.
-  paintAccentMarks(c, scene.accentMarks?.(contentRect, env) ?? defaultAccentMarks(contentRect, false));
+  if (accent) paintAccentMarks(c, accent);
   c.restore();
 
   // контур обложки

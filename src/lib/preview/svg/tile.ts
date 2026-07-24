@@ -8,9 +8,10 @@
 // реализация макета на оба места (инвариант 1). Multipage-обложки (covers.ts)
 // пока не покрыты: у них свой stage (книжка), это отдельный заход.
 import { getMockup } from "../mockups";
-import { shapePath, defaultAccentMarks, type Rect, type ShapeKind } from "../primitives";
+import { shapePath, type Rect, type ShapeKind } from "../primitives";
 import { SvgContext } from "./context";
-import { paintAccentMarks } from "./accent";
+import { paintAccentMarks, resolveAccent } from "./accent";
+import { tileOverrides } from "./overrides";
 
 export type TileInput = {
   previewKind?: string | null;
@@ -63,25 +64,29 @@ export function productTileSvg(input: TileInput): string {
   c.fill();
 
   // ink-«кукла» внутри контура.
-  // `foilOn: true` — не про фольгу: так сцена ОСТАВЛЯЕТ свой декорируемый
-  // элемент движку (не печатает его краской), и мы кладём туда акцент.
+  const mockup = getMockup(input.previewKind);
   const env = {
     round,
     ink: INK,
-    foilOn: true,
+    // `foilOn` здесь не про фольгу: им сцена решает, печатать ли свой
+    // декорируемый элемент краской (false) или уступить его движку (true).
+    // Ставим true РОВНО тогда, когда акцент действительно будет положен, иначе
+    // элемент не нарисует никто и он исчезнет с плитки.
+    foilOn: false,
     foilHex: "#d9b44a",
     foldCount: 0,
     sizeLabel: input.sizeLabel ?? "",
   };
-  const mockup = getMockup(input.previewKind);
+  const accent = resolveAccent(mockup, r, env);
+  env.foilOn = accent !== null;
+
   c.save();
   shapePath(c, r, radius, shape);
   c.clip();
-  mockup.content(c, r, env);
+  // Сцена, чей эффект не переживает монохром, рисуется обходом (см. overrides.ts).
+  (tileOverrides[input.previewKind ?? ""] ?? mockup.content)(c, r, env);
   // Единственное цветное пятно — там, где сцена сама объявила акцент.
-  paintAccentMarks(c, mockup.accentMarks?.(r, env) ?? defaultAccentMarks(r, round));
-  // Купол смолы обязан лечь ПОВЕРХ акцента — как и поверх фольги в живом превью.
-  mockup.afterFoil?.(c, r, env);
+  if (accent) paintAccentMarks(c, accent);
   c.restore();
 
   // тонкий контур печати
