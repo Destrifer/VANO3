@@ -1072,10 +1072,18 @@ const businessCard: Mockup = {
 // продукт. Ключи сцен (`award`/`certificate`/`diploma`/`gratitude`) назначаются
 // полем `preview_kind`; грамота осталась на историческом `award`.
 const AWARD_SERIF = "Georgia, serif";
-// Кегль заголовка-акцента (у благодарности без медальона — он и есть акцент,
-// поэтому фиксирован: `accentMarks` не может замерить строку через ctx, а движок
-// обязан положить металл ровно туда, где сцена молчит). Ниже порога DOMINANT.
-const AWARD_TITLE = 0.088;
+// Кегль заголовка-акцента (у благодарности без медальона заголовок и ЕСТЬ
+// акцент). Его нельзя подобрать через fitFont: `accentMarks` рисует ту же
+// строку, но ctx для замера у него нет, а движок обязан положить металл ровно
+// туда, где сцена молчит. Поэтому — чистая оценка от ДЛИНЫ слова, одинаковая в
+// обоих местах. «БЛАГОДАРНОСТЬ» (13 знаков) при прежней константе 0.088 не
+// влезала на портретном A4; коэффициент 0.64 на знак — консервативная ширина
+// жирного serif-кириллического глифа, так что слово гарантированно в рамке.
+// Кап 0.095·u держит короткие слова («ГРАМОТА») от раздувания; всё ниже DOMINANT.
+function awardTitleSize(title: string, u: number, w: number): number {
+  const byWidth = (w * 0.58) / (title.length * 0.64);
+  return Math.round(Math.min(u * 0.095, byWidth));
+}
 
 type AwardOpts = {
   title: string;
@@ -1135,7 +1143,7 @@ function makeAward(o: AwardOpts): Mockup {
         ctx.fillStyle = ink;
         ctx.globalAlpha = 0.85;
         const ts = titleIsAccent
-          ? Math.round(u * AWARD_TITLE)
+          ? awardTitleSize(o.title, u, w)
           : fitFont(ctx, o.title, w * 0.64, u * 0.1, "700", AWARD_SERIF);
         ctx.font = `700 ${ts}px ${AWARD_SERIF}`;
         ctx.fillText(o.title, cx, titleTop);
@@ -1204,7 +1212,7 @@ function makeAward(o: AwardOpts): Mockup {
         return [{ kind: "text", text: "PM", x: x + w / 2, y: y + h * 0.2 - er * 0.55, size: Math.round(er * 1.1), align: "center" }];
       }
       // без медальона акцент/фольга — на заголовке, тем же кеглем, что в content
-      return [{ kind: "text", text: o.title, x: x + w / 2, y: y + h * 0.3, size: Math.round(u * AWARD_TITLE), align: "center", font: AWARD_SERIF }];
+      return [{ kind: "text", text: o.title, x: x + w / 2, y: y + h * 0.3, size: awardTitleSize(o.title, u, w), align: "center", font: AWARD_SERIF }];
     },
   };
 }
