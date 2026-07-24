@@ -1,8 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360">
-  <path fill="currentColor" fill-rule="evenodd"
-    d="M74 302V58h158c58 0 102 40 102 94s-44 94-102 94h-74v56H74Z
-       M182 106H230A24 24 0 0 1 254 130V172A24 24 0 0 1 230 196H182A24 24 0 0 1 158 172V130A24 24 0 0 1 182 106Z"/>
-  <path fill="currentColor"
-    d="M316 302V58h80l68 96 68-96h80v244h-82V178l-66 92-66-92v124h-82Z"/>
-  <rect x="74" y="312" width="548" height="34" rx="6" fill="currentColor"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1490 700"><path fill="currentColor" d="M0 700V0h420q105 0 152.5 47.5T620 200v100q0 105-47.5 152.5T420 500H180v200zm440-400V200q0-60-60-60H180v220h200q60 0 60-60m870 400V310l-140 250h-140L890 310v390H710V0h190l200 370L1300 0h190v700"/></svg>
