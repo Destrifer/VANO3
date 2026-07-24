@@ -743,14 +743,35 @@ const sign: Mockup = {
   },
 };
 
-// Макет «папка» (presentation folder): лого на обложке + диагональ кармана
-// поперёк нижней трети и линия нижней кромки — читается как папка, не документ.
+// Макет «папка» (presentation folder): готовая папка с лица — корешок слева,
+// лого на обложке, внутренний карман нижней третью с ПОЛУКРУГЛЫМ ВЫРЕЗОМ под
+// палец. Вырез — главный опознавательный знак: без него папка неотличима от
+// листа с диагональю (так и было — плитка каталога читалась как визитка).
+// Корешок даёт объём: папка вкладная, а не сфальцованный лист.
 const folder: Mockup = {
   content(ctx, r, env) {
     const { x, y, w, h } = r;
     const ink = env.ink;
     const u = Math.min(w, h);
     const p = u * 0.1;
+    // Корешок — узкая полоса у левого края. От ШИРИНЫ, а не от меньшей стороны:
+    // в каталоге у папок заведена развёртка 440×320 (ландшафт), и доля от
+    // высоты дала бы там корешок в треть листа.
+    const spine = w * 0.055;
+    const lx = x + spine;
+
+    // корешок: лёгкая заливка + линия сгиба
+    ctx.fillStyle = ink;
+    ctx.globalAlpha = 0.07;
+    ctx.fillRect(x, y, spine, h);
+    ctx.globalAlpha = 0.22;
+    ctx.strokeStyle = ink;
+    ctx.lineWidth = Math.max(1, u * 0.006);
+    ctx.beginPath();
+    ctx.moveTo(lx, y);
+    ctx.lineTo(lx, y + h);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
 
     // лого на обложке
     ctx.textAlign = "left";
@@ -758,37 +779,58 @@ const folder: Mockup = {
     if (!env.foilOn) {
       ctx.fillStyle = ink;
       ctx.font = `700 ${Math.round(u * 0.16)}px Georgia, serif`;
-      ctx.fillText("PM", x + p, y + p);
+      ctx.fillText("PM", lx + p, y + p);
     }
     ctx.fillStyle = ink;
     ctx.globalAlpha = 0.5;
     ctx.font = `500 ${Math.round(u * 0.06)}px system-ui, sans-serif`;
-    ctx.fillText("PRINTMOS", x + p, y + p + u * 0.19);
+    ctx.fillText("PRINTMOS", lx + p, y + p + u * 0.19);
     ctx.globalAlpha = 1;
 
-    // карман: диагональ от левого края к правому низу + кромка
-    ctx.strokeStyle = ink;
-    ctx.globalAlpha = 0.28;
-    ctx.lineWidth = Math.max(1, u * 0.008);
-    ctx.beginPath();
-    ctx.moveTo(x, y + h * 0.62);
-    ctx.lineTo(x + w, y + h * 0.78);
-    ctx.stroke();
-    ctx.globalAlpha = 0.12;
-    ctx.beginPath();
-    ctx.moveTo(x, y + h * 0.62);
-    ctx.lineTo(x + w, y + h * 0.78);
-    ctx.lineTo(x + w, y + h);
-    ctx.lineTo(x, y + h);
-    ctx.closePath();
+    // карман: кромка с вырезом под палец, дальше — вниз до нижнего края
+    const py = y + h * 0.62;
+    const nr = Math.min(u * 0.14, (w - spine) * 0.22); // радиус выреза
+    const cx = lx + (w - spine) * 0.5;
+    const pocket = () => {
+      ctx.beginPath();
+      ctx.moveTo(lx, py);
+      ctx.lineTo(cx - nr, py);
+      // дуга ВНИЗ, в тело кармана (anticlockwise: PI → 0 через 0.5PI)
+      ctx.arc(cx, py, nr, Math.PI, 0, true);
+      ctx.lineTo(x + w, py);
+      ctx.lineTo(x + w, y + h);
+      ctx.lineTo(lx, y + h);
+      ctx.closePath();
+    };
+    pocket();
     ctx.fillStyle = ink;
+    // 0.10, а не 0.14: на плитке каталога заливка выше 13% уходит в хафтон, и
+    // карман становился крупным точечным пятном, забивающим и вырез, и прорезь.
+    ctx.globalAlpha = 0.1;
     ctx.fill();
+    ctx.globalAlpha = 0.32;
+    ctx.lineWidth = Math.max(1, u * 0.008);
+    ctx.strokeStyle = ink;
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    // прорезь под визитку в кармане — деталь, которая читается даже мелко
+    ctx.globalAlpha = 0.25;
+    ctx.lineWidth = Math.max(1, u * 0.006);
+    ctx.beginPath();
+    const sx = lx + (w - spine) * 0.12, sw = (w - spine) * 0.26, sy = y + h * 0.82;
+    ctx.moveTo(sx, sy);
+    ctx.lineTo(sx + sw, sy);
+    ctx.stroke();
     ctx.globalAlpha = 1;
   },
   accentMarks(r) {
-    const { x, y } = r;
+    const { x, y, w } = r;
     const u = Math.min(r.w, r.h);
-    return [{ kind: "text", text: "PM", x: x + u * 0.1, y: y + u * 0.1, size: Math.round(u * 0.16) }];
+    return [{
+      kind: "text", text: "PM",
+      x: x + w * 0.055 + u * 0.1, y: y + u * 0.1, size: Math.round(u * 0.16),
+    }];
   },
 };
 
@@ -916,7 +958,12 @@ const businessCard: Mockup = {
     const ink = env.ink;
     const round = env.round;
     const u = Math.min(w, h);
-    const pd = u * (round ? 0.14 : 0.11);
+    // Поле до текста. У прямоугольной было 0.11 при кайме на 0.55 от него —
+    // между текстом и рамкой оставалось ~4 px в размере плитки каталога, и
+    // композиция читалась обрезанной. Поле и кайму развели: рамка ближе к краю,
+    // текст — дальше внутрь.
+    const pd = u * (round ? 0.14 : 0.15);
+    const fi = u * 0.06; // отступ каймы от края изделия
     const cx = x + w / 2;
 
     // Круглая визитка — центрированная композиция.
@@ -953,7 +1000,7 @@ const businessCard: Mockup = {
     ctx.strokeStyle = ink;
     ctx.globalAlpha = 0.18;
     ctx.lineWidth = Math.max(1, u * 0.008);
-    roundRect(ctx, x + pd * 0.55, y + pd * 0.55, w - pd * 1.1, h - pd * 1.1, u * 0.04);
+    roundRect(ctx, x + fi, y + fi, w - fi * 2, h - fi * 2, u * 0.04);
     ctx.stroke();
     ctx.globalAlpha = 1;
 
@@ -1012,7 +1059,7 @@ const businessCard: Mockup = {
     const u = Math.min(w, h);
     return env.round
       ? [{ kind: "text", text: "PM", x: x + w / 2, y: y + h * 0.2, size: Math.round(u * 0.2), align: "center" }]
-      : [{ kind: "text", text: "PM", x: x + u * 0.11, y: y + u * 0.11, size: Math.round(h * 0.2) }];
+      : [{ kind: "text", text: "PM", x: x + u * 0.15, y: y + u * 0.15, size: Math.round(h * 0.2) }];
   },
 };
 

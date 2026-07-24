@@ -9,9 +9,11 @@
 // пока не покрыты: у них свой stage (книжка), это отдельный заход.
 import { getMockup } from "../mockups";
 import { shapePath, type Rect, type ShapeKind } from "../primitives";
+import { drawFolded } from "../fold";
 import { SvgContext } from "./context";
 import { paintAccentMarks, resolveAccent } from "./accent";
 import { tileOverrides } from "./overrides";
+import { tileAspect } from "./aspect";
 
 export type TileInput = {
   previewKind?: string | null;
@@ -20,6 +22,8 @@ export type TileInput = {
   round?: boolean;
   sizeLabel?: string; // метка размера (POS-материалы ветвят силуэт по ней)
   base?: string; // цвет бумаги; по умолчанию нейтральный крем
+  // Фальцовка изделия: если задана, плитка рисует СЛОЖЕННЫЙ вид вместо листа.
+  fold?: { folds: number; kind: string } | null;
 };
 
 // Пропорции медиа-зоны плитки. 0.66 — как высота живого превью (cssH = cssW·0.66).
@@ -45,9 +49,34 @@ export function productTileSvg(input: TileInput): string {
   const ctx = new SvgContext(W, H, { halftone: true });
   const c = ctx as unknown as CanvasRenderingContext2D;
 
-  // вписать карточку нужной пропорции в рамку с полями (как в Preview.vue)
-  const aw = round ? 1 : input.mm?.w || 90;
-  const ah = round ? 1 : input.mm?.h || 50;
+  // Сложенное изделие (буклеты) рисуется 3D-видом, тем же кодом, что и живое
+  // превью (`lib/preview/fold.ts`). Без этого плитка буклетов была плоским
+  // листом и не отличалась от «Документов» — сцена у них одна, различала их
+  // только фальцовка. Биговка (`crease`) — не сложение, лист остаётся плоским.
+  if (input.fold && input.fold.folds > 0 && input.fold.kind !== "crease") {
+    drawFolded(c, W, H, {
+      panels: input.fold.folds + 1,
+      kind: input.fold.kind,
+      sheet: { w: input.mm?.w || 297, h: input.mm?.h || 210 },
+      cover: base,
+      ink: INK,
+      // Заголовок первой панели — единственное цветное пятно плитки (роль,
+      // которую на плоских сценах играет `accentMarks`).
+      accent: "var(--color-accent-ink)",
+      outline: "rgba(0,0,0,.15)",
+      // Тень гасим до 0.35: в монохроме она становится краской, и на штатной
+      // силе завёрнутые панели уходили в сплошной хафтон (см. FoldOpts.shade).
+      shade: 0.35,
+    });
+    return wrap(ctx);
+  }
+
+  // вписать карточку нужной пропорции в рамку с полями (как в Preview.vue).
+  // Пропорцию может переопределить `tileAspect` — там, где каталожный размер
+  // это РАЗВЁРТКА под вырубку, а не готовое изделие (папки).
+  const forced = tileAspect[input.previewKind ?? ""];
+  const aw = round ? 1 : forced?.w || input.mm?.w || 90;
+  const ah = round ? 1 : forced?.h || input.mm?.h || 50;
   const aspect = aw / ah;
   const fpad = Math.min(W, H) * 0.14;
   const availW = W - 2 * fpad, availH = H - 2 * fpad;
@@ -95,5 +124,9 @@ export function productTileSvg(input: TileInput): string {
   c.strokeStyle = "rgba(0,0,0,.15)";
   c.stroke();
 
+  return wrap(ctx);
+}
+
+function wrap(ctx: SvgContext): string {
   return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" class="product-tile__svg" role="img" aria-hidden="true" preserveAspectRatio="xMidYMid meet">${ctx.toSVG()}</svg>`;
 }

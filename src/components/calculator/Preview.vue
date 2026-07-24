@@ -6,11 +6,12 @@ import { computed, inject, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { calcKey } from "../../composables/useCalculator";
 import {
   shapePath, paperTexture, laminationGloss, inkColor,
-  drawAccentMarks, defaultAccentMarks, applyFoilStops,
+  drawAccentMarks, defaultAccentMarks,
   drawUvGloss, drawEmboss, drawRaisedVarnish,
   drillHoles, euroSlot, type Rect, type ShapeKind,
 } from "../../lib/preview/primitives";
 import { getMockup } from "../../lib/preview/mockups";
+import { drawFolded as drawFoldedShape } from "../../lib/preview/fold";
 
 const calc = inject(calcKey)!;
 const canvasRef = ref<HTMLCanvasElement | null>(null);
@@ -538,133 +539,18 @@ function draw() {
   ctx.restore();
 }
 
-// 3D-вид сложенного буклета: панели зигзагом (аккордеон), число панелей =
-// сгибов + 1. Вид одинаков для всех типов фальцовки. Светотень даёт объём,
-// плюс глянец ламинации и фольга на заголовке; контент — на каждой панели.
-type Pt = { x: number; y: number };
+// 3D-вид сложенного буклета. Сама отрисовка — в `lib/preview/fold.ts`: тот же
+// вид нужен плитке каталога, а она собирается без Vue, поэтому код не может
+// жить в компоненте. Здесь остаётся только проброс состояния калькулятора.
 function drawFolded(ctx: CanvasRenderingContext2D, cssW: number, cssH: number) {
-  const panels = foldCount.value + 1;
-  const cover = baseColor.value;
-  const ink = inkColor(cover);
-  const pad = Math.min(cssW, cssH) * 0.14;
-  const availW = cssW - 2 * pad;
-  const availH = cssH - 2 * pad;
-  const sheetW = calc.dims.w || 297;
-  const sheetH = calc.dims.h || 210;
-
-  const ph = 100;
-  const pw = ph * ((sheetW / panels) / sheetH);
-  const depth = ph * 0.12; // глубина зигзага
-
-  // Геометрия панелей по типу фальцовки.
-  // roll («Евро», «Улитка») — панели заворачиваются ВНУТРЬ одна в другую: наклон
-  // растёт монотонно, каждая следующая панель уже предыдущей (на производстве её
-  // и подрезают, иначе не вложится), вглубь рулона темнее.
-  // accordion («Гармошка») и book («Книжка») — зигзаг: наклон чередуется.
-  const raw: { c: Pt[]; shade: number }[] = [];
-  const rolled = foldKind.value === "roll";
-  // У рулонной угол должен читаться сильнее, чем у гармошки: там панели просто
-  // качаются вокруг фронтальной плоскости, здесь крайние реально загнуты внутрь.
-  const d = rolled ? depth * 2.4 : depth;
-  let lx = 0;
-  for (let i = 0; i < panels; i++) {
-    let lyTop: number, ryTop: number, shade: number, wI: number;
-    if (rolled) {
-      // Крайние панели завёрнуты ВНУТРЬ: дальний край поднят (уходит от зрителя),
-      // ширина перспективно сжата. Средние стоят фронтально с лёгкой ступенькой,
-      // чтобы у «Улитки» (4 панели) они не слиплись в одну плиту.
-      if (i === 0) {
-        wI = pw * 0.62; lyTop = 0; ryTop = d; shade = -0.24;
-      } else if (i === panels - 1) {
-        wI = pw * 0.62; lyTop = d; ryTop = 0; shade = -0.3;
-      } else {
-        wI = pw;
-        const k = (i - 1) / Math.max(1, panels - 3);
-        lyTop = d - k * d * 0.16;
-        ryTop = d - (k + 0.5) * d * 0.16;
-        shade = 0.06 - (i - 1) * 0.09;
-      }
-    } else {
-      wI = pw;
-      lyTop = (i % 2) * d;
-      ryTop = ((i + 1) % 2) * d;
-      shade = i % 2 ? -0.18 : 0.06;
-    }
-    const rx = lx + wI;
-    raw.push({
-      c: [{ x: lx, y: lyTop }, { x: rx, y: ryTop }, { x: rx, y: ryTop + ph }, { x: lx, y: lyTop + ph }],
-      shade,
-    });
-    lx = rx;
-  }
-
-  // вписать (bbox → масштаб + центрирование)
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  for (const p of raw) for (const pt of p.c) {
-    minX = Math.min(minX, pt.x); minY = Math.min(minY, pt.y);
-    maxX = Math.max(maxX, pt.x); maxY = Math.max(maxY, pt.y);
-  }
-  const bw = maxX - minX, bh = maxY - minY;
-  const scale = Math.min(availW / bw, availH / bh);
-  const ox = (cssW - bw * scale) / 2 - minX * scale;
-  const oy = (cssH - bh * scale) / 2 - minY * scale;
-  const T = (p: Pt): Pt => ({ x: p.x * scale + ox, y: p.y * scale + oy });
-  const geom = raw.map((p) => ({ c: p.c.map(T), shade: p.shade }));
-
-  const poly = (c: Pt[]) => {
-    ctx.beginPath(); ctx.moveTo(c[0].x, c[0].y);
-    for (let i = 1; i < c.length; i++) ctx.lineTo(c[i].x, c[i].y);
-    ctx.closePath();
-  };
-  const lerp = (a: Pt, b: Pt, t: number): Pt => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
-  const bil = (c: Pt[], u: number, v: number) => lerp(lerp(c[0], c[1], u), lerp(c[3], c[2], u), v);
-  const band = (c: Pt[], u0: number, u1: number, v0: number, v1: number) => [bil(c, u0, v0), bil(c, u1, v0), bil(c, u1, v1), bil(c, u0, v1)];
-
-  // мягкая тень под изделием
-  ctx.save();
-  ctx.shadowColor = "rgba(0,0,0,.22)";
-  ctx.shadowBlur = ph * scale * 0.06;
-  ctx.shadowOffsetY = ph * scale * 0.04;
-  for (const p of geom) { poly(p.c); ctx.fillStyle = cover; ctx.fill(); }
-  ctx.restore();
-
-  geom.forEach((p, idx) => {
-    const c = p.c;
-    poly(c); ctx.fillStyle = cover; ctx.fill();
-    // светотень
-    poly(c); ctx.fillStyle = p.shade >= 0 ? `rgba(255,255,255,${p.shade})` : `rgba(0,0,0,${-p.shade})`; ctx.fill();
-    // глянец ламинации — выраженный диагональный блик
-    if (glossStrength.value > 0) {
-      const a = 0.45 * glossStrength.value;
-      const g = ctx.createLinearGradient(c[0].x, c[0].y, c[2].x, c[2].y);
-      g.addColorStop(0, "rgba(255,255,255,0)");
-      g.addColorStop(0.42, `rgba(255,255,255,${a})`);
-      g.addColorStop(0.6, `rgba(255,255,255,${a * 0.2})`);
-      g.addColorStop(1, "rgba(255,255,255,0)");
-      poly(c); ctx.fillStyle = g; ctx.fill();
-    }
-    // контент на каждой панели: плашка изображения + заголовок (фольга) + строки
-    poly(band(c, 0.14, 0.86, 0.08, 0.34)); ctx.fillStyle = ink; ctx.globalAlpha = 0.16; ctx.fill(); ctx.globalAlpha = 1;
-    poly(band(c, 0.14, 0.62, 0.44, 0.49));
-    if (calc.foilOn) {
-      // Металл тот же, что у плоского вида (applyFoilStops): раньше здесь был
-      // свой градиент с пересветом #fff7e0, и фольга на сложенном буклете
-      // отличалась от фольги на всех прочих продуктах.
-      const a2 = bil(c, 0.14, 0.465), b2 = bil(c, 0.62, 0.465);
-      ctx.fillStyle = applyFoilStops(ctx.createLinearGradient(a2.x, a2.y, b2.x, b2.y), foilHex.value);
-      ctx.fill();
-    } else { ctx.fillStyle = ink; ctx.globalAlpha = 0.5; ctx.fill(); ctx.globalAlpha = 1; }
-    ctx.fillStyle = ink; ctx.globalAlpha = 0.3;
-    for (let l = 0; l < 3; l++) {
-      const v = 0.54 + l * 0.07, ww = l === 2 ? 0.5 : 0.82;
-      poly(band(c, 0.14, 0.14 + ww, v, v + 0.028)); ctx.fill();
-    }
-    ctx.globalAlpha = 1;
-    // линия сгиба — правая кромка панели (кроме последней)
-    if (idx < geom.length - 1) {
-      ctx.beginPath(); ctx.moveTo(c[1].x, c[1].y); ctx.lineTo(c[2].x, c[2].y);
-      ctx.strokeStyle = "rgba(0,0,0,.2)"; ctx.lineWidth = 1; ctx.stroke();
-    }
+  drawFoldedShape(ctx, cssW, cssH, {
+    panels: foldCount.value + 1,
+    kind: foldKind.value,
+    sheet: { w: calc.dims.w, h: calc.dims.h },
+    cover: baseColor.value,
+    ink: inkColor(baseColor.value),
+    gloss: glossStrength.value,
+    foil: { on: calc.foilOn, hex: foilHex.value },
   });
 }
 

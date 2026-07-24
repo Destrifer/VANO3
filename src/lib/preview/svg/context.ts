@@ -131,6 +131,7 @@ export class SvgContext {
   // Габарит текущего пути в device-координатах: хафтон ставим только на КРУПНЫЕ
   // заливки, иначе тонкие линии-«рыба» рассыпаются в пунктир и читаются грязью.
   private bb = { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity };
+  private pts: number[] = [];
   private halftones = new Set<number>();
 
   constructor(private W: number, private H: number, private opts: { halftone?: boolean } = {}) {
@@ -191,6 +192,7 @@ export class SvgContext {
   beginPath() {
     this.path = ""; this.curLocal = null; this.startLocal = null;
     this.bb = { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity };
+    this.pts = [];
   }
   private grow(px: number, py: number) {
     const b = this.bb;
@@ -198,6 +200,20 @@ export class SvgContext {
     if (py < b.y0) b.y0 = py;
     if (px > b.x1) b.x1 = px;
     if (py > b.y1) b.y1 = py;
+    this.pts.push(px, py);
+  }
+  // Площадь пути (шнуровка по накопленным вершинам). Нужна ровно для одного:
+  // отличить КРУПНУЮ заливку от тонкой НАКЛОННОЙ полосы — у второй bbox большой,
+  // а краски в нём почти нет (см. useHalftone).
+  private pathArea(): number {
+    const p = this.pts;
+    if (p.length < 6) return 0;
+    let a = 0;
+    for (let i = 0, n = p.length; i < n; i += 2) {
+      const j = (i + 2) % n;
+      a += p[i] * p[j + 1] - p[j] * p[i + 1];
+    }
+    return Math.abs(a) / 2;
   }
   moveTo(x: number, y: number) {
     const [px, py] = apply(this.s.m, x, y);
@@ -316,7 +332,15 @@ export class SvgContext {
     if (ink < 0.13 || ink > 0.62) return false;
     const b = this.bb;
     if (!Number.isFinite(b.x0)) return false;
-    return b.x1 - b.x0 > 14 && b.y1 - b.y0 > 14;
+    const bw = b.x1 - b.x0, bh = b.y1 - b.y0;
+    if (bw <= 14 || bh <= 14) return false;
+    // Тонкая НАКЛОННАЯ полоса проходит проверку по bbox (её габарит большой), но
+    // заливки в нём почти нет — и хафтон режет из неё огрызки точек, читаемые
+    // как сор. Так выглядели строки текста на завёрнутых панелях буклета: у
+    // горизонтальной полосы bbox по высоте меньше 14 и она отсекалась сама, а у
+    // той же полосы на наклонной панели — нет. Требуем, чтобы путь занимал
+    // существенную долю своего габарита.
+    return this.pathArea() >= bw * bh * 0.4;
   }
 
   private paint(kind: "fill" | "stroke") {
