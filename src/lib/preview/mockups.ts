@@ -1063,96 +1063,157 @@ const businessCard: Mockup = {
   },
 };
 
-// Макет «наградной документ» (грамота/сертификат/диплом/благодарность): двойная
-// рамка, эмблема-медальон сверху, заголовок, «награждается», линия имени, печать
-// и подпись. Один образ на всю наградную группу — физически они идентичны.
-const award: Mockup = {
-  content(ctx, r, env) {
-    const { x, y, w, h } = r;
-    const ink = env.ink;
-    const u = Math.min(w, h);
-    const cx = x + w / 2;
-    const p = u * 0.09;
+// Макет «наградной документ»: двойная рамка, эмблема-медальон, ЗАГОЛОВОК-слово,
+// вводная строка, линия имени, печать и подпись. Четыре продукта — грамота,
+// сертификат, диплом, благодарность — физически идентичны по БУМАГЕ, но в
+// каталоге четыре одинаковые плитки не читаются. Настоящее различие между этими
+// документами — не форма, а ТЕКСТ: заголовочное слово и вводная фраза. Поэтому
+// сцена — фабрика: общий макет, свой заголовок + одна достоверная деталь на
+// продукт. Ключи сцен (`award`/`certificate`/`diploma`/`gratitude`) назначаются
+// полем `preview_kind`; грамота осталась на историческом `award`.
+const AWARD_SERIF = "Georgia, serif";
+// Кегль заголовка-акцента (у благодарности без медальона — он и есть акцент,
+// поэтому фиксирован: `accentMarks` не может замерить строку через ctx, а движок
+// обязан положить металл ровно туда, где сцена молчит). Ниже порога DOMINANT.
+const AWARD_TITLE = 0.088;
 
-    // двойная рамка
-    ctx.strokeStyle = ink;
-    ctx.globalAlpha = 0.4;
-    ctx.lineWidth = Math.max(1, u * 0.01);
-    ctx.strokeRect(x + p, y + p, w - 2 * p, h - 2 * p);
-    ctx.globalAlpha = 0.25;
-    ctx.lineWidth = Math.max(1, u * 0.004);
-    ctx.strokeRect(x + p * 1.5, y + p * 1.5, w - 3 * p, h - 3 * p);
-    ctx.globalAlpha = 1;
-
-    // эмблема-медальон сверху (кольцо + PM; при фольге — foil-слой)
-    const ey = y + h * 0.2, er = u * 0.08;
-    ctx.strokeStyle = ink;
-    ctx.globalAlpha = 0.45;
-    ctx.lineWidth = Math.max(1, u * 0.008);
-    ctx.beginPath();
-    ctx.arc(cx, ey, er, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.globalAlpha = 1;
-    if (!env.foilOn) {
-      ctx.fillStyle = ink;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.font = `700 ${Math.round(er * 1.1)}px Georgia, serif`;
-      ctx.fillText("PM", cx, ey + er * 0.05);
-    }
-
-    // заголовок-плашка + «награждается»
-    ctx.textAlign = "center";
-    ctx.textBaseline = "top";
-    ctx.fillStyle = ink;
-    ctx.globalAlpha = 0.8;
-    ctx.fillRect(cx - w * 0.24, y + h * 0.33, w * 0.48, h * 0.03);
-    ctx.globalAlpha = 0.4;
-    ctx.font = `400 ${Math.round(u * 0.05)}px system-ui, sans-serif`;
-    ctx.fillText("награждается", cx, y + h * 0.41);
-    ctx.globalAlpha = 1;
-
-    // линия имени
-    ctx.strokeStyle = ink;
-    ctx.globalAlpha = 0.35;
-    ctx.lineWidth = Math.max(1, u * 0.004);
-    ctx.beginPath();
-    ctx.moveTo(cx - w * 0.28, y + h * 0.5);
-    ctx.lineTo(cx + w * 0.28, y + h * 0.5);
-    ctx.stroke();
-    ctx.globalAlpha = 1;
-
-    // строки текста
-    ctx.fillStyle = ink;
-    [0.56, 0.61, 0.66].forEach((f, i) => {
-      ctx.globalAlpha = 0.22;
-      const ww = i < 2 ? 0.48 : 0.3;
-      ctx.fillRect(cx - w * ww / 2, y + h * f, w * ww, Math.max(1, h * 0.01));
-    });
-    ctx.globalAlpha = 1;
-
-    // печать (пунктир-кольцо) + линия подписи
-    ctx.strokeStyle = ink;
-    ctx.setLineDash([u * 0.02, u * 0.015]);
-    ctx.globalAlpha = 0.35;
-    ctx.lineWidth = Math.max(1, u * 0.005);
-    ctx.beginPath();
-    ctx.arc(x + w - p * 2.4, y + h - p * 2.4, u * 0.07, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.globalAlpha = 0.3;
-    ctx.beginPath();
-    ctx.moveTo(x + p * 2, y + h - p * 2);
-    ctx.lineTo(x + p * 2 + w * 0.28, y + h - p * 2);
-    ctx.stroke();
-    ctx.globalAlpha = 1;
-  },
-  accentMarks(r) {
-    const { x, y, w, h } = r;
-    const er = Math.min(w, h) * 0.08;
-    return [{ kind: "text", text: "PM", x: x + w / 2, y: y + h * 0.2 - er * 0.55, size: Math.round(er * 1.1), align: "center" }];
-  },
+type AwardOpts = {
+  title: string;
+  intro: string;
+  subline?: string | null; // достоверная деталь: «№ 00123» / «I МЕСТО»
+  medallion?: boolean; // эмблема сверху; по умолчанию есть
 };
+
+function makeAward(o: AwardOpts): Mockup {
+  const medallion = o.medallion !== false;
+  // Без медальона акцентный элемент — сам заголовок (иначе плитке нечего красить
+  // и нечего фольгировать). Тогда заголовок рисует движок по `foilOn`.
+  const titleIsAccent = !medallion;
+  return {
+    content(ctx, r, env) {
+      const { x, y, w, h } = r;
+      const ink = env.ink;
+      const u = Math.min(w, h);
+      const cx = x + w / 2;
+      const p = u * 0.09;
+
+      // двойная рамка
+      ctx.strokeStyle = ink;
+      ctx.globalAlpha = 0.4;
+      ctx.lineWidth = Math.max(1, u * 0.01);
+      ctx.strokeRect(x + p, y + p, w - 2 * p, h - 2 * p);
+      ctx.globalAlpha = 0.25;
+      ctx.lineWidth = Math.max(1, u * 0.004);
+      ctx.strokeRect(x + p * 1.5, y + p * 1.5, w - 3 * p, h - 3 * p);
+      ctx.globalAlpha = 1;
+
+      // эмблема-медальон (кольцо + PM; при фольге PM рисует движок как акцент)
+      if (medallion) {
+        const ey = y + h * 0.2, er = u * 0.08;
+        ctx.strokeStyle = ink;
+        ctx.globalAlpha = 0.45;
+        ctx.lineWidth = Math.max(1, u * 0.008);
+        ctx.beginPath();
+        ctx.arc(cx, ey, er, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+        if (!env.foilOn) {
+          ctx.fillStyle = ink;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.font = `700 ${Math.round(er * 1.1)}px ${AWARD_SERIF}`;
+          ctx.fillText("PM", cx, ey + er * 0.05);
+        }
+      }
+
+      // заголовок-СЛОВО. Если он же акцент (без медальона) и включён foilOn —
+      // молчим, его положит движок ровно тем же кеглем (см. AWARD_TITLE).
+      ctx.textAlign = "center";
+      ctx.textBaseline = "top";
+      const titleTop = y + h * 0.3;
+      if (!(titleIsAccent && env.foilOn)) {
+        ctx.fillStyle = ink;
+        ctx.globalAlpha = 0.85;
+        const ts = titleIsAccent
+          ? Math.round(u * AWARD_TITLE)
+          : fitFont(ctx, o.title, w * 0.64, u * 0.1, "700", AWARD_SERIF);
+        ctx.font = `700 ${ts}px ${AWARD_SERIF}`;
+        ctx.fillText(o.title, cx, titleTop);
+        ctx.globalAlpha = 1;
+      }
+
+      // достоверная деталь: номер сертификата / место диплома
+      let introY = y + h * 0.42;
+      if (o.subline) {
+        ctx.fillStyle = ink;
+        ctx.globalAlpha = 0.6;
+        ctx.font = `600 ${Math.round(u * 0.045)}px ${SANS}`;
+        ctx.fillText(o.subline, cx, y + h * 0.41);
+        ctx.globalAlpha = 1;
+        introY = y + h * 0.47;
+      }
+
+      // вводная фраза (fitFont — «настоящим удостоверяется» длиннее «награждается»)
+      ctx.fillStyle = ink;
+      ctx.globalAlpha = 0.42;
+      const is = fitFont(ctx, o.intro, w * 0.62, u * 0.05, "400", SANS);
+      ctx.font = `400 ${is}px ${SANS}`;
+      ctx.fillText(o.intro, cx, introY);
+      ctx.globalAlpha = 1;
+
+      // линия имени
+      ctx.strokeStyle = ink;
+      ctx.globalAlpha = 0.35;
+      ctx.lineWidth = Math.max(1, u * 0.004);
+      ctx.beginPath();
+      ctx.moveTo(cx - w * 0.28, y + h * 0.55);
+      ctx.lineTo(cx + w * 0.28, y + h * 0.55);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+
+      // строки текста
+      ctx.fillStyle = ink;
+      [0.61, 0.66, 0.71].forEach((f, i) => {
+        ctx.globalAlpha = 0.22;
+        const ww = i < 2 ? 0.48 : 0.3;
+        ctx.fillRect(cx - w * ww / 2, y + h * f, w * ww, Math.max(1, h * 0.01));
+      });
+      ctx.globalAlpha = 1;
+
+      // печать (пунктир-кольцо) + линия подписи
+      ctx.strokeStyle = ink;
+      ctx.setLineDash([u * 0.02, u * 0.015]);
+      ctx.globalAlpha = 0.35;
+      ctx.lineWidth = Math.max(1, u * 0.005);
+      ctx.beginPath();
+      ctx.arc(x + w - p * 2.4, y + h - p * 2.4, u * 0.07, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.globalAlpha = 0.3;
+      ctx.beginPath();
+      ctx.moveTo(x + p * 2, y + h - p * 2);
+      ctx.lineTo(x + p * 2 + w * 0.28, y + h - p * 2);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    },
+    accentMarks(r) {
+      const { x, y, w, h } = r;
+      const u = Math.min(w, h);
+      if (medallion) {
+        const er = u * 0.08;
+        return [{ kind: "text", text: "PM", x: x + w / 2, y: y + h * 0.2 - er * 0.55, size: Math.round(er * 1.1), align: "center" }];
+      }
+      // без медальона акцент/фольга — на заголовке, тем же кеглем, что в content
+      return [{ kind: "text", text: o.title, x: x + w / 2, y: y + h * 0.3, size: Math.round(u * AWARD_TITLE), align: "center", font: AWARD_SERIF }];
+    },
+  };
+}
+
+// Грамота — исторический ключ `award`; остальные три различаются словом и деталью.
+const award = makeAward({ title: "ГРАМОТА", intro: "награждается" });
+const certificate = makeAward({ title: "СЕРТИФИКАТ", intro: "настоящим удостоверяется", subline: "№ 00123" });
+const diploma = makeAward({ title: "ДИПЛОМ", intro: "награждается", subline: "I МЕСТО" });
+const gratitude = makeAward({ title: "БЛАГОДАРНОСТЬ", intro: "объявляется", medallion: false });
 
 // Макет «бейдж» (badges): прорезь под ленту, фото-плейсхолдер, имя, должность,
 // компания. Кластеры (медицинский/магнит/металлик/лента/пластик) — материал/форма.
@@ -2024,7 +2085,8 @@ const pricetag: Mockup = {
 
 export const mockups: Record<string, Mockup> = {
   card, sticker, leaflet, letterhead, envelope, poster, tag, sign, folder, forms,
-  "business-card": businessCard, award, badge, blueprint, plan, invite, label,
+  "business-card": businessCard, award, certificate, diploma, gratitude,
+  badge, blueprint, plan, invite, label,
   map, menu, postcard, ticket, stencil, pricetag,
   "volume-sticker": volumeSticker,
   // сцены КЛАСТЕРОВ наклеек (назначаются через preset.previewKind, не полем продукта)
